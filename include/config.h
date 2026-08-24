@@ -15,8 +15,14 @@
 // ─────────────────────────────────────────────────────────────
 //  LED-hårdvara
 // ─────────────────────────────────────────────────────────────
+// #ifndef så att kopplingstestet kan prova andra pinnar/antal via build-flagga:
+//   PLATFORMIO_BUILD_FLAGS="-DLED_PIN=5 -DLED_COUNT=30" pio run -e esp32dev_wiring -t upload
+#ifndef LED_PIN
 #define LED_PIN         13          // Datapinne till WS2812B (via 330–470 Ω)
+#endif
+#ifndef LED_COUNT
 #define LED_COUNT       60
+#endif
 #define LED_TYPE        WS2812B
 #define LED_COLOR_ORDER GRB
 
