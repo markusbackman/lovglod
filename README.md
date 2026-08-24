@@ -120,11 +120,56 @@ flasha manuellt, inte för enheterna.
     · omstart in i den nya firmwaren
 ```
 
+### Privat repo — extra steg
+
+Repot är privat, vilket betyder att **`browser_download_url` inte fungerar
+anonymt** (verifierat: 404 både på API:t och nedladdningslänken). Enheten
+behöver en token, och tar då en annan väg:
+
+```
+  1. GET api.github.com/repos/OWNER/REPO/releases/latest
+       Authorization: Bearer <token>              → tag_name + assets[].id
+
+  2. GET api.github.com/repos/OWNER/REPO/releases/assets/<id>
+       Authorization: Bearer <token>
+       Accept: application/octet-stream
+       redirect EJ följd                          → 302, Location: signerad URL
+
+  3. httpUpdate hämtar den signerade URL:en utan auth-header
+```
+
+Steg 2 följer redirecten för hand med flit. `HTTPClient` skickar annars samma
+headers vidare till målet, och den signerade URL:en bär redan sina egna
+engångscredentials — vår PAT har inget där att göra.
+
+**Skapa token:** GitHub → Settings → Developer settings → Fine-grained tokens.
+
+| Inställning | Värde |
+|---|---|
+| Repository access | Only select repositories → `bjorkloven-led` |
+| Permissions | Contents: **Read-only** |
+| Expiration | Sätt en påminnelse — enheten slutar uppdatera den dagen den går ut |
+
+Klistra in den i fältet **GitHub-token** på statussidan. Tomt fält vid senare
+sparningar betyder "rör inte" — skriv `-` för att radera. Token visas aldrig i
+klartext igen, bara som antal tecken på felsökningssidan.
+
+> **Den ligger i klartext i NVS.** Någon med fysisk åtkomst kan läsa ut den med
+> `esptool read_flash`. Därför en fine-grained token med `contents:read` på
+> *bara* det här repot — värsta fall är att någon kan läsa din firmwarekod.
+> Ska lampan stå någon annanstans än hemma: överväg att göra repot publikt och
+> hoppa över token helt, eller signera firmwaren (se Säkerhet nedan).
+
+**Actions-minuter:** privata repon drar från gratiskvoten (2 000 min/månad).
+Ett bygge tar ~1–2 min, så det är ingen praktisk gräns — men publika repon är
+gratis obegränsat, om du någon gång vill byta.
+
 ### Sätta upp
 
-1. Pusha repot till GitHub. Workflowsen ligger redan i `.github/workflows/`.
+1. Repot ligger på `markusbackman/bjorkloven-led` (privat). Workflowsen är
+   aktiva och `v1.0.0` är redan publicerad.
 2. Öppna lampans statussida och fyll i **Uppdateringskälla**:
-   `Doomhammer/bjorkloven-led`
+   `markusbackman/bjorkloven-led` — plus en token, eftersom repot är privat.
    Kortformen `owner/repo` expanderas automatiskt till Releases-API:t. Vill du
    hosta själv går det lika bra att ange en full URL till ett `firmware.json`.
 3. Släpp en version:

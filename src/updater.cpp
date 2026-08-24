@@ -174,9 +174,10 @@ bool queryLatest(const String &source, String &version, String &binUrl, uint32_t
 // inloggad webbsession. Rätt väg är assets-API:t med Accept: octet-stream,
 // som svarar 302 till en signerad engångs-URL.
 //
-// Redirecten följs medvetet för hand: HTTPClient skickar med samma headers
-// till målet, och lagringsbackenden svarar 400 om den ser en Authorization-
-// header den inte bett om. Vi plockar ut Location och lämnar en ren URL vidare.
+// Redirecten följs medvetet för hand. HTTPClient skickar med samma headers
+// vidare till målet, och den signerade URL:en bär redan sina egna
+// engångscredentials — att dessutom skicka vår PAT dit är onödig exponering.
+// Vi plockar ut Location och lämnar en ren URL till httpUpdate.
 static bool resolvePrivateAssetUrl(const String &source, uint32_t assetId, String &signedUrl) {
     const String api = resolveSourceUrl(source);
     const int    idx = api.indexOf("/releases");

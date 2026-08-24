@@ -156,7 +156,7 @@ void handleStatus() {
            "<label>Ljusstyrka (0–255)</label><input name=bright type=number min=5 max=255 value='");
     p += String(settings.brightness);
     p += F("'><label>Uppdateringskälla (tom = av)</label>"
-           "<input name=otasrc placeholder='Doomhammer/bjorkloven-led' value='");
+           "<input name=otasrc placeholder='markusbackman/bjorkloven-led' value='");
     p += htmlEscape(settings.otaSource);
     p += F("'><label>GitHub-token (krävs för privat repo)</label>"
            "<input name=otatok type=password autocomplete=off placeholder='");

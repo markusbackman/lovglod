@@ -73,9 +73,10 @@
 //  OTA-källa
 // ─────────────────────────────────────────────────────────────
 // Skrivs in i webbportalen. Två format stöds:
-//   "Doomhammer/bjorkloven-led"        → GitHub Releases (rekommenderat)
+//   "markusbackman/bjorkloven-led"     → GitHub Releases (rekommenderat)
 //   "https://.../firmware.json"        → eget manifest, valfri webbserver
-#define OTA_DEFAULT_SOURCE ""
+// Privat repo kräver dessutom en token, se README.
+#define OTA_DEFAULT_SOURCE "markusbackman/bjorkloven-led"
 
 // Filnamnet på .bin-filen i releasen som ska installeras.
 #define OTA_ASSET_NAME  "firmware.bin"
