@@ -1,0 +1,119 @@
+name: Release firmware
+
+# Taggar du v1.2.3 byggs firmwaren och publiceras som en release.
+# Lamporna hittar den via GitHub Releases-API:t och uppdaterar sig själva.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version att bygga, utan v (t.ex. 1.2.3)'
+        required: true
+
+permissions:
+  contents: write          # krävs för att skapa releasen
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Bestäm version
+        id: ver
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            V="${{ inputs.version }}"
+          else
+            V="${GITHUB_REF_NAME#v}"
+          fi
+          # Vägra tvetydiga versioner — enheten jämför strängen rakt av.
+          # Tillåter 1.2.3 och 1.3.0-rc1, men inte "v1.2.3" eller tomt.
+          if ! printf '%s' "$V" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$'; then
+            echo "::error::Ogiltig version: '$V' (förväntar 1.2.3 eller 1.3.0-rc1)"
+            exit 1
+          fi
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          echo "tag=v$V"    >> "$GITHUB_OUTPUT"
+          echo "Bygger version $V"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Cachea PlatformIO-verktygskedjan
+        uses: actions/cache@v4
+        with:
+          path: ~/.platformio
+          key: pio-${{ runner.os }}-${{ hashFiles('platformio.ini') }}
+          restore-keys: pio-${{ runner.os }}-
+
+      - name: Installera PlatformIO
+        run: pip install --upgrade platformio
+
+      - name: Bygg firmware
+        env:
+          # Injiceras i FW_VERSION. config.h har #ifndef, så den här vinner.
+          PLATFORMIO_BUILD_FLAGS: -DFW_VERSION='"${{ steps.ver.outputs.version }}"'
+        run: pio run -e esp32dev
+
+      - name: Paketera och kontrollera
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          cp .pio/build/esp32dev/firmware.bin dist/firmware.bin
+
+          V='${{ steps.ver.outputs.version }}'
+          TAG='${{ steps.ver.outputs.tag }}'
+          SIZE=$(stat -c%s dist/firmware.bin)
+          SHA=$(sha256sum dist/firmware.bin | cut -d' ' -f1)
+
+          # min_spiffs.csv ger 1 966 080 byte per app-partition. Går binären
+          # över taket misslyckas OTA på enheten, inte här — fånga det nu.
+          LIMIT=1966080
+          if [ "$SIZE" -gt "$LIMIT" ]; then
+            echo "::error::firmware.bin är $SIZE byte, taket är $LIMIT"
+            exit 1
+          fi
+
+          # Verifiera att versionen faktiskt hamnade i binären.
+          if ! strings dist/firmware.bin | grep -q "BjorklovenLED/$V"; then
+            echo "::error::FW_VERSION $V återfinns inte i binären"
+            exit 1
+          fi
+
+          # Manifest för enheter som pekas mot en egen webbserver istället för
+          # GitHub Releases-API:t.
+          cat > dist/firmware.json <<EOF
+          {
+            "version": "$V",
+            "url": "https://github.com/${{ github.repository }}/releases/download/$TAG/firmware.bin",
+            "sha256": "$SHA",
+            "size": $SIZE
+          }
+          EOF
+
+          echo "### Firmware $V" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| | |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|---|---|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Storlek | $SIZE byte ($(( SIZE * 100 / LIMIT )) % av partitionen) |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| SHA-256 | \`$SHA\` |" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publicera release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.ver.outputs.tag }}
+          V: ${{ steps.ver.outputs.version }}
+        run: |
+          set -euo pipefail
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" dist/firmware.bin dist/firmware.json --clobber
+          else
+            gh release create "$TAG" dist/firmware.bin dist/firmware.json \
+              --title "v$V" --generate-notes
+          fi
+          echo "Publicerad: $(gh release view "$TAG" --json url -q .url)"

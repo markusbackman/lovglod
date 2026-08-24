@@ -1,0 +1,41 @@
+name: Bygg
+
+# Kompilerar varje push och PR så att trasig kod aldrig når en tagg.
+# Artefakten här är för dig att flasha manuellt — enheter kan inte hämta den,
+# GitHub kräver inloggning för artifact-nedladdning (se README).
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Cachea PlatformIO-verktygskedjan
+        uses: actions/cache@v4
+        with:
+          path: ~/.platformio
+          key: pio-${{ runner.os }}-${{ hashFiles('platformio.ini') }}
+          restore-keys: pio-${{ runner.os }}-
+
+      - name: Installera PlatformIO
+        run: pip install --upgrade platformio
+
+      - name: Bygg
+        run: pio run -e esp32dev
+
+      - name: Ladda upp binär
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-${{ github.sha }}
+          path: .pio/build/esp32dev/firmware.bin
+          retention-days: 14
