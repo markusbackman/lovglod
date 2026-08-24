@@ -103,9 +103,11 @@ void drawGoal() {
 }
 
 // ── Övriga lägen ────────────────────────────────────────────────────────────
-void drawPortal() {
+// Samma rytm i båda portallägena — det är färgen som skiljer dem åt.
+//   blå = "anslut till mitt nät"      röd = "ditt WiFi svarar inte"
+void drawPortal(uint8_t hue, uint8_t sat) {
     const uint8_t v = beatsin8(20, 25, 190);
-    fill_solid(leds, LED_COUNT, CHSV(150, 220, v));   // lugnt blå/cyan
+    fill_solid(leds, LED_COUNT, CHSV(hue, sat, v));
 }
 
 void drawConnecting() {
@@ -186,7 +188,8 @@ void render() {
 
     switch (gMode) {
         case LED_BOOT:       drawBoot();       break;
-        case LED_PORTAL:     drawPortal();     break;
+        case LED_PORTAL:       drawPortal(150, 220); break;   // blå/cyan
+        case LED_PORTAL_RETRY: drawPortal(0, 235);   break;   // röd
         case LED_CONNECTING: drawConnecting(); break;
         case LED_UPDATING:   drawUpdating();   break;
         case LED_ERROR:      drawError();      break;

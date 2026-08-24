@@ -188,13 +188,18 @@ static void beginConnect() {
     status.state = "Ansluter";
 }
 
-static void enterPortal() {
-    Serial.println("[wifi] ingen anslutning — startar setup-portalen");
+// credentialsFailed skiljer de två fallen åt, både i loggen och på listen:
+//   false → inget WiFi sparat, användaren ska ansluta till vårt nät  (blått)
+//   true  → sparat WiFi men det svarar inte                          (rött)
+static void enterPortal(bool credentialsFailed) {
+    Serial.printf("[wifi] %s — startar portalen\n",
+                  credentialsFailed ? "sparat WiFi svarar inte"
+                                    : "inget WiFi sparat");
     Portal::startAccessPoint();
     gPortalSince = millis();
     gState = AppState::Portal;
-    Leds::setMode(LED_PORTAL);
-    status.state = "Setup-läge";
+    Leds::setMode(credentialsFailed ? LED_PORTAL_RETRY : LED_PORTAL);
+    status.state = credentialsFailed ? "WiFi svarar inte" : "Setup-läge";
 }
 
 static void goOnline() {
@@ -230,7 +235,7 @@ void setup() {
     while (millis() < until) Leds::render();
 
     if (settings.hasWifi()) beginConnect();
-    else                    enterPortal();
+    else                    enterPortal(false);
 }
 
 void loop() {
@@ -244,7 +249,8 @@ void loop() {
                 goOnline();
             } else if (millis() - gConnectStarted > WIFI_CONNECT_TIMEOUT_MS) {
                 WiFi.disconnect(true);
-                enterPortal();
+                // Vi kom hit med sparade uppgifter som inte gick igenom.
+                enterPortal(true);
             }
             break;
 

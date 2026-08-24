@@ -8,7 +8,10 @@ ESP32 + WS2812B-list som lever med Björklöven:
 | **Vann igår** | Några glittrande gnistor ovanpå glöden |
 | **Match pågår** | Piggare glöd, kortare andetag |
 | **MÅL** | 12 s snabb gul eldgivning — stroboskop följt av kometer ut från mitten |
-| **Setup** | Lugn blå puls (eget WiFi-nät uppe) |
+| **Ansluter** | Gult ljus som jagar längs listen |
+| **Setup** | Lugn **blå** puls — inget WiFi sparat, anslut till lampans eget nät |
+| **WiFi svarar inte** | Lugn **röd** puls — sparat WiFi finns men går inte att nå |
+| **Uppdaterar** | Gul förloppsstapel |
 
 Data hämtas från **SHL:s eget publika API**. Björklöven är uppflyttade till SHL
 inför säsongen 2026/27 efter vinsten mot Karlskoga i HockeyAllsvenskans final,

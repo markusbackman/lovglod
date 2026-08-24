@@ -122,7 +122,8 @@ void handleSave() {
     p += F("<h1>Sparat</h1><p class=sub>Lampan ansluter till <b>");
     p += htmlEscape(settings.wifiSsid);
     p += F("</b> och startar om.</p><div class=card>Glöden blir gul när "
-           "anslutningen lyckats. Blir den blå igen behöver lösenordet ses över."
+           "anslutningen lyckats. Pulserar listen <b>rött</b> gick det inte "
+           "att ansluta — kontrollera lösenordet."
            "</div></div></body></html>");
     server.send(200, "text/html; charset=utf-8", p);
 }

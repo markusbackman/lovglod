@@ -3,7 +3,8 @@
 
 enum LedMode : uint8_t {
     LED_BOOT,        // kort uppstartssvep
-    LED_PORTAL,      // blå puls — enheten är i setup-läge
+    LED_PORTAL,      // blå puls — inget WiFi sparat, eget nät uppe
+    LED_PORTAL_RETRY,// röd puls — sparat WiFi men anslutningen misslyckades
     LED_CONNECTING,  // gult jagande ljus
     LED_STANDBY,     // långsam gul glöd (grundläget)
     LED_LIVE,        // matchen pågår: samma glöd men lite piggare
