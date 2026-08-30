@@ -19,20 +19,27 @@ void configureTls(WiFiClientSecure &c) {
     c.setTimeout(12);
 }
 
-// ── HTTPS GET ───────────────────────────────────────────────────────────────
-bool httpsGet(const String &host, const String &path, String &body, size_t maxBytes = 24000) {
+// ── Datakälla ───────────────────────────────────────────────────────────────
+// Alltid riktiga SHL över HTTPS. Under labbtest matas matchläget in utifrån
+// med POST /push mot lampans egen webbserver — se PUSH_LEASE_MS i config.h —
+// så det finns ingen andra datakälla att peka om hämtningen mot.
+constexpr const char *API_BASE  = "https://" SHL_API_HOST;
+constexpr const char *LIVE_BASE = "https://" SHL_LIVE_HOST;
+
+// ── GET mot SHL ─────────────────────────────────────────────────────────────
+bool apiGet(const String &path, String &body, size_t maxBytes = 24000) {
     if (WiFi.status() != WL_CONNECTED) { gLastError = "WiFi nere"; return false; }
 
-    WiFiClientSecure client;
-    configureTls(client);
+    WiFiClientSecure secure;
+    configureTls(secure);
 
     HTTPClient http;
     http.setTimeout(12000);
     http.setConnectTimeout(8000);
     http.setReuse(false);
 
-    const String url = "https://" + host + path;
-    if (!http.begin(client, url)) { gLastError = "http.begin misslyckades"; return false; }
+    const String url = String(API_BASE) + path;
+    if (!http.begin(secure, url)) { gLastError = "http.begin misslyckades"; return false; }
 
     // shl.se svarar med 403 på tomma/okända user agents.
     http.addHeader("User-Agent", "Mozilla/5.0 (compatible; BjorklovenLED/" FW_VERSION ")");
@@ -133,6 +140,7 @@ bool findScorePair(JsonVariantConst v, int &home, int &away, uint8_t depth = 0) 
 }
 
 // ── SSE-klient ──────────────────────────────────────────────────────────────
+// Live-strömmen går över TLS mot game-broadcaster.s8y.se.
 WiFiClientSecure gSse;
 bool     gSseActive   = false;
 bool     gSseHeaders  = false;    // true när HTTP-headers är avklarade
@@ -147,16 +155,16 @@ bool sseConnect() {
     configureTls(gSse);
 
     if (!gSse.connect(SHL_LIVE_HOST, 443)) {
-        gLastError = "SSE: kunde inte ansluta";
+        gLastError = "SSE: kunde inte ansluta till " SHL_LIVE_HOST ":443";
         gSseRetryAt = millis() + 15000;
         return false;
     }
 
     String req = "GET /live/game";
     if (gSseGameUuid.length()) req += "?gameUuid=" + gSseGameUuid;
-    req += " HTTP/1.1\r\n"
-           "Host: " SHL_LIVE_HOST "\r\n"
-           "Accept: text/event-stream\r\n"
+    req += " HTTP/1.1\r\n";
+    req += "Host: " SHL_LIVE_HOST "\r\n";
+    req += "Accept: text/event-stream\r\n"
            "Cache-Control: no-cache\r\n"
            "User-Agent: BjorklovenLED/" FW_VERSION "\r\n"
            "Connection: keep-alive\r\n\r\n";
@@ -177,7 +185,7 @@ namespace Shl {
 bool fetchNextGame(NextGame &out) {
     String body;
     const String path = "/api/sports-v2/upcoming-games/" SHL_TEAM_UUID "?gamePlace=";
-    if (!httpsGet(SHL_API_HOST, path, body)) return false;
+    if (!apiGet(path, body)) return false;
 
     // Filtret håller nere minnesåtgången — vi behöver bara ett fåtal fält.
     JsonDocument filter;
@@ -216,11 +224,11 @@ bool fetchNextGame(NextGame &out) {
     return false;
 }
 
-bool fetchLastResult(bool &wonYesterday, String &summary) {
-    wonYesterday = false;
+bool fetchLastResult(LastResult &out) {
+    out = LastResult();
 
     String body;
-    if (!httpsGet(SHL_API_HOST, "/api/sports-v2/played-games/" SHL_TEAM_UUID, body)) return false;
+    if (!apiGet("/api/sports-v2/played-games/" SHL_TEAM_UUID, body)) return false;
 
     JsonDocument filter;
     JsonObject g = filter["playedGames"].add<JsonObject>();
@@ -238,7 +246,11 @@ bool fetchLastResult(bool &wonYesterday, String &summary) {
     if (err) { gLastError = String("JSON played: ") + err.c_str(); return false; }
 
     JsonArrayConst games = doc["playedGames"].as<JsonArrayConst>();
-    if (games.isNull() || games.size() == 0) { summary = "Inga spelade matcher"; return true; }
+    if (games.isNull() || games.size() == 0) {
+        out.valid   = true;
+        out.summary = "Inga spelade matcher";
+        return true;
+    }
 
     JsonVariantConst last = games[0];
     const time_t start = parseIso8601Utc(last["startDateTime"]);
@@ -257,18 +269,21 @@ bool fetchLastResult(bool &wonYesterday, String &summary) {
     const long   yesterdayKey = localDateKey(now - 86400L);
     const bool   wasYesterday = localDateKey(start) == yesterdayKey;
 
-    wonYesterday = won && wasYesterday;
+    out.valid        = true;
+    out.won          = won;
+    out.wonYesterday = won && wasYesterday;
+    out.startUtc     = start;
 
-    summary = String(home["code"].as<const char *>()) + " " +
-              String(home["score"].as<int>()) + "-" + String(away["score"].as<int>()) + " " +
-              String(away["code"].as<const char *>()) + "  (" + (won ? "vinst" : "förlust") +
-              (wasYesterday ? ", igår" : "") + ")";
+    out.summary = String(home["code"].as<const char *>()) + " " +
+                  String(home["score"].as<int>()) + "-" + String(away["score"].as<int>()) + " " +
+                  String(away["code"].as<const char *>()) + "  (" + (won ? "vinst" : "förlust") +
+                  (wasYesterday ? ", igår" : "") + ")";
     return true;
 }
 
 bool pollLiveScore(const String &gameUuid, LiveScore &out) {
     String body;
-    if (!httpsGet(SHL_API_HOST, "/api/sports-v2/today-games", body)) return false;
+    if (!apiGet("/api/sports-v2/today-games", body)) return false;
     if (body.length() < 5) return false;                  // tom kropp utanför matchdag
 
     JsonDocument doc;
@@ -370,6 +385,9 @@ bool ssePump(LiveScore &out) {
 
     return got;
 }
+
+String apiBaseUrl()  { return API_BASE; }
+String liveBaseUrl() { return LIVE_BASE; }
 
 const String &lastRawFrame() { return gLastRaw; }
 const String &lastError()    { return gLastError; }

@@ -3,21 +3,32 @@
 #include "settings.h"
 #include "shl.h"
 #include "updater.h"
+#include "netcheck.h"
 #include "leds.h"
 #include <WiFi.h>
 #include <WebServer.h>
 #include <DNSServer.h>
 #include <esp_wifi.h>
+#include <ArduinoJson.h>
 
 StatusInfo status;
 
 namespace {
+
+// Måltaket ska stå både som tal och som text i formulärets max-attribut.
+// Två nivåer krävs för att argumentet ska expanderas innan det blir sträng.
+#define STRINGIFY_(x) #x
+#define STRINGIFY(x)  STRINGIFY_(x)
+#define GOAL_DELAY_MAX_STR STRINGIFY(GOAL_DELAY_MAX_S)
 
 WebServer  server(80);
 DNSServer  dns;
 bool       gApMode     = false;
 bool       gRunning    = false;
 bool       gSubmitted  = false;
+bool       gRefresh    = false;
+PushState  gPush;
+bool       gPushPending = false;
 String     gScanCache;
 uint32_t   gScanAt     = 0;
 
@@ -141,11 +152,24 @@ void handleStatus() {
     };
 
     row("Läge",             status.state, true);
+    row("Datakälla",        status.pushMode ? String("push från mockservern")
+                                          : String("shl.se  (skarp)"),
+                            status.pushMode);
+    if (settings.debugPush)
+        row("Felsökningsläge", "På — tar emot push på /push", true);
     row("Nästa match",      status.nextGame);
     row("Senaste resultat", status.lastResult);
     row("Ställning nu",     status.liveScore);
+    row("Måldröjning",      settings.goalDelayS
+                                ? String(settings.goalDelayS) + " s  (väntar in tv-bilden)"
+                                : String("Av — tänder direkt"));
+    if (Leds::pendingGoals()) {
+        row("Mål på gång",  String(Leds::pendingGoals()) + " st — tänder om " +
+                            String((Leds::pendingGoalInMs() + 999) / 1000) + " s", true);
+    }
     row("Vann igår",        status.wonYesterday ? "Ja — gnistor på" : "Nej");
     row("Live-ström",       status.sseLive ? "Ansluten" : "Av");
+    row("WiFi-nät",         WiFi.SSID() + "  (" + WiFi.localIP().toString() + ")");
     row("Signal",           String(WiFi.RSSI()) + " dBm");
     row("Ledigt minne",     String(ESP.getFreeHeap() / 1024) + " kB");
     row("Upptid",           String(millis() / 60000) + " min");
@@ -163,13 +187,25 @@ void handleStatus() {
            "<input name=otatok type=password autocomplete=off placeholder='");
     p += settings.otaToken.length() ? F("•••••• sparad — lämna tomt för att behålla")
                                     : F("github_pat_… (tomt för publikt repo)");
+    p += F("'><label>Fördröjning på mål (sekunder — tv-sändningen ligger efter)</label>"
+           "<input name=goaldly type=number min=0 max=" GOAL_DELAY_MAX_STR " value='");
+    p += String(settings.goalDelayS);
     p += F("'><label>Fyra endast vid Björklövens mål</label><select name=ouronly>");
     p += settings.goalOnlyOurTeam
              ? F("<option value=1 selected>Ja</option><option value=0>Nej</option>")
              : F("<option value=1>Ja</option><option value=0 selected>Nej</option>");
+    p += F("</select><label>Felsökningsläge — ta emot matchläge på /push</label>"
+           "<select name=dbgpush>");
+    p += settings.debugPush
+             ? F("<option value=1 selected>På — mockservern får styra</option>"
+                 "<option value=0>Av</option>")
+             : F("<option value=1>På — mockservern får styra</option>"
+                 "<option value=0 selected>Av</option>");
     p += F("</select><button type=submit>Spara</button></form>"
            "<form method=POST action=/test><button class=ghost type=submit>"
            "Testa målfyrverkeriet</button></form>"
+           "<form method=POST action=/refresh><button class=ghost type=submit>"
+           "Hämta matchdata nu</button></form>"
            "<form method=POST action=/update><button class=ghost type=submit>"
            "Sök efter uppdatering nu</button></form>"
            "<form method=POST action=/forget onsubmit=\"return confirm('Glöm WiFi och starta setup-portalen?')\">"
@@ -196,6 +232,16 @@ void handleSettings() {
         else if (tok.length())     { settings.otaToken = tok; settings.clearOtaFailures(); }
     }
     if (server.hasArg("ouronly")) settings.goalOnlyOurTeam = server.arg("ouronly") == "1";
+    if (server.hasArg("dbgpush")) {
+        const bool next = server.arg("dbgpush") == "1";
+        // Slår man av mitt i en pågående push ska lampan hämta från SHL igen
+        // direkt, inte stå kvar på det påhittade läget tills leasen tar slut.
+        if (!next && settings.debugPush) gRefresh = true;
+        settings.debugPush = next;
+    }
+    if (server.hasArg("goaldly"))
+        settings.goalDelayS =
+            (uint8_t)constrain(server.arg("goaldly").toInt(), 0, GOAL_DELAY_MAX_S);
     settings.save();
     Leds::setBrightness(settings.brightness);
     server.sendHeader("Location", "/");
@@ -203,7 +249,27 @@ void handleSettings() {
 }
 
 void handleTest() {
+    // Utan fördröjning med flit: en testknapp som står tyst i 15 sekunder ser
+    // trasig ut. Fördröjningen gäller riktiga mål från SHL.
     Leds::triggerGoal();
+    server.sendHeader("Location", "/");
+    server.send(303);
+}
+
+void handleNetTest() {
+    // Testet blockerar i upp till en halv minut på ett trasigt nät. Samma
+    // förloppsstapel som vid uppstart, annars ser listen bara död ut så länge.
+    NetCheck::run([](uint8_t done, uint8_t total) {
+        Leds::setWorkProgress(done, total);
+        Leds::renderNow();
+    });
+    server.sendHeader("Location", "/debug");
+    server.send(303);
+}
+
+void handleRefresh() {
+    // Hämtningen blockerar i flera sekunder — låt loopen göra jobbet.
+    gRefresh = true;
     server.sendHeader("Location", "/");
     server.send(303);
 }
@@ -234,6 +300,8 @@ void handleDebug() {
     p += F("</pre></div><div class=card><table>");
     p += "<tr><td>Senaste fel</td><td>" + htmlEscape(Shl::lastError()) + "</td></tr>";
     p += "<tr><td>Team-UUID</td><td>" SHL_TEAM_UUID "</td></tr>";
+    p += "<tr><td>API-URL</td><td>" + htmlEscape(Shl::apiBaseUrl()) + "</td></tr>";
+    p += "<tr><td>Live-URL</td><td>" + htmlEscape(Shl::liveBaseUrl()) + "</td></tr>";
     p += "<tr><td>OTA-URL</td><td>" +
          htmlEscape(Updater::resolveSourceUrl(settings.otaSource)) + "</td></tr>";
     p += "<tr><td>OTA-status</td><td>" + htmlEscape(Updater::statusText()) + "</td></tr>";
@@ -243,11 +311,65 @@ void handleDebug() {
     if (settings.otaBadCount)
         p += "<tr><td>Misslyckad version</td><td>" + htmlEscape(settings.otaBadVersion) +
              " (" + String(settings.otaBadCount) + " försök)</td></tr>";
-    p += F("</table></div><p class=sub><a href=/>Tillbaka</a></p></div></body></html>");
+    p += F("</table></div>");
+    p += F("<div class=card><b>Nätverksdiagnostik</b><pre>");
+    p += htmlEscape(NetCheck::report().length() ? NetCheck::report()
+                                                : String("(inte körd)"));
+    p += F("</pre><form method=POST action=/nettest>"
+           "<button class=ghost type=submit>Kör om nätverkstestet</button></form></div>");
+    p += F("<p class=sub><a href=/>Tillbaka</a></p></div></body></html>");
     server.send(200, "text/html; charset=utf-8", p);
 }
 
 // Captive portal: allt okänt leder till setup-sidan.
+void handlePush() {
+    // Felsökningsläget är porten. Är det av finns endpointen inte — lampan ska
+    // inte gå att styra från nätet bara för att någon känner till adressen.
+    if (!settings.debugPush) {
+        server.send(404, "text/plain", "404");
+        return;
+    }
+
+    JsonDocument doc;
+    const DeserializationError err = deserializeJson(doc, server.arg("plain"));
+    if (err) {
+        server.send(400, "text/plain", String("json: ") + err.c_str());
+        return;
+    }
+
+    PushState p;
+
+    const JsonObjectConst n = doc["next"].as<JsonObjectConst>();
+    if (!n.isNull()) {
+        p.hasNext  = true;
+        p.homeCode = n["home"].as<const char *>()     ? n["home"].as<const char *>() : "";
+        p.awayCode = n["away"].as<const char *>()     ? n["away"].as<const char *>() : "";
+        p.nextText = n["text"].as<const char *>()     ? n["text"].as<const char *>() : "";
+        p.homeIsUs = n["homeIsUs"] | false;
+    }
+
+    p.live = doc["live"] | false;
+
+    const JsonObjectConst sc = doc["score"].as<JsonObjectConst>();
+    if (!sc.isNull()) {
+        p.hasScore = true;
+        p.home     = sc["home"] | -1;
+        p.away     = sc["away"] | -1;
+    }
+
+    const JsonObjectConst la = doc["last"].as<JsonObjectConst>();
+    if (!la.isNull()) {
+        p.hasLast      = true;
+        p.wonYesterday = la["won"] | false;
+        p.lastResult   = la["text"].as<const char *>() ? la["text"].as<const char *>() : "";
+    }
+
+    // Målfyrverkeriet får inte starta här inne — loopen plockar upp det.
+    gPush        = p;
+    gPushPending = true;
+    server.send(200, "application/json", "{\"ok\":true}");
+}
+
 void handleNotFound() {
     if (gApMode) {
         server.sendHeader("Location", "http://" + WiFi.softAPIP().toString() + "/", true);
@@ -276,6 +398,9 @@ void registerRoutes() {
         server.on("/test",     HTTP_POST, handleTest);
         server.on("/debug",    HTTP_GET,  handleDebug);
         server.on("/update",   HTTP_POST, handleUpdate);
+        server.on("/refresh",  HTTP_POST, handleRefresh);
+        server.on("/nettest",  HTTP_POST, handleNetTest);
+        server.on("/push",     HTTP_POST, handlePush);
     }
     server.on("/save",   HTTP_POST, handleSave);
     server.on("/forget", HTTP_POST, handleForget);
@@ -339,5 +464,9 @@ void loop() {
 
 bool isAccessPoint()          { return gApMode; }
 bool credentialsSubmitted()   { return gSubmitted; }
+bool refreshRequested()       { return gRefresh; }
+void clearRefresh()           { gRefresh = false; }
+bool pushPending()            { return gPushPending; }
+PushState takePush()          { gPushPending = false; return gPush; }
 
 }  // namespace Portal

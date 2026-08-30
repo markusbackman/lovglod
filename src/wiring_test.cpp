@@ -33,6 +33,15 @@ static bool     gAnnounced = false;
 static const uint8_t PHASE_COUNT = 6;
 
 // ── Hjälpare ────────────────────────────────────────────────────────────────
+// Samma gula som i den riktiga firmwaren: fast RGB-blandning, bara styrkan
+// varierar. Se gold() i src/leds.cpp för varför den inte är en HSV-nyans.
+static CRGB gold(uint8_t val) {
+    const uint8_t v = scale8_video(val, val);
+    return CRGB(scale8_video(YELLOW_R, v),
+                scale8_video(YELLOW_G, v),
+                scale8_video(YELLOW_B, v));
+}
+
 static void say(const char *what, const char *expect) {
     Serial.println();
     Serial.printf("── FAS %u/%u — %s\n", gPhase + 1, PHASE_COUNT, what);
@@ -143,13 +152,17 @@ static void phasePreview(uint32_t elapsed) {
         gAnnounced = true;
     }
 
-    // Långsam glöd, samma matematik som i den riktiga firmwaren
-    const uint8_t  breath = beatsin8(GLOW_BPM, GLOW_MIN_VAL, GLOW_MAX_VAL);
+    // Långsam glöd, samma matematik som i den riktiga firmwaren: 16-bitars
+    // sinus med gammakurva, och GLOW_MIN_VAL som hårt golv.
+    const uint16_t phase  = beatsin16(GLOW_BPM, 0, 65535);
+    const uint16_t eased  = ((uint32_t)phase * phase) >> 16;
+    const uint16_t span   = GLOW_MAX_VAL - GLOW_MIN_VAL;
+    const uint8_t  breath = GLOW_MIN_VAL + (uint8_t)(((uint32_t)eased * span + 32768) >> 16);
     const uint16_t t      = millis() / 24;
     for (uint16_t i = 0; i < LED_COUNT; i++) {
         const int16_t delta = ((int16_t)inoise8(i * 26, t) - 128) * breath / 700;
-        const int16_t val   = constrain((int16_t)breath + delta, 0, 255);
-        leds[i] = CHSV(YELLOW_HUE - 4 + (val >> 6), YELLOW_SAT, (uint8_t)val);
+        const int16_t val   = constrain((int16_t)breath + delta, (int16_t)GLOW_MIN_VAL, 255);
+        leds[i] = gold((uint8_t)val);
     }
 
     // Gnistor
@@ -175,7 +188,7 @@ static void phasePreview(uint32_t elapsed) {
 
         if (g < 900) {
             fill_solid(leds, LED_COUNT,
-                       ((millis() / 36) % 2) ? CRGB(255, 244, 210) : CRGB(40, 28, 0));
+                       ((millis() / 36) % 2) ? CRGB(255, 244, 210) : gold(7));
         } else {
             fadeToBlackBy(leds, LED_COUNT, 48);
             const uint16_t center = LED_COUNT / 2;
@@ -185,7 +198,7 @@ static void phasePreview(uint32_t elapsed) {
                 if (pos >= 0 && pos < LED_COUNT) leds[pos] = CRGB(255, 248, 220);
             }
             for (uint8_t k = 0; k < 3; k++)
-                if (random8() < 90) leds[random16(LED_COUNT)] += CHSV(YELLOW_HUE, YELLOW_SAT, 220);
+                if (random8() < 90) leds[random16(LED_COUNT)] += gold(190);
         }
     }
 }
@@ -207,9 +220,9 @@ void setup() {
     Serial.println("  Varje fas kör 12 sekunder och loopar sedan runt.");
 
     FastLED.addLeds<LED_TYPE, LED_PIN, LED_COLOR_ORDER>(leds, LED_COUNT)
-        .setCorrection(TypicalLEDStrip);
+        .setCorrection(LED_COLOR_CORRECTION);
     FastLED.setMaxPowerInVoltsAndMilliamps(LED_PSU_VOLTS, TEST_MAX_MA);
-    FastLED.setDither(DISABLE_DITHER);
+    FastLED.setDither(LED_DITHER);
     FastLED.setBrightness(255);   // strömtaket sköter begränsningen
     FastLED.clear(true);
 

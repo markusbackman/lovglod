@@ -9,14 +9,27 @@ struct Settings {
     String  otaToken;         // GitHub-PAT. Krävs bara för privata repon.
     uint8_t brightness;
     bool    goalOnlyOurTeam;
+    bool    debugPush;        // Ta emot matchläge på POST /push. Av = lampan
+                              // hämtar bara från SHL och ignorerar nätet.
+    uint8_t goalDelayS;       // TV-fördröjning i sekunder. 0 = tänd direkt.
 
     // Backoff: räknare för en version som inte går att installera.
     String  otaBadVersion;
     uint8_t otaBadCount;
 
+    // Segerläget. Fönstret räknas från när lampan fick veta om vinsten, så det
+    // går inte att räkna fram på nytt efter en omstart — sluttiden måste ligga
+    // kvar i NVS. victoryGame är matchens nedsläppstid och används som identitet
+    // så att samma vinst inte firas två gånger; den ligger kvar när fönstret
+    // löpt ut, annars skulle nästa hämtning tända om det direkt.
+    uint32_t victoryUntil;    // UTC epoch, 0 = ingen seger att fira
+    uint32_t victoryGame;     // startUtc för matchen vi redan firat
+
     void load();
     void save();
     void clearWifi();
+    void noteVictory(uint32_t gameStartUtc, uint32_t untilUtc);
+    void clearVictory();
     void noteOtaFailure(const String &version);
     void clearOtaFailures();
     bool otaBlocked(const String &version) const;

@@ -4,14 +4,17 @@ ESP32 + WS2812B-list som lever med Björklöven:
 
 | Läge | Ljus |
 |---|---|
+| **Uppstart** | Ett gult svep som drar en gång längs listen |
+| **Setup** | Lugn **grön** puls — inget WiFi sparat, anslut till lampans eget nät |
+| **Ansluter** | Gul punkt som jagar runt listen |
+| **WiFi svarar inte** | Lugn **röd** puls — sparat WiFi finns men går inte att nå |
+| **Arbetar** | Gul förloppsstapel som står stilla mellan stegen |
 | **Standby** | Långsam gul glöd, ~10 s andetag, med organisk variation längs listen |
 | **Vann igår** | Några glittrande gnistor ovanpå glöden |
 | **Match pågår** | Piggare glöd, kortare andetag |
-| **MÅL** | 12 s snabb gul eldgivning — stroboskop följt av kometer ut från mitten |
-| **Ansluter** | Gult ljus som jagar längs listen |
-| **Setup** | Lugn **blå** puls — inget WiFi sparat, anslut till lampans eget nät |
-| **WiFi svarar inte** | Lugn **röd** puls — sparat WiFi finns men går inte att nå |
-| **Uppdaterar** | Gul förloppsstapel |
+| **MÅL** | 12 s snabb gul eldgivning — stroboskop följt av kometer ut från mitten, fördröjt 15 s så tv:n hinner ikapp |
+| **Uppdaterar** | Gul förloppsstapel som fylls med nedladdningen |
+| **Ingen data** | Svagt rött andetag — SHL svarar inte |
 
 Data hämtas från **SHL:s eget publika API**. Björklöven är uppflyttade till SHL
 inför säsongen 2026/27 efter vinsten mot Karlskoga i HockeyAllsvenskans final,
@@ -19,7 +22,214 @@ så ligans officiella API är rätt källa.
 
 ---
 
-## 1. Hårdvara
+## 1. Varje variant på listen
+
+Lägena ligger i `LedMode` (`src/leds.h`) och ritas i `src/leds.cpp`. Exakt ett
+läge är aktivt åt gången; gnistorna är det enda som ligger *ovanpå* ett annat
+läge. Alla tider nedan gäller standardvärdena i `include/config.h`
+(`YELLOW_R`/`YELLOW_G`, `LED_COUNT 60`).
+
+### `LED_BOOT` — uppstartsflöde
+
+Gult ljus flödar in från listens ena ände till den andra på 700 ms och blir
+stående — hela listen lyser i 300 ms innan WiFi ens försökts. Kanten är mjuk
+över tre dioder, så det ser ut som ljus som rinner in och inte som en stapel
+som fylls.
+
+Syftet är rent diagnostiskt, och slutläget är poängen: det är det enda
+tillfället då varje diod syns tänd samtidigt, så en död diod är omöjlig att
+missa. Ett svep dolde samma fel som en lucka i efterglöden.
+
+Formen är också vald för att inte krocka med det som kommer direkt efteråt.
+`LED_CONNECTING` är en gul punkt med svans, och ett gult svep följt av ett gult
+jagande ljus läses som en enda lång animation — man ser aldrig var uppstarten
+slutar och anslutningen börjar.
+
+### `LED_PORTAL` — grön puls
+
+Hela listen i Björklövens gröna (`hue 96`, full mättnad), som andas mellan
+mörkt och ljust ungefär var tredje sekund. Inget flimmer, ingen rörelse längs
+listen — en lugn helyta. Betyder: *lampan har inget sparat WiFi och har startat
+sitt eget nät `Bjorkloven-Setup-XXXX`*. Grönt för att det inte är ett fel, det
+är bara din tur att göra något — och för att grönt och gult är lagets färger,
+så lampan håller sig till dem även innan den vet något om hockey.
+
+### `LED_PORTAL_RETRY` — röd puls
+
+Exakt samma rytm och form som den gröna pulsen, men röd (`hue 0`). Skillnaden i
+betydelse: *sparat WiFi finns, men lampan kommer inte fram till det.* Routern
+kan vara nere, lösenordet ändrat eller lampan för långt bort. Portalen är uppe
+på samma sätt, och lampan provar dessutom de sparade uppgifterna igen var 5:e
+minut — löser det sig av sig själv slocknar det röda utan att du gjort något.
+Att formen är identisk och bara färgen skiljer är avsiktligt: du ska kunna
+läsa av läget på håll utan att räkna pulser.
+
+### `LED_CONNECTING` — jagande gult
+
+En gul punkt springer varv efter varv längs listen, ungefär ett varv per
+sekund, med en kort efterglödssvans. Rörelse betyder "jobbar på det" — visas
+medan WiFi-anslutningen pågår.
+
+### `LED_WORKING` — förloppsstapel vid uppstart
+
+Listen fylls från början med dämpat gult (`WORK_BODY_VAL`), och LED:en längst
+fram i stapeln lyser i full styrka som markör för steget som pågår. Används
+under de blockerande momenten i uppstarten (nätverkstest, första
+datahämtningen).
+
+Stapeln har medvetet **ingen egen animation**. Anropen den täcker går inte att
+avbryta, så bilden fryser ändå mitt i steget — och en stapel som står still ser
+avsiktlig ut, vilket en fryst animation inte gör.
+
+Stegen är få och långa: nätverkstestet rapporterar 9 steg, första hämtningen
+bara 3. Stapeln hoppar alltså i stora språng och står stilla länge däremellan,
+och den är ritad för att tåla det. Därför ligger också ett golv på
+`BAR_MIN_LIT` dioder — vid noll steg klara väntar lampan som längst, och det
+är precis då den inte får se släckt ut.
+
+### `LED_STANDBY` — den långsamma glöden
+
+Grundläget, det lampan står i nästan all sin tid. Ett gult andetag på ~6,7 s
+(`GLOW_BPM 9`) mellan nästan släckt (`GLOW_MIN_VAL 22`) och tydligt uppe
+(`GLOW_MAX_VAL 140`).
+
+Spannet är brett med flit. Ögat svarar ungefär logaritmiskt på ljus: ett
+andetag som bara fördubblar styrkan läses på håll knappt som en förändring —
+man ser en list som lyser jämnt. Det är kvoten mellan botten och topp som gör
+andetaget synligt tvärs över ett rum, så taket ligger högt medan botten står
+kvar nere.
+
+Tre detaljer gör att det inte ser ut som en dimmer:
+
+- **Perlin-brus per LED.** Varje LED avviker ±18 % från andetaget, och
+  brusmönstret vandrar långsamt längs listen. Ljuset lever istället för att
+  pulsera som en enda platt yta.
+- **Färgen står still, bara styrkan andas.** Gulen är en fast RGB-blandning
+  (`YELLOW_R 255`, `YELLOW_G 224`) som skalas ner i sin helhet, så toppen och
+  botten av andetaget är exakt samma gula — bara olika starkt. Det låter
+  självklart, men går inte att få med en HSV-nyans: grönkanalen ligger lägre
+  och trunkeras till noll medan den röda fortfarande lyser, så utfadningen
+  landar i orange och till sist rent rött. Av samma skäl körs listen utan
+  FastLEDs `TypicalLEDStrip`-korrigering, som drar ner grönt med 30 %.
+- **Glöden bottnar, den slocknar aldrig — men den bottnar inte platt.**
+  Golvet (`GLOW_FLOOR_VAL 15`) och andetagets botten (`GLOW_MIN_VAL 22`) är två
+  skilda värden. Under en handfull räkningssteg har en WS2812 inget kvar att
+  arbeta med: den röda dioden styr ensam, gulen bryts upp i rött, och varje steg
+  i andetaget blir ett synligt hopp — därför golvet, som gäller varje enskild
+  LED. Vid standardljusstyrkan motsvarar det ungefär tolv räkningssteg.
+
+  Andetaget vänder däremot en bit ovanför, så att bruset har plats att dra
+  dioder nedåt utan att klippas. Låg de två på samma värde klipptes varje
+  negativ avvikelse bort i vändningen: halva listen las sig platt på exakt samma
+  nivå och strukturen blev ensidig, just i det ögonblick då listen är som
+  lugnast och betraktas som mest.
+
+  Vill du sänka botten måste därför golvet med — sänks bara `GLOW_MIN_VAL`
+  äter bruset upp marginalen och klippningen är tillbaka.
+
+Och för att tonandet ska bli mjukt trots att hela andetaget ryms i ett par
+dussin räkningssteg: sinusen räknas i 16 bitar med gammakurvan lagd på fasen
+(`beatsin16`, avrundning först på slutet), och `LED_DITHER` växlar mellan
+närliggande nivåer mellan bildrutorna. Utan dithern står listen still på samma
+nivå i drygt en sekund i toppen av andetaget och byter sedan ett helt steg —
+det är precis det man ser som ryck.
+
+### Gnistor — "vi vann igår" (ovanpå glöden)
+
+Inget eget läge utan ett lager som läggs ovanpå standby och live. Ungefär var
+0,7:e sekund tänds en slumpad LED i kall vit (`SPARKLE_R`/`_G`/`_B`) och tonar
+ut på ett par tiondelar. Intervallet slumpas runt medelvärdet så glittret
+aldrig hittar en takt.
+
+Gnistan **adderas** till glöden i stället för att blandas in i den. Blandad blev
+den lika ljus som glöden råkade vara just då — i andetagets topp knappt dubbelt
+så ljus som ytan under den, alltså nästan osynlig, medan samma gnista i
+vändningen var tiofalt ljusare. Glittret tonade in och ut i takt med andetaget.
+Adderat mättar det mot vitt oavsett var i cykeln det landar.
+
+Tänds när `played-games` säger `WIN` på en match som spelades **i går enligt
+lokalt datum i Stockholm** — inte "senaste 24 timmarna". Släcks vid nästa
+midnattskontroll. Skruva med `SPARKLE_MEAN_INTERVAL_MS` (högre = färre) och
+`SPARKLE_DECAY` (högre = kortare).
+
+### `LED_LIVE` — match pågår
+
+Samma glöd som standby, men piggare: andetaget dubbelt så snabbt (~3,3 s),
+botten upplyft så listen aldrig går ner i mörkret, och nyansen dragen åt
+bärnsten (`LIVE_YELLOW_G 165`). Den väntar. Gnistorna från gårdagens vinst
+ligger kvar även här.
+
+Det är **färgen** som bär skillnaden mot standby, inte styrkan. `GLOW_LIVE_LIFT`
+sattes när andetaget toppade på 44 och betydde då drygt en tredjedel mer ljus;
+mot dagens tak på 140 är samma sexton steg ett par procent och syns knappt. Ett
+skifte från gult till orange läses däremot direkt, även i ögonvrån — och till
+skillnad från ett ljusare läge kostar det ingenting i ström.
+
+Läget slås på när matchfönstret öppnas — nedsläpp minus marginal enligt
+spelschemat, eller när mockservern säger till.
+
+### `LED_GOAL` — målfyrverkeriet
+
+12 sekunder (`GOAL_DURATION_MS`) i två faser:
+
+1. **Stroboskop, 0–2,5 s** (`GOAL_STROBE_MS`). Hela listen blixtrar i ~14 Hz
+   mot en dämpad gul botten, växelvis vitt och mättat gult. Det är den delen
+   som får folk att titta upp.
+2. **Eldgivning, 2,5–12 s.** Var 110:e ms skjuts en ny komet ut från listens
+   mitt åt båda hållen samtidigt: vitglödande kärna med två gula svansled
+   efter sig. Ovanpå det slumpade gnistregn så salvorna inte blir mekaniska.
+
+Sista 1,2 sekunderna tonas allt ner mot standby istället för att slockna tvärt.
+
+**Fyrverkeriet är fördröjt 15 sekunder som standard.** SHL:s live-data är
+snabbare än tv-sändningen, så utan fördröjning tänder lampan målet innan det
+syns på skärmen — och alla i rummet vet att det gick in innan de får se det. Se
+[Tv-fördröjning](#tv-fördröjning) nedan.
+
+**Mål i rad staplar inte om från början.** Ett nytt mål under pågående
+fyrverkeri förlänger bara till 12 s från nu — annars hade ett snabbt 2-mål
+kastat tillbaka listen till stroboskopet och man hade tappat känslan av att det
+var *två* mål.
+
+Med `GOAL_ONLY_OUR_TEAM true` tänds fyrverkeriet bara på Björklövens mål; sätt
+`false` om du vill ha det på alla mål i matchen. Knappen **"Testa
+målfyrverkeriet"** på statussidan kör hela sekvensen när som helst.
+
+### `LED_UPDATING` — OTA-förlopp
+
+Listen fylls från början i takt med nedladdningen, med en snabbt pulserande LED
+i fronten som visar att överföringen lever. Tar över alla andra lägen medan den
+pågår, och den enda utgången är omstart in i den nya firmwaren.
+
+Till skillnad från uppstartsstapeln **får** den här röra sig. En nedladdning är
+en ström: förloppet uppdateras kontinuerligt och processorn är ledig, så ett
+pulserande huvud är ärligt. Uppstartsstapeln står stilla för att den måste —
+anropen den täcker fryser bilden ändå.
+
+Kroppen ligger ljusare (`UPDATE_BODY_VAL 157` mot uppstartens 75), och samma
+golv på `BAR_MIN_LIT` dioder gäller: utan det visas TLS-handskakningen mot
+GitHub — flera sekunder innan första byten kommer — som en enda blinkande diod
+på en släckt list, i det ögonblick då enheten skriver om sin egen firmware och
+man tittar som mest.
+
+### `LED_ERROR` — ingen kontakt
+
+Ett mycket svagt rött andetag, långsammare än portalens puls (~5 s) och bara
+knappt synligt i mörker. Betyder att lampan är på WiFi men inte får något svar
+från SHL alls. Avsiktligt diskret: det är ett tillstånd som kan hålla i sig i
+timmar när shl.se ligger nere, och då ska det inte lysa upp rummet.
+
+### Ljusstyrka och strömtak
+
+Ovanpå allt detta ligger en global ljusstyrka (`LED_DEFAULT_BRIGHTNESS 160`,
+ändras på statussidan) och FastLEDs strömtak
+(`LED_MAX_MILLIAMPS 3000`). Vid ett fyrverkeri på full vit skalar FastLED ner
+hela bilden för att hålla sig under taket — effekten ser likadan ut, bara
+svagare, så sätt taket efter ditt nätaggregat och inte tvärtom.
+
+---
+
+## 2. Hårdvara
 
 | Del | Anmärkning |
 |---|---|
@@ -53,7 +263,7 @@ så ligans officiella API är rätt källa.
 
 ---
 
-## 2. Bygg och flasha
+## 3. Bygg och flasha
 
 ```bash
 pio run                 # bygg
@@ -61,9 +271,9 @@ pio run -t upload       # flasha via USB (första gången)
 pio device monitor      # seriell logg, 115200 baud
 ```
 
-## 3. Första start — captive portal
+## 4. Första start — captive portal
 
-1. Lampan hittar inget sparat WiFi → **blå puls** och den startar eget nät
+1. Lampan hittar inget sparat WiFi → **grön puls** och den startar eget nät
    `Bjorkloven-Setup-XXXX` (öppet).
 2. Anslut med mobilen. Inloggningsrutan poppar upp av sig själv (iOS, Android
    och Windows kontroll-URL:er är hanterade). Gör den inte det: gå till
@@ -82,7 +292,7 @@ målfyrverkeriet, och "Glöm WiFi".
 
 ---
 
-## 4. OTA-uppdatering
+## 5. OTA-uppdatering
 
 ### Varför Releases och inte Actions-artifacts
 
@@ -235,7 +445,7 @@ vägrar installera något som inte är signerat av dig. Det är inte implementer
 här; för en lampa på ett hemmanät är risken liten, men det är det du ska göra
 om enheten ska stå någon annanstans.
 
-## 5. Datakällan
+## 6. Datakällan
 
 Reverse-engineerad från shl.se:s frontend och verifierad mot skarpa svar
 2026-08-24. Ingen API-nyckel behövs.
@@ -277,35 +487,171 @@ matchfönstret, så måldetekteringen fungerar även om SSE-formatet skulle änd
 
 ---
 
-## 6. Justera beteendet
+## 7. Labbtest utan match — mockservern
+
+Björklöven spelar inte varje dag, och du vill inte vänta till nedsläpp för att se
+om målfyrverkeriet tänder. `mock/server.py` ger dig en styrsida där du sätter
+matchläget för hand och trycker in det i lampan.
+
+```bash
+python3 mock/server.py            # lyssnar på 0.0.0.0:8080
+python3 mock/server.py --port 9000
+```
+
+Servern skriver ut adressen den nås på:
+
+```
+── Björklöven mockserver ─────────────────────────────
+  Styrsida:   http://192.168.1.42:8080/
+  Lampan:     fyll i dess adress på styrsidan och slå på push
+```
+
+Bara standardbiblioteket — inget att installera.
+
+### Push, inte pollning
+
+Servern hämtar inte in lampan — den *trycker* matchläget till lampans egen
+`/push`. Två steg:
+
+1. På lampans statussida: sätt **Felsökningsläge** till *På* och spara.
+2. På styrsidan: fyll i lampans adress under **Push till lampan** och slå på.
+
+Raden *Datakälla* byter då till `push från mockservern`, och styrsidan visar om
+leveransen går fram.
+
+Felsökningsläget är porten. Är det av svarar `/push` med 404 och lampan hämtar
+bara från SHL — annars hade vem som helst på nätet kunnat styra den genom att
+posta ett matchläge. Läget ligger i NVS och överlever omstart och OTA, så slå av
+det när labbtestet är klart. Slår du av mitt i en pågående push släpps push-läget
+direkt och lampan hämtar om från SHL, utan att vänta ut leasen.
+
+Riktningen är vald med flit. Skulle lampan hämta härifrån måste den nå datorn,
+och där står brandväggen i vägen — på en jobbdator med central brandvägg
+(Check Point, Defender och liknande) blockeras *inkommande* anslutningar oavsett
+vad macOS egen brandvägg säger. Fällan är att `curl http://<din-ip>:8080` från
+samma dator svarar direkt: den trafiken går över loopback och möter aldrig
+filtret, så servern ser frisk ut medan lampan inte kommer fram.
+
+Push går åt andra hållet, som en vanlig utgående anslutning från datorn, och
+behöver därför ingenting öppnat. Når den ändå inte fram står det på styrsidan
+(*når inte lampan*, med felet efter) — då är det lampans adress eller nätet som
+är fel, inte brandväggen.
+
+Servern trycker vid varje ändring plus ett hjärtslag var 20:e sekund. Varje push
+förlänger en lease på fem minuter (`PUSH_LEASE_MS` i `include/config.h`). Slutar
+servern höra av sig går lampan tillbaka till att hämta från SHL själv — det finns
+inget läge att komma ihåg att slå av, och en glömd mockserver låser inte lampan.
+
+Så länge leasen lever hämtar lampan ingenting på egen hand: ingen schemapollning,
+ingen SSE-ström.
+
+### Vad du kan ställa in
+
+| På styrsidan | Vad det påverkar i lampan |
+|---|---|
+| **Push till lampan** | Lampans adress och på/av — allt annat kräver att den är på *och* att lampans felsökningsläge är på |
+| Nästa match + nedsläpp | När matchfönstret öppnas (`LED_LIVE` istället för standby) |
+| **Starta nu** | Lägger nedsläppet en minut bakåt → fönstret öppnas direkt |
+| Mål Björklöven / motståndaren | Målfyrverkeriet |
+| **Spela upp match** | Servern matar ut mål automatiskt tills matchen är slut |
+| Vi vann igår / förlorade igår | Gnistorna ovanpå glöden |
+| **Avsluta match** | Skriver ställningen som gårdagens resultat och flyttar fram nästa match |
+
+Kolumnen *Vad lampan ser* visar om matchfönstret borde vara öppet och när läget
+senast levererades. Längst ner loggas händelserna, inklusive när push slutar nå
+fram.
+
+**JSON-formatet** — allt är valfritt, det som utelämnas lämnas orört:
+
+```json
+{
+  "next":  {"home": "IFB", "away": "LHF", "homeIsUs": true, "text": "IFB – LHF  lör 29 aug 19:00"},
+  "live":  true,
+  "score": {"home": 2, "away": 1},
+  "last":  {"won": true, "text": "SAIK 2-4 IFB  (vinst)"}
+}
+```
+
+`live` styr matchfönstret, `score` jämförs mot förra pushen och tänder
+målfyrverkeriet vid ökning, och `last.won` tänder gnistorna. Första pushen efter
+ett lägesbyte kalibrerar bara — annars hade en ny ställning sett ut som ett mål.
+
+Endpointen har ingen autentisering, precis som resten av portalen. Den hör
+hemma på ett labbnät, inte på ett öppet nät.
+
+---
+
+## 8. Justera beteendet
 
 Allt sitter i `include/config.h`:
 
 ```c
-#define YELLOW_HUE      52     // 64 = rent gult, 42 = bärnsten
+#define YELLOW_G        224    // lägre = varmare gult (255 = citrongult)
+#define GLOW_MAX_VAL    44     // hur ljus toppen av andetaget är
 #define GLOW_BPM        6      // lägre = långsammare andetag
-#define GLOW_MIN_VAL    18     // hur mörk botten i glöden är
+#define GLOW_MIN_VAL    20     // hårt golv — höj om glöden drar åt rött
+#define LED_DITHER      BINARY_DITHER  // DISABLE_DITHER om du ser flimmer
 #define GOAL_DURATION_MS 12000
+#define GOAL_DELAY_DEFAULT_S 15        // tv-fördröjning, ändras på statussidan
 #define SPARKLE_MEAN_INTERVAL_MS 700   // högre = färre gnistor
 #define GOAL_ONLY_OUR_TEAM true        // false = fyra vid alla mål
 ```
 
 Vill du testa effekterna utan att vänta på en match: knappen **"Testa
-målfyrverkeriet"** på statussidan.
+målfyrverkeriet"** på statussidan. Den tänder alltid direkt — en testknapp som
+står tyst i 15 sekunder ser trasig ut.
+
+### Tv-fördröjning
+
+Live-datan från SHL kommer före tv-bilden. Hur mycket före beror på kedjan du
+tittar i — marksänd tv, en strömmande tjänst och en kabelbox ligger olika långt
+efter, oftast någonstans mellan 10 och 60 sekunder. Utan fördröjning tänder
+lampan målet innan det syns på skärmen, och då är målet avslöjat för alla i
+rummet.
+
+Därför köas målfyrverkeriet. Fältet **Fördröjning på mål** på statussidan
+sätter antalet sekunder:
+
+| Värde | Effekt |
+|---|---|
+| `15` | Standard (`GOAL_DELAY_DEFAULT_S` i `include/config.h`) |
+| `0` | Av — lampan tänder i samma stund som SHL rapporterar målet |
+| upp till `180` | Taket, `GOAL_DELAY_MAX_S` |
+
+**Ställ in den efter din egen skärm.** Sitt med matchen igång, notera hur många
+sekunder det går mellan att ställningen tickar upp på statussidan (raden
+*Ställning nu*) och att pucken går in på tv:n, och skriv in den siffran.
+
+Detaljer värda att känna till:
+
+- Fördröjningen gäller **alla mål från datakällan** — SSE-strömmen,
+  reservpollningen och push-läget från mockservern. Det är bara testknappen som
+  går förbi den.
+- Kön rymmer sex mål samtidigt och hålls i tidsordning. Två mål inom
+  fördröjningen tänds alltså med samma mellanrum som de gjordes — och landar de
+  i samma bildruta staplar de på varandra precis som två snabba mål i realtid.
+- Statussidan visar **Mål på gång** med nedräkning så länge något väntar. Står
+  listen still fast *Ställning nu* redan tickat upp vet du varför.
+- När matchfönstret stängs slängs kön. Ett mål som aldrig hann visas hör inte
+  hemma i nästa match.
+- Kön ligger i RAM. Startar lampan om under fördröjningen — eller kommer en
+  OTA-uppdatering emellan — försvinner det köade målet.
 
 ---
 
-## 7. Filer
+## 9. Filer
 
 ```
 platformio.ini          byggkonfiguration, två miljöer (USB + OTA)
 include/config.h        all justerbar konfiguration
 src/main.cpp            tillståndsmaskin, schemaläggning
 src/leds.cpp            effekterna (glöd, gnistor, målfyrverkeri)
-src/shl.cpp             SHL-API: HTTPS-poll + SSE-klient
+src/shl.cpp             SHL-API: HTTP(S)-poll + SSE-klient, val av datakälla
 src/portal.cpp          captive portal + statussida
 src/settings.cpp        NVS-lagring
+src/netcheck.cpp        nätverksdiagnostik (DNS/TCP) för /debug
 src/updater.cpp         ArduinoOTA + self-update från GitHub Releases
+mock/server.py          mockserver för labbtest, styrsida på /
 .github/workflows/
   release.yml           tagg v* -> bygg -> publicera release
   ci.yml                bygg varje push/PR

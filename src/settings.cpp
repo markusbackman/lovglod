@@ -16,7 +16,13 @@ void Settings::load() {
     otaBadCount     = prefs.getUChar("otabadc", 0);
     brightness      = prefs.getUChar("bright", LED_DEFAULT_BRIGHTNESS);
     goalOnlyOurTeam = prefs.getBool("ouronly", GOAL_ONLY_OUR_TEAM);
+    debugPush       = prefs.getBool("dbgpush", false);
+    goalDelayS      = prefs.getUChar("goaldly", GOAL_DELAY_DEFAULT_S);
+    victoryUntil    = prefs.getULong("victuntil", 0);
+    victoryGame     = prefs.getULong("victgame", 0);
     prefs.end();
+
+    if (goalDelayS > GOAL_DELAY_MAX_S) goalDelayS = GOAL_DELAY_MAX_S;
 }
 
 void Settings::save() {
@@ -29,12 +35,30 @@ void Settings::save() {
     prefs.putUChar("otabadc", otaBadCount);
     prefs.putUChar("bright", brightness);
     prefs.putBool("ouronly", goalOnlyOurTeam);
+    prefs.putBool("dbgpush", debugPush);
+    prefs.putUChar("goaldly", goalDelayS);
+    prefs.putULong("victuntil", victoryUntil);
+    prefs.putULong("victgame", victoryGame);
     prefs.end();
 }
 
 void Settings::clearWifi() {
     wifiSsid = "";
     wifiPass = "";
+    save();
+}
+
+void Settings::noteVictory(uint32_t gameStartUtc, uint32_t untilUtc) {
+    victoryGame  = gameStartUtc;
+    victoryUntil = untilUtc;
+    save();
+}
+
+// Nollar bara sluttiden. victoryGame ligger kvar — den är kvittot på att
+// matchen redan är firad, och utan den skulle nästa hämtning tända om läget.
+void Settings::clearVictory() {
+    if (!victoryUntil) return;
+    victoryUntil = 0;
     save();
 }
 

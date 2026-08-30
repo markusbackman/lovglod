@@ -16,15 +16,25 @@ struct LiveScore {
     int  away  = -1;
 };
 
+// Senast spelade matchen. Att den alls dyker upp i played-games betyder att den
+// är slut — SHL har ingen "matchen tog slut"-händelse, och matchfönstret i
+// main.cpp är bara en timer på fyra timmar efter nedsläpp.
+struct LastResult {
+    bool   valid        = false;
+    bool   won          = false;   // Björklöven vann
+    bool   wonYesterday = false;   // ...och matchen spelades i går (gnistorna)
+    time_t startUtc     = 0;       // nedsläpp, används som matchens identitet
+    String summary;
+};
+
 namespace Shl {
 
 // ── Pollning (HTTPS GET mot www.shl.se) ────────────────────────────────────
 // Nästa match i spelschemat. Returnerar false vid nätverks-/parsfel.
 bool fetchNextGame(NextGame &out);
 
-// Senast spelade matchen. Sätter wonYesterday=true om Björklöven vann en
-// match vars lokala datum var igår.
-bool fetchLastResult(bool &wonYesterday, String &summary);
+// Senast spelade matchen. Returnerar false vid nätverks-/parsfel.
+bool fetchLastResult(LastResult &out);
 
 // Reservväg under pågående match om SSE-strömmen inte ger något.
 bool pollLiveScore(const String &gameUuid, LiveScore &out);
@@ -36,6 +46,11 @@ bool sseConnected();
 
 // Anropas varje varv i loop(). Returnerar true när en ny ställning lästs in.
 bool ssePump(LiveScore &out);
+
+// ── Datakälla ──────────────────────────────────────────────────────────────
+// Bas-URL:erna lampan hämtar från. Visas på felsökningssidan.
+String apiBaseUrl();
+String liveBaseUrl();
 
 // ── Felsökning ─────────────────────────────────────────────────────────────
 // Senaste råa SSE-ramen (kapad). Visas på enhetens /debug-sida så att

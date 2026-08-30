@@ -9,6 +9,26 @@ struct StatusInfo {
     String liveScore   = "—";
     bool   wonYesterday = false;
     bool   sseLive      = false;
+    bool   pushMode     = false;   // matchläget matas in via POST /push
+};
+
+// Push från mockservern: hela matchläget i ett anrop, istället för att lampan
+// hämtar det själv. Enda vägen när en brandvägg i datorn stoppar inkommande
+// anslutningar till testservern. Allt är valfritt — det som inte skickas
+// lämnas orört.
+struct PushState {
+    bool   hasNext      = false;
+    String homeCode;
+    String awayCode;
+    bool   homeIsUs     = false;
+    String nextText;               // fritext till statussidan
+    bool   live         = false;  // matchfönstret öppet
+    bool   hasScore     = false;
+    int    home         = -1;
+    int    away         = -1;
+    bool   hasLast      = false;
+    bool   wonYesterday = false;
+    String lastResult;
 };
 
 extern StatusInfo status;
@@ -23,4 +43,12 @@ void loop();
 bool isAccessPoint();
 // true när användaren sparat nya uppgifter och enheten bör försöka ansluta.
 bool credentialsSubmitted();
+// Knappen "Hämta matchdata nu" — och automatiskt när datakällan bytts.
+// Hämtningen tar sekunder och får inte ske inne i webbservern.
+bool refreshRequested();
+void clearRefresh();
+// Senaste POST /push. Tas emot i webbservern men appliceras i loop(), av samma
+// skäl som ovan: målfyrverkeriet ska inte starta inne i ett HTTP-anrop.
+bool pushPending();
+PushState takePush();
 }

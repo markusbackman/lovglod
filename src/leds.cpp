@@ -15,17 +15,64 @@ uint8_t   gUpdatePercent = 0;
 uint32_t  gModeSince     = 0;
 uint32_t  gLastFrame     = 0;
 uint32_t  gNextSparkle   = 0;
+uint16_t  gWorkLit       = 0;        // antal tända LEDs i uppstartsstapeln
+
+// Mål som väntar på tv-fördröjningen, i tidsordning (tidigast först).
+uint32_t  gPendingAt[GOAL_QUEUE_MAX];
+uint8_t   gPendingCount = 0;
+
+bool      gLocked     = false;      // demoläge: app-logiken får inte byta läge
+LedMode   gLockedMode = LED_STANDBY;
+
+// Lägesbyte förbi låset. Används internt av demoläget och av målfyrverkeriet,
+// som ska få tända även när ett läge står låst.
+inline void forceMode(LedMode m) {
+    if (m == gMode) return;
+    gMode      = m;
+    gModeSince = millis();
+}
 
 const uint8_t FPS = 120;
 
-// Grundfärgen. Value fylls i av respektive effekt.
-inline CRGB gold(uint8_t val) { return CHSV(YELLOW_HUE, YELLOW_SAT, val); }
+// Grundfärgen: en och samma gula, i vald styrka.
+//
+// Röd och grön skalas med samma faktor och samma avrundning, så nyansen ligger
+// still hela vägen från full styrka ner till nästan släckt — bara ljuset
+// ändras. Det är därför färgen sitter i YELLOW_R/YELLOW_G och inte i en
+// HSV-nyans: CHSV skalar visserligen också kanalerna, men grönkanalen ligger
+// lägre och trunkeras till noll medan den röda fortfarande lyser, så varje
+// utfadning slutar i orange och till sist rent rött.
+// `level` är ljusstyrkan rakt av, 0-255. Ingen gammakurva här inne: den satt
+// tidigare i gold() och åt upp upplösningen i botten, där glöden bor — ett
+// femtiotal olika `val` mappade till samma utnivå. Kurvan ligger nu i
+// drawGlow(), som räknar i 16 bitar och rundar av först på slutet.
+// `green` gör det möjligt att dra nyansen åt bärnsten utan att tappa det som
+// gör gold() värd besväret: röd och grön skalas fortfarande med samma faktor,
+// så vilken nyans man än väljer står den still hela vägen ner.
+inline CRGB gold(uint8_t level, uint8_t green = YELLOW_G) {
+    return CRGB(scale8_video(YELLOW_R, level),
+                scale8_video(green, level),
+                scale8_video(YELLOW_B, level));
+}
 
 // ── Långsam glöd ────────────────────────────────────────────────────────────
-// beatsin8 ger andningen. Perlin-brus ovanpå gör att listen "lever" istället
+// Andetaget är en sinus, Perlin-bruset ovanpå gör att listen "lever" istället
 // för att pulsera som en enda platt yta.
-void drawGlow(uint8_t minVal, uint8_t maxVal, uint8_t bpm) {
-    const uint8_t  breath = beatsin8(bpm, minVal, maxVal);
+//
+// Hela räkningen görs i 16 bitar. Glöden rör sig mellan ungefär 20 och 44 i
+// utnivå, alltså två dussin steg totalt: med beatsin8:s 8-bitarsupplösning
+// landar andetaget på samma heltal många bildrutor i rad och hoppar sedan ett
+// helt steg, vilket syns tydligt som ryck. beatsin16 + avrundning på slutet ger
+// en jämn ramp, och dithern (LED_DITHER) fyller i mellanlägena.
+void drawGlow(uint8_t minVal, uint8_t maxVal, uint8_t bpm, uint8_t green = YELLOW_G) {
+    // Gammakurvan läggs på sinusen, inte på utnivån. Ögat ser små
+    // ljusskillnader i botten mycket tydligare än i toppen, så en rå sinus
+    // känns som om den rusar genom den mörka halvan och dröjer i den ljusa.
+    const uint16_t phase = beatsin16(bpm, 0, 65535);
+    const uint16_t eased = ((uint32_t)phase * phase) >> 16;
+
+    const uint16_t span   = maxVal - minVal;
+    const uint8_t  breath = minVal + (uint8_t)(((uint32_t)eased * span + 32768) >> 16);
     const uint16_t t      = millis() / 24;
 
     for (uint16_t i = 0; i < LED_COUNT; i++) {
@@ -33,17 +80,22 @@ void drawGlow(uint8_t minVal, uint8_t maxVal, uint8_t bpm) {
         const uint8_t n     = inoise8(i * 26, t);
         const int16_t delta = ((int16_t)n - 128) * breath / 700;
         int16_t       val   = (int16_t)breath + delta;
-        val = constrain(val, 0, 255);
 
-        // Nyansen vandrar ett par steg — bärnsten i botten, ljusare gult i toppen
-        const uint8_t hue = YELLOW_HUE - 4 + (val >> 6);
-        leds[i] = CHSV(hue, YELLOW_SAT, (uint8_t)val);
+        // Skyddsklämma mot hårdvarugolvet, inte mot andetagets botten. Bruset
+        // får sänka enskilda dioder under minVal — det är det som håller
+        // strukturen levande i den nedre vändningen — men aldrig ner i det
+        // område där gulen bryts upp i rött. Se GLOW_FLOOR_VAL i config.h.
+        val = constrain(val, (int16_t)GLOW_FLOOR_VAL, 255);
+
+        leds[i] = gold((uint8_t)val, green);
     }
 }
 
 // ── Gnistor ─────────────────────────────────────────────────────────────────
-void updateSparkles() {
-    if (gSparkles && (int32_t)(millis() - gNextSparkle) >= 0) {
+// `force` tänder gnistorna oavsett gSparkles. Segerläget vill alltid glittra —
+// det vet redan att laget vann, medan gSparkles står för gårdagens resultat.
+void updateSparkles(bool force = false) {
+    if ((gSparkles || force) && (int32_t)(millis() - gNextSparkle) >= 0) {
         sparkleLevel[random16(LED_COUNT)] = 255;
         // Slumpad väntan runt medelvärdet ger ett oregelbundet, naturligt glitter
         gNextSparkle = millis() + random16(SPARKLE_MEAN_INTERVAL_MS / 2,
@@ -52,8 +104,10 @@ void updateSparkles() {
 
     for (uint16_t i = 0; i < LED_COUNT; i++) {
         if (!sparkleLevel[i]) continue;
-        // Blanda in en kall vit topp — det är den som ger "glittret"
-        leds[i] = blend(leds[i], CRGB(255, 250, 225), sparkleLevel[i]);
+        // Adderas ovanpå glöden, blandas inte in i den — se SPARKLE_R i
+        // config.h. CRGB::operator+= mättar vid 255, så en gnista på full
+        // styrka slår igenom mot vitt var i andetaget den än landar.
+        leds[i] += CRGB(SPARKLE_R, SPARKLE_G, SPARKLE_B).nscale8(sparkleLevel[i]);
         sparkleLevel[i] = qsub8(sparkleLevel[i], SPARKLE_DECAY);
     }
 }
@@ -71,7 +125,7 @@ void drawGoal() {
         if (phase) {
             fill_solid(leds, LED_COUNT, white ? CRGB(255, 244, 210) : gold(255));
         } else {
-            fill_solid(leds, LED_COUNT, gold(40));
+            fill_solid(leds, LED_COUNT, gold(7));
         }
         return;
     }
@@ -86,13 +140,13 @@ void drawGoal() {
         const int16_t pos = center + dir * (int16_t)travel;
         if (pos < 0 || pos >= LED_COUNT) continue;
         leds[pos] = CRGB(255, 248, 220);                       // vitglödande kärna
-        if (pos - dir >= 0 && pos - dir < LED_COUNT) leds[pos - dir] += gold(220);
-        if (pos - 2 * dir >= 0 && pos - 2 * dir < LED_COUNT) leds[pos - 2 * dir] += gold(90);
+        if (pos - dir >= 0 && pos - dir < LED_COUNT) leds[pos - dir] += gold(190);
+        if (pos - 2 * dir >= 0 && pos - 2 * dir < LED_COUNT) leds[pos - 2 * dir] += gold(32);
     }
 
     // Slumpade "gnistregn" ovanpå så det inte blir mekaniskt
     for (uint8_t k = 0; k < 3; k++) {
-        if (random8() < 90) leds[random16(LED_COUNT)] += gold(random8(160, 255));
+        if (random8() < 90) leds[random16(LED_COUNT)] += gold(random8(101, 255));
     }
 
     // Sista sekunden tonar ner mot standby istället för att slockna tvärt
@@ -102,9 +156,42 @@ void drawGoal() {
     }
 }
 
+// ── Segerläge ───────────────────────────────────────────────────────────────
+// Målfyrverkeriets gest, uttänjd så att den går att leva med. Skillnaden mot
+// drawGoal() är inte bara tempot: här ligger en glöd under kometerna, så listen
+// vilar på något i stället för att falla mot svart mellan salvorna, och
+// kometerna tonar ut på vägen ut i stället för att slå i kanten.
+void drawVictory() {
+    // Botten först — kometerna adderas ovanpå.
+    drawGlow(VICTORY_GLOW_MIN, VICTORY_GLOW_MAX, VICTORY_GLOW_BPM, LIVE_YELLOW_G);
+
+    const uint16_t center = LED_COUNT / 2;
+
+    for (uint8_t v = 0; v < VICTORY_VOLLEYS; v++) {
+        // Salvorna är samma resa förskjuten i tid, så strömmen aldrig tar slut.
+        const uint32_t phase =
+            (millis() + (uint32_t)v * VICTORY_TRAVEL_MS / VICTORY_VOLLEYS) % VICTORY_TRAVEL_MS;
+        const uint16_t travel = (uint32_t)phase * center / VICTORY_TRAVEL_MS;
+
+        // Kometen tonar ut längs resan i stället för att slockna vid kanten.
+        const uint8_t life = 255 - (uint8_t)((uint32_t)phase * 255 / VICTORY_TRAVEL_MS);
+
+        for (int8_t dir = -1; dir <= 1; dir += 2) {
+            const int16_t pos = center + dir * (int16_t)travel;
+            if (pos < 0 || pos >= LED_COUNT) continue;
+            leds[pos] += gold(scale8(VICTORY_HEAD_VAL, life), LIVE_YELLOW_G);
+            const int16_t tail = pos - dir;
+            if (tail >= 0 && tail < LED_COUNT)
+                leds[tail] += gold(scale8(VICTORY_TAIL_VAL, life), LIVE_YELLOW_G);
+        }
+    }
+
+    updateSparkles(/*force=*/true);
+}
+
 // ── Övriga lägen ────────────────────────────────────────────────────────────
 // Samma rytm i båda portallägena — det är färgen som skiljer dem åt.
-//   blå = "anslut till mitt nät"      röd = "ditt WiFi svarar inte"
+//   grön = "anslut till mitt nät"     röd = "ditt WiFi svarar inte"
 void drawPortal(uint8_t hue, uint8_t sat) {
     const uint8_t v = beatsin8(20, 25, 190);
     fill_solid(leds, LED_COUNT, CHSV(hue, sat, v));
@@ -116,19 +203,57 @@ void drawConnecting() {
     leds[pos] = gold(255);
 }
 
+// Ljuset flödar in från ena änden och blir stående. Vid 700 ms lyser hela
+// listen, och det är det enda tillfället då varje diod syns tänd samtidigt —
+// bättre diagnostik än ett svep, där en död diod bara ser ut som en lucka i
+// efterglöden.
+//
+// Medvetet en flod och inte en stapel: förloppsstapeln (LED_WORKING) fyller
+// också från noll, men med mörk kropp och ett ensamt ljust huvud. Här är
+// kroppen full styrka och kanten mjuk, så de två går inte att förväxla. Och
+// inte heller ett jagande ljus — LED_CONNECTING tar vid direkt efteråt, och
+// två gula punkter med svans efter varandra läses som en enda animation.
+//
+// Kanten räknas i 8.8-fixpunkt (256 steg per diod) så att den kan tona mellan
+// dioderna i stället för att hoppa en hel diod i taget.
 void drawBoot() {
-    fadeToBlackBy(leds, LED_COUNT, 20);
     const uint32_t e = millis() - gModeSince;
-    const uint16_t pos = map(constrain(e, 0, 900), 0, 900, 0, LED_COUNT - 1);
-    leds[pos] = gold(255);
-    if (pos > 0) leds[pos - 1] = gold(120);
+
+    // Kanten går 3 dioder förbi listens slut, annars hinner de sista aldrig
+    // upp i full styrka innan tiden är ute.
+    const int32_t edge = map(constrain(e, 0, BOOT_FILL_MS), 0, BOOT_FILL_MS,
+                             0, LED_COUNT * 256 + BOOT_EDGE_SOFTNESS);
+
+    for (uint16_t i = 0; i < LED_COUNT; i++) {
+        const int32_t d = edge - (int32_t)i * 256;      // hur långt bakom kanten
+        uint8_t level;
+        if      (d <= 0)                    level = 0;
+        else if (d >= BOOT_EDGE_SOFTNESS)   level = 255;
+        else                                level = (uint8_t)(d * 255 / BOOT_EDGE_SOFTNESS);
+        leds[i] = gold(level);
+    }
 }
 
-void drawUpdating() {
-    const uint16_t lit = (uint32_t)gUpdatePercent * LED_COUNT / 100;
+// ── Uppstartsförlopp ────────────────────────────────────────────────────────
+// Huvudet markerar steget som pågår just nu. Eftersom bildrutan ofta fryser
+// mitt i ett blockerande anrop är det medvetet en stapel utan egen rörelse:
+// det som står stilla ska se ut att stå stilla med flit.
+void drawWorking() {
     fill_solid(leds, LED_COUNT, CRGB::Black);
-    for (uint16_t i = 0; i < lit && i < LED_COUNT; i++) leds[i] = gold(200);
-    if (lit < LED_COUNT) leds[lit] = gold(beatsin8(120, 30, 255));
+    for (uint16_t i = 0; i < gWorkLit && i < LED_COUNT; i++) leds[i] = gold(WORK_BODY_VAL);
+    if (gWorkLit < LED_COUNT) leds[gWorkLit] = gold(255);
+}
+
+// Till skillnad från drawWorking() får den här röra sig: en OTA-nedladdning är
+// en ström, förloppet uppdateras kontinuerligt och processorn är ledig. Ett
+// pulserande huvud betyder "data flödar"; ett stillastående betyder "väntar".
+void drawUpdating() {
+    // Samma golv som uppstartsstapeln — se BAR_MIN_LIT i config.h.
+    const uint16_t lit = BAR_MIN_LIT +
+                         (uint16_t)((uint32_t)gUpdatePercent * (LED_COUNT - BAR_MIN_LIT) / 100);
+    fill_solid(leds, LED_COUNT, CRGB::Black);
+    for (uint16_t i = 0; i < lit && i < LED_COUNT; i++) leds[i] = gold(UPDATE_BODY_VAL);
+    if (lit < LED_COUNT) leds[lit] = gold(beatsin8(120, 4, 255));
 }
 
 void drawError() {
@@ -143,18 +268,40 @@ namespace Leds {
 
 void begin() {
     FastLED.addLeds<LED_TYPE, LED_PIN, LED_COLOR_ORDER>(leds, LED_COUNT)
-        .setCorrection(TypicalLEDStrip);
+        .setCorrection(LED_COLOR_CORRECTION);
     FastLED.setMaxPowerInVoltsAndMilliamps(LED_PSU_VOLTS, LED_MAX_MILLIAMPS);
-    FastLED.setDither(DISABLE_DITHER);   // dither flimrar synligt vid låg glöd
+    FastLED.setDither(LED_DITHER);       // mjukar upp glödens smala nivåband
     FastLED.clear(true);
     memset(sparkleLevel, 0, sizeof(sparkleLevel));
     gModeSince = millis();
 }
 
 void setMode(LedMode m) {
-    if (m == gMode) return;
-    gMode      = m;
-    gModeSince = millis();
+    if (gLocked) return;
+    forceMode(m);
+}
+
+void lockMode(LedMode m) {
+    gLocked     = true;
+    gLockedMode = m;
+    gMode       = m;
+    gModeSince  = millis();          // alltid om från början, även samma läge
+}
+
+void unlockMode() { gLocked = false; }
+bool locked()     { return gLocked; }
+
+String debugState() {
+    char buf[128];
+    snprintf(buf, sizeof(buf),
+             "mode=%u lock=%u goal[start=%lu until=%lu] now=%lu led0=%u,%u,%u led30=%u,%u,%u bri=%u",
+             (unsigned)gMode, (unsigned)gLocked,
+             (unsigned long)gGoalStart, (unsigned long)gGoalUntil,
+             (unsigned long)millis(),
+             leds[0].r, leds[0].g, leds[0].b,
+             leds[30].r, leds[30].g, leds[30].b,
+             FastLED.getBrightness());
+    return String(buf);
 }
 
 LedMode mode() { return gMode; }
@@ -162,20 +309,68 @@ LedMode mode() { return gMode; }
 void setSparkles(bool on) { gSparkles = on; }
 bool sparkles() { return gSparkles; }
 
-void triggerGoal() {
+void triggerGoal(uint32_t delayMs) {
     const uint32_t now = millis();
+
+    if (delayMs) {
+        if (gPendingCount >= GOAL_QUEUE_MAX) {
+            // Sex obesvarade mål inom fördröjningen händer inte i en hockeymatch.
+            // Skulle det ändå ske är det bättre att tappa ett än att tappa kön.
+            Serial.println("[led] målkön full — hoppar över fördröjningen");
+            delayMs = 0;
+        } else {
+            const uint32_t at = now + delayMs;
+            // Insättning i tidsordning. Fördröjningen kan ha ändrats mellan två
+            // mål, så ankomstordningen är inte nödvändigtvis tidsordningen.
+            uint8_t i = gPendingCount;
+            while (i && (int32_t)(gPendingAt[i - 1] - at) > 0) {
+                gPendingAt[i] = gPendingAt[i - 1];
+                i--;
+            }
+            gPendingAt[i] = at;
+            gPendingCount++;
+            return;
+        }
+    }
+
     // Nytt mål under pågående fyrverkeri: förläng istället för att starta om,
     // annars tappar man stroboskopet vid snabba 2-mål.
     if (gMode != LED_GOAL) gGoalStart = now;
     gGoalUntil = now + GOAL_DURATION_MS;
-    setMode(LED_GOAL);
+    forceMode(LED_GOAL);
 }
+
+uint8_t pendingGoals() { return gPendingCount; }
+
+uint32_t pendingGoalInMs() {
+    if (!gPendingCount) return 0;
+    const int32_t left = (int32_t)(gPendingAt[0] - millis());
+    return left > 0 ? (uint32_t)left : 0;
+}
+
+void clearPendingGoals() { gPendingCount = 0; }
 
 void setBrightness(uint8_t b) { FastLED.setBrightness(b); }
 
 void setUpdateProgress(uint8_t percent) {
-    gUpdatePercent = percent;
+    gUpdatePercent = percent > 100 ? 100 : percent;
     setMode(LED_UPDATING);
+}
+
+void setWorkProgress(uint8_t done, uint8_t total) {
+    if (done > total) done = total;
+    // Förloppet skalas in i intervallet [WORK_MIN_LIT, LED_COUNT] i stället för
+    // [0, LED_COUNT]. Nollförloppet ska synas som en stapel som just startat,
+    // inte som en släckt list.
+    gWorkLit = total
+        ? BAR_MIN_LIT + (uint16_t)((uint32_t)done * (LED_COUNT - BAR_MIN_LIT) / total)
+        : BAR_MIN_LIT;
+    setMode(LED_WORKING);
+}
+
+void renderNow() {
+    gLastFrame = millis() - (1000u / FPS);
+    render();
 }
 
 void render() {
@@ -184,20 +379,33 @@ void render() {
     gLastFrame = now;
 
     // Målfyrverkeriet tar slut av sig självt
-    if (gMode == LED_GOAL && (int32_t)(now - gGoalUntil) >= 0) setMode(LED_STANDBY);
+    if (gMode == LED_GOAL && (int32_t)(now - gGoalUntil) >= 0)
+        forceMode(gLocked ? gLockedMode : LED_STANDBY);
+
+    // Köade mål vars tv-fördröjning gått ut. Flera kan förfalla samma bildruta;
+    // triggerGoal() staplar dem då precis som två snabba mål i realtid.
+    while (gPendingCount && (int32_t)(now - gPendingAt[0]) >= 0) {
+        for (uint8_t i = 1; i < gPendingCount; i++) gPendingAt[i - 1] = gPendingAt[i];
+        gPendingCount--;
+        triggerGoal();
+    }
 
     switch (gMode) {
         case LED_BOOT:       drawBoot();       break;
-        case LED_PORTAL:       drawPortal(150, 220); break;   // blå/cyan
+        case LED_PORTAL:       drawPortal(104, 255); break;   // Björklövens gröna
         case LED_PORTAL_RETRY: drawPortal(0, 235);   break;   // röd
         case LED_CONNECTING: drawConnecting(); break;
+        case LED_WORKING:    drawWorking();    break;
         case LED_UPDATING:   drawUpdating();   break;
         case LED_ERROR:      drawError();      break;
         case LED_GOAL:       drawGoal();       break;
+        case LED_VICTORY:    drawVictory();    break;
 
         case LED_LIVE:
             // Under match: kortare andetag och högre botten — listen "väntar".
-            drawGlow(GLOW_MIN_VAL + 18, GLOW_MAX_VAL + 40, GLOW_BPM * 2);
+            drawGlow(GLOW_MIN_VAL + GLOW_LIVE_FLOOR_LIFT,
+                     GLOW_MAX_VAL + GLOW_LIVE_LIFT, GLOW_BPM * 2,
+                     LIVE_YELLOW_G);
             updateSparkles();
             break;
 
