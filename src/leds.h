@@ -8,7 +8,7 @@ enum LedMode : uint8_t {
     LED_CONNECTING,  // gult jagande ljus
     LED_WORKING,     // förloppsstapel under blockerande uppstartsarbete
     LED_STANDBY,     // långsam gul glöd (grundläget)
-    LED_LIVE,        // matchen pågår: samma glöd men lite piggare
+    LED_LIVE,        // matchen pågår: snabbare glöd, dragen åt bärnsten
     LED_GOAL,        // MÅL! snabb gul eldgivning
     LED_VICTORY,     // vi vann: lugna kometer i timmar efteråt
     LED_UPDATING,    // förloppsindikator vid OTA
@@ -20,7 +20,8 @@ void begin();
 void setMode(LedMode m);
 LedMode mode();
 
-// Gnistor läggs ovanpå glöden när laget vann dagen innan.
+// Gnistor läggs ovanpå glöden när laget vann dagen innan. Segerläget glittrar
+// alltid, oavsett den här flaggan — det vet redan att laget vann.
 void setSparkles(bool on);
 bool sparkles();
 
@@ -47,9 +48,6 @@ void clearPendingGoals();
 void lockMode(LedMode m);
 void unlockMode();
 bool locked();
-
-// Felsökning: vad listen faktiskt får, inte vad vi tror att den får.
-String debugState();
 
 void setBrightness(uint8_t b);
 void setUpdateProgress(uint8_t percent);

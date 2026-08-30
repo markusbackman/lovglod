@@ -99,10 +99,10 @@
 //   GLOW_FLOOR_VAL  hårdvarugolvet. Under en handfull räkningssteg har en
 //                   WS2812 ingenting kvar att arbeta med: den röda dioden styr
 //                   ensam, gulen slår om till rött och varje steg i andetaget
-//                   blir ett synligt hopp. Vid standardljusstyrkan motsvarar 20
-//                   omkring 12 räkningssteg — den lägsta nivå som fortfarande
-//                   är otvetydigt gul. Sänker du LED_DEFAULT_BRIGHTNESS mycket
-//                   bör golvet upp. Det här är en ren skyddsklämma.
+//                   blir ett synligt hopp. Vid standardljusstyrkan motsvarar 15
+//                   omkring 9 räkningssteg på listen. Sänker du
+//                   LED_DEFAULT_BRIGHTNESS mycket bör golvet upp. Det här är en
+//                   ren skyddsklämma.
 //
 //   GLOW_MIN_VAL    andetagets nedre vändpunkt. Ligger med flit ovanför golvet,
 //                   så att Perlin-bruset har plats att dra enskilda dioder
@@ -114,19 +114,22 @@
 //                   är listen som lugnast och tittas på som mest, så det var
 //                   där glöden slutade leva.
 //
-// Marginalen behöver vara minst 18 % av GLOW_MIN_VAL, som är brusets amplitud.
+// Marginalen mellan de två behöver vara minst 18 % av GLOW_MIN_VAL, som är
+// brusets amplitud. Vill du sänka botten måste därför golvet med: sänks bara
+// GLOW_MIN_VAL äter bruset upp marginalen och klippningen är tillbaka.
+//
+// Golvet ligger under de 20 som en gång mättes upp som "lägsta otvetydigt
+// gula", och det är medvetet. Då satt hela listen kvar på golvet i varje
+// vändning; nu är det bara enskilda dioder som dyker ner och studsar upp igen.
+// En kort dipp på en diod syns inte som färgskifte, det gör en hel list som
+// ligger still.
 //
 // Spannet mellan botten och toppen är brett med flit. Ögat svarar ungefär
-// logaritmiskt på ljus, så ett andetag mellan 30 och 68 — drygt en fördubbling
-// — läses på håll knappt som en förändring alls; man ser en list som lyser
-// jämnt. Det som gör andetaget synligt tvärs över ett rum är kvoten, inte
-// antalet steg, och därför ligger taket högt medan botten står kvar nere.
-// De två följer varandra nedåt: sänks bara botten äter bruset upp marginalen
-// och klippningen i vändningen är tillbaka. Golvet ligger numera under den
-// nivå som en gång mättes upp som "lägsta otvetydigt gula" (20), och det är
-// medvetet — då satt hela listen kvar på golvet i varje vändning, nu är det
-// bara enskilda dioder som dyker ner och studsar upp igen. En kort dipp på en
-// diod syns inte som färgskifte, det gör en hel list som ligger still.
+// logaritmiskt på ljus, så ett andetag som bara fördubblar styrkan läses på
+// håll knappt som en förändring alls; man ser en list som lyser jämnt. Det som
+// gör andetaget synligt tvärs över ett rum är kvoten mellan botten och topp —
+// här drygt sex gånger — inte antalet steg. Därför ligger taket högt medan
+// botten står kvar nere.
 #define GLOW_FLOOR_VAL  15          // hårt golv — ingen enskild diod går under
 #define GLOW_MIN_VAL    22          // andetagets botten, med plats för brus
 #define GLOW_MAX_VAL    140         // toppen — drygt 6x botten, syns på håll

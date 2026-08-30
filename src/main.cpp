@@ -234,10 +234,6 @@ static void handleSerialCommands() {
             demoSelect(kDemoCount - 1);          // segerläget, sist i listan
             break;
 
-        case 'q': case 'Q':
-            Serial.println("[dbg] " + Leds::debugState());
-            break;
-
         case '1': case '2': case '3': case '4': case '5':
         case '6': case '7': case '8': case '9':
             demoSelect(c - '1');

@@ -59,11 +59,16 @@ inline CRGB gold(uint8_t level, uint8_t green = YELLOW_G) {
 // Andetaget är en sinus, Perlin-bruset ovanpå gör att listen "lever" istället
 // för att pulsera som en enda platt yta.
 //
-// Hela räkningen görs i 16 bitar. Glöden rör sig mellan ungefär 20 och 44 i
-// utnivå, alltså två dussin steg totalt: med beatsin8:s 8-bitarsupplösning
-// landar andetaget på samma heltal många bildrutor i rad och hoppar sedan ett
-// helt steg, vilket syns tydligt som ryck. beatsin16 + avrundning på slutet ger
-// en jämn ramp, och dithern (LED_DITHER) fyller i mellanlägena.
+// Hela räkningen görs i 16 bitar. Det är gammakurvan nedan som kräver det, inte
+// spannets bredd: `eased` är fasen i kvadrat, och kring vändningen rör den sig
+// knappt alls. Där mappas många bildrutor i rad till samma utnivå med
+// beatsin8:s 8-bitarsupplösning, och andetaget hoppar sedan ett helt steg —
+// precis det man ser som ryck, och precis i den nedre delen av kurvan där
+// glöden tillbringar mest tid. beatsin16 med avrundning först på slutet ger en
+// jämn ramp, och dithern (LED_DITHER) fyller i mellanlägena.
+//
+// Funktionen ritar alla glödlägen, och spannen skiljer sig kraftigt åt:
+// standby 22-140, live 30-156, segerlägets bädd 26-90.
 void drawGlow(uint8_t minVal, uint8_t maxVal, uint8_t bpm, uint8_t green = YELLOW_G) {
     // Gammakurvan läggs på sinusen, inte på utnivån. Ögat ser små
     // ljusskillnader i botten mycket tydligare än i toppen, så en rå sinus
@@ -190,8 +195,14 @@ void drawVictory() {
 }
 
 // ── Övriga lägen ────────────────────────────────────────────────────────────
-// Samma rytm i båda portallägena — det är färgen som skiljer dem åt.
+// Samma rytm och samma amplitud i båda portallägena — det är färgen som
+// skiljer dem åt.
 //   grön = "anslut till mitt nät"     röd = "ditt WiFi svarar inte"
+//
+// Mättnaden skiljer sig också, och inte av slarv: grönt måste köras på full
+// mättnad, för den gnutta vitt som gör rött mjukare gör grönt mintfärgat och
+// därmed omöjligt att läsa som lagets färg. Rött tål 235 och blir mindre platt
+// av det.
 void drawPortal(uint8_t hue, uint8_t sat) {
     const uint8_t v = beatsin8(20, 25, 190);
     fill_solid(leds, LED_COUNT, CHSV(hue, sat, v));
@@ -290,19 +301,6 @@ void lockMode(LedMode m) {
 
 void unlockMode() { gLocked = false; }
 bool locked()     { return gLocked; }
-
-String debugState() {
-    char buf[128];
-    snprintf(buf, sizeof(buf),
-             "mode=%u lock=%u goal[start=%lu until=%lu] now=%lu led0=%u,%u,%u led30=%u,%u,%u bri=%u",
-             (unsigned)gMode, (unsigned)gLocked,
-             (unsigned long)gGoalStart, (unsigned long)gGoalUntil,
-             (unsigned long)millis(),
-             leds[0].r, leds[0].g, leds[0].b,
-             leds[30].r, leds[30].g, leds[30].b,
-             FastLED.getBrightness());
-    return String(buf);
-}
 
 LedMode mode() { return gMode; }
 

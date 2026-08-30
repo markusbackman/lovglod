@@ -116,7 +116,7 @@ Tre detaljer gör att det inte ser ut som en dimmer:
   skilda värden. Under en handfull räkningssteg har en WS2812 inget kvar att
   arbeta med: den röda dioden styr ensam, gulen bryts upp i rött, och varje steg
   i andetaget blir ett synligt hopp — därför golvet, som gäller varje enskild
-  LED. Vid standardljusstyrkan motsvarar det ungefär tolv räkningssteg.
+  LED. Vid standardljusstyrkan motsvarar det ungefär nio räkningssteg.
 
   Andetaget vänder däremot en bit ovanför, så att bruset har plats att dra
   dioder nedåt utan att klippas. Låg de två på samma värde klipptes varje
@@ -127,12 +127,14 @@ Tre detaljer gör att det inte ser ut som en dimmer:
   Vill du sänka botten måste därför golvet med — sänks bara `GLOW_MIN_VAL`
   äter bruset upp marginalen och klippningen är tillbaka.
 
-Och för att tonandet ska bli mjukt trots att hela andetaget ryms i ett par
-dussin räkningssteg: sinusen räknas i 16 bitar med gammakurvan lagd på fasen
-(`beatsin16`, avrundning först på slutet), och `LED_DITHER` växlar mellan
-närliggande nivåer mellan bildrutorna. Utan dithern står listen still på samma
-nivå i drygt en sekund i toppen av andetaget och byter sedan ett helt steg —
-det är precis det man ser som ryck.
+Och för att tonandet ska bli mjukt hela vägen: sinusen räknas i 16 bitar med
+gammakurvan lagd på fasen (`beatsin16`, avrundning först på slutet), och
+`LED_DITHER` växlar mellan närliggande nivåer mellan bildrutorna. Det är
+gammakurvan som gör 16 bitar nödvändiga, inte spannets bredd — kurvan är fasen
+i kvadrat och rör sig knappt alls kring vändningen, så just där glöden
+tillbringar mest tid mappas många bildrutor i rad till samma utnivå. Utan
+dithern står listen still på samma nivå och byter sedan ett helt steg — det är
+precis det man ser som ryck.
 
 ### Gnistor — "vi vann igår" (ovanpå glöden)
 
