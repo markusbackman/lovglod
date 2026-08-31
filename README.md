@@ -415,14 +415,22 @@ Misslyckas samma version tre gånger slutar enheten försöka (`OTA_MAX_FAILURES
 — annars skulle en trasig release ladda ner 1 MB var 12:e timme för alltid.
 Räknaren nollställs så fort en ny version dyker upp.
 
-### Push-OTA under utveckling
+### Ingen push-OTA
+
+ArduinoOTA-push fanns tidigare och är borttaget med flit. Den vägen gick förbi
+signaturkontrollen helt och skyddades bara av ett lösenord som låg i klartext i
+det här repot — den var alltså den enda kvarvarande vägen till godtycklig
+firmware på en lampa i nätet.
+
+Kvar finns två vägar in, och båda är sådana man kan lita på: **signerad
+self-update**, eller **USB**. Den som står vid USB-porten är ändå förbi varje
+mjukvaruspärr, så där finns inget att skydda.
+
+Under utveckling är det alltså USB som gäller:
 
 ```bash
-pio run -e esp32dev_ota -t upload
+pio run -t upload            # håll in BOOT — kortet har trasig auto-reset
 ```
-
-Lösenord `***` (ändra `OTA_PASSWORD` i `config.h`). Snabbast när du
-itererar på effekterna och inte vill tagga en release för varje ändring.
 
 ### Minne
 
@@ -430,22 +438,58 @@ GitHub-svaret parsas strömmande med ett ArduinoJson-filter, så bara `tag_name`
 och asset-namnen behålls. För ett repo med 280 assets krymper svaret från
 480 kB till 38 kB; för det här repot är det 308 byte.
 
-### ⚠️ Säkerhet
+### Signerad firmware
 
 Enheten kör `setInsecure()` — inget certifikat valideras, varken mot shl.se
-eller GitHub. För matchdata spelar det ingen roll, men **för OTA betyder det
-att någon som kan göra en MITM på ditt nät kan flasha godtycklig firmware.**
+eller GitHub. Certifikatpinning löser det dåligt här: kedjan hoppar mellan
+`api.github.com` och `release-assets.githubusercontent.com` och roterar med
+jämna mellanrum, så en hårdkodad rot-CA gör bara lampan tyst den dagen den byts.
 
-Certifikatpinning löser det dåligt här: kedjan hoppar mellan `api.github.com`
-och `release-assets.githubusercontent.com` och roterar med jämna mellanrum — en
-hårdkodad rot-CA gör bara lampan tyst den dagen den byts.
+Lösningen ligger i stället ett lager upp: **binären är signerad, så transporten
+spelar ingen roll.** Två kontroller körs, båda innan något committas:
 
-Rätt lösning är **signerad firmware**: generera ett RSA-nyckelpar, låt CI
-signera `firmware.bin` och lägg in den publika nyckeln i binären via
-`Update.installSignature()`. Då spelar transporten ingen roll — enheten
-vägrar installera något som inte är signerat av dig. Det är inte implementerat
-här; för en lampa på ett hemmanät är risken liten, men det är det du ska göra
-om enheten ska stå någon annanstans.
+| Kontroll | Fångar | Källa |
+|---|---|---|
+| `sha256` | trasig eller avbruten nedladdning | `sha256` i `firmware.json` |
+| RSA-2048-signatur | allt annat, inklusive MITM | `sig` i `firmware.json` |
+
+Ordningen är hela poängen. `Update.end()` sätter boot-partitionen, så allt som
+ska kunna säga nej måste säga det före den — därför drivs nedladdningen för hand
+i `downloadAndInstall()` i stället för med `httpUpdate`, som committar och
+startar om på egen hand. Faller någon kontroll anropas `Update.abort()`, den
+gamla partitionen står orörd och lampan fortsätter på nuvarande firmware.
+
+Det **failar stängt**: saknas `sha256` eller `sig` i manifestet, eller går den
+publika nyckeln inte att tolka, installeras ingenting. Det finns ingen väg
+tillbaka till "osignerat men okej".
+
+#### Sätta upp nyckeln
+
+```bash
+./tools/generate-ota-key.sh
+gh secret set OTA_SIGNING_KEY < ota_signing_key.pem
+```
+
+Skriptet lägger den publika nyckeln i `include/ota_pubkey.h` (committas — en
+publik nyckel är publik) och den privata i `ota_signing_key.pem` (`.gitignore`:ad).
+CI signerar med secreten och verifierar sedan signaturen mot just den publika
+nyckel som ligger i binären, så ett nyckelpar som glidit isär fångas i bygget i
+stället för av en flotta lampor som tyst slutar uppdatera sig.
+
+Skriptet går att köra om för att laga en borttappad header utan att byta nyckel.
+Byter du nyckel på riktigt måste varje lampa flashas över USB en gång — den
+gamla firmwaren litar bara på den gamla nyckeln.
+
+#### Vad detta inte täcker
+
+Webbgränssnittet saknar autentisering, så vem som helst på nätet kan peka om
+uppdateringskällan eller radera WiFi-uppgifterna — se B3 i
+`PRODUKTIONSKLAR.md`. Att de *inte* kan få något installerat är just
+signaturens förtjänst, men B3 bör ändå stängas.
+
+Notera också vad borttagandet av push kostar: går en signerad uppdatering igenom
+och visar sig trasig finns ingen väg tillbaka över nätet. Enda återvägen är USB
+med BOOT-knappen intryckt. Det är argumentet för B5 (rollback).
 
 ## 6. Datakällan
 
@@ -652,7 +696,7 @@ src/shl.cpp             SHL-API: HTTP(S)-poll + SSE-klient, val av datakälla
 src/portal.cpp          captive portal + statussida
 src/settings.cpp        NVS-lagring
 src/netcheck.cpp        nätverksdiagnostik (DNS/TCP) för /debug
-src/updater.cpp         ArduinoOTA + self-update från GitHub Releases
+src/updater.cpp         signerad self-update från GitHub Releases
 mock/server.py          mockserver för labbtest, styrsida på /
 .github/workflows/
   release.yml           tagg v* -> bygg -> publicera release
@@ -666,3 +710,7 @@ Cloudflare som roterar certifikatkedjan, och en hårdkodad rot-CA skulle göra
 lampan tyst den dagen kedjan byts. Enheten läser bara publik matchdata och
 skickar aldrig något känsligt. Vill du ändå ha validering: byt `setInsecure()`
 mot `setCACert()` i `src/shl.cpp` och `src/updater.cpp`.
+
+För firmware spelar det mindre roll numera — binären är signerad, se
+[Signerad firmware](#signerad-firmware). En angripare som kan byta ut svaret kan
+ändå inte producera något enheten installerar.

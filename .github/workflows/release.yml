@@ -59,7 +59,9 @@ jobs:
           PLATFORMIO_BUILD_FLAGS: -DFW_VERSION='"${{ steps.ver.outputs.version }}"'
         run: pio run -e esp32dev
 
-      - name: Paketera och kontrollera
+      - name: Paketera, signera och kontrollera
+        env:
+          OTA_SIGNING_KEY: ${{ secrets.OTA_SIGNING_KEY }}
         run: |
           set -euo pipefail
           mkdir -p dist
@@ -69,6 +71,33 @@ jobs:
           TAG='${{ steps.ver.outputs.tag }}'
           SIZE=$(stat -c%s dist/firmware.bin)
           SHA=$(sha256sum dist/firmware.bin | cut -d' ' -f1)
+
+          # Enheterna vägrar osignerad firmware. Utan nyckel finns det inget att
+          # publicera — bättre att stanna här än att lägga ut en release som
+          # varenda lampa tackar nej till.
+          if [ -z "${OTA_SIGNING_KEY:-}" ]; then
+            echo "::error::Secreten OTA_SIGNING_KEY saknas. Kör tools/generate-ota-key.sh och gh secret set OTA_SIGNING_KEY."
+            exit 1
+          fi
+
+          umask 077
+          printf '%s\n' "$OTA_SIGNING_KEY" > signing_key.pem
+          openssl dgst -sha256 -sign signing_key.pem -out dist/firmware.sig dist/firmware.bin
+          rm -f signing_key.pem
+          SIG=$(base64 -w0 dist/firmware.sig)
+
+          # Kontrollera mot den publika nyckel som faktiskt ligger i binären.
+          # Roterar någon den privata nyckeln utan att köra om
+          # tools/generate-ota-key.sh fångas det här, i stället för av en flotta
+          # lampor som tyst slutar uppdatera sig.
+          sed -n '/-----BEGIN PUBLIC KEY-----/,/-----END PUBLIC KEY-----/p' \
+              include/ota_pubkey.h > dist/pubkey.pem
+          if ! openssl dgst -sha256 -verify dist/pubkey.pem \
+                 -signature dist/firmware.sig dist/firmware.bin; then
+            echo "::error::Signaturen går inte att verifiera med include/ota_pubkey.h — nyckelparet matchar inte"
+            exit 1
+          fi
+          rm -f dist/pubkey.pem
 
           # min_spiffs.csv ger 1 966 080 byte per app-partition. Går binären
           # över taket misslyckas OTA på enheten, inte här — fånga det nu.
@@ -84,14 +113,18 @@ jobs:
             exit 1
           fi
 
-          # Manifest för enheter som pekas mot en egen webbserver istället för
-          # GitHub Releases-API:t.
+          # Manifestet bär det binären inte kan bära om sig själv, och används
+          # både av GitHub-vägen och av enheter som pekas mot en egen
+          # webbserver. Enheten
+          # hämtar det som en egen asset ur releasen och vägrar installera om
+          # sha256 eller sig saknas.
           cat > dist/firmware.json <<EOF
           {
             "version": "$V",
             "url": "https://github.com/${{ github.repository }}/releases/download/$TAG/firmware.bin",
             "sha256": "$SHA",
-            "size": $SIZE
+            "size": $SIZE,
+            "sig": "$SIG"
           }
           EOF
 
@@ -101,6 +134,7 @@ jobs:
           echo "|---|---|" >> "$GITHUB_STEP_SUMMARY"
           echo "| Storlek | $SIZE byte ($(( SIZE * 100 / LIMIT )) % av partitionen) |" >> "$GITHUB_STEP_SUMMARY"
           echo "| SHA-256 | \`$SHA\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Signatur | verifierad mot \`include/ota_pubkey.h\` |" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Publicera release
         env:
@@ -110,9 +144,9 @@ jobs:
         run: |
           set -euo pipefail
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" dist/firmware.bin dist/firmware.json --clobber
+            gh release upload "$TAG" dist/firmware.bin dist/firmware.json dist/firmware.sig --clobber
           else
-            gh release create "$TAG" dist/firmware.bin dist/firmware.json \
+            gh release create "$TAG" dist/firmware.bin dist/firmware.json dist/firmware.sig \
               --title "v$V" --generate-notes
           fi
           echo "Publicerad: $(gh release view "$TAG" --json url -q .url)"

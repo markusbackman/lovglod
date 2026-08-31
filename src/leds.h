@@ -58,6 +58,18 @@ void setUpdateProgress(uint8_t percent);
 // animation som fryser.
 void setWorkProgress(uint8_t done, uint8_t total);
 
+// Släcker listen och skriver ut den direkt, förbi bildrutegrinden.
+//
+// Finns för ett enda syfte: strömlasten precis innan WiFi-radion startar. Vid
+// det laget står listen kvar på uppstartsflödets sista bildruta — 60 dioder på
+// gold(255), ~1,4 A vid standardljusstyrkan — och det är exakt den lasten som
+// ligger på när radion drar sin första TX-burst. Enheten brownoutade på den.
+//
+// Att bara byta läge räcker inte: drawConnecting() inleder med
+// fadeToBlackBy(28), vilket sänker en fulltänd list med ~11 % per bildruta. Den
+// måste släckas, inte tonas. Se B0 i PRODUKTIONSKLAR.md.
+void blank();
+
 // Anropas varje varv i loop(). Ritar bara om när det är dags för ny bildruta.
 void render();
 

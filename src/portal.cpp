@@ -25,6 +25,15 @@ WebServer  server(80);
 DNSServer  dns;
 bool       gApMode     = false;
 bool       gRunning    = false;
+
+// Rutterna registreras en enda gång. WebServer kan inte ta bort en handler —
+// server.stop() stänger bara lyssnaren — och _addRequestHandler lägger nya sist
+// i listan medan Parsing.cpp väljer den *första* träffen. Ett andra
+// registerRoutes() lämnade därför de gamla raderna kvar överst: "/" fastnade på
+// setup-formuläret så fort enheten passerat portalen, och varje
+// återanslutning läckte ytterligare åtta handler-objekt. Vilket läge vi är i
+// avgörs numera inne i handlern i stället för vid registreringen.
+bool       gRoutesRegistered = false;
 bool       gSubmitted  = false;
 bool       gRefresh    = false;
 PushState  gPush;
@@ -58,6 +67,15 @@ pre{white-space:pre-wrap;word-break:break-all;font-size:11px;color:var(--dim);
      background:#0b100e;padding:10px;border-radius:8px;max-height:220px;overflow:auto}
 a{color:var(--gold)}
 )CSS";
+
+String formatNow(const char *fmt) {
+    const time_t now = time(nullptr);
+    struct tm lt;
+    localtime_r(&now, &lt);
+    char buf[48];
+    strftime(buf, sizeof(buf), fmt, &lt);
+    return String(buf);
+}
 
 String htmlEscape(const String &s) {
     String o;
@@ -102,6 +120,20 @@ String scanNetworks() {
     gScanCache = opts;
     gScanAt    = millis();
     return opts;
+}
+
+// Rutter som bara hör hemma i ett av lägena. När allt registreras en gång måste
+// de säga ifrån själva — förut föll det ut av att de inte ens var registrerade.
+bool stationOnly() {
+    if (!gApMode) return false;
+    server.send(404, "text/plain", "404");
+    return true;
+}
+
+bool apOnly() {
+    if (gApMode) return false;
+    server.send(404, "text/plain", "404");
+    return true;
 }
 
 void handleSetup() {
@@ -167,13 +199,23 @@ void handleStatus() {
         row("Mål på gång",  String(Leds::pendingGoals()) + " st — tänder om " +
                             String((Leds::pendingGoalInMs() + 999) / 1000) + " s", true);
     }
+    // Osynkad klocka är annars helt tyst utåt, och stänger ändå av matchläget,
+    // målen och segerläget. Den ska gå att se utan att koppla in seriekabeln.
+    row("Klocka",           status.timeSynced
+                                ? formatNow("%Y-%m-%d %H:%M")
+                                : String("INTE synkad — matchläge, mål och "
+                                         "seger är avstängda"),
+                            status.timeSynced);
     row("Vann igår",        status.wonYesterday ? "Ja — gnistor på" : "Nej");
     row("Live-ström",       status.sseLive ? "Ansluten" : "Av");
     row("WiFi-nät",         WiFi.SSID() + "  (" + WiFi.localIP().toString() + ")");
     row("Signal",           String(WiFi.RSSI()) + " dBm");
     row("Ledigt minne",     String(ESP.getFreeHeap() / 1024) + " kB");
     row("Upptid",           String(millis() / 60000) + " min");
-    row("Firmware",         FW_VERSION);
+    row("Firmware",         status.otaOnTrial
+                                ? String(FW_VERSION) + "  — på prov, inte kvitterad"
+                                : String(FW_VERSION),
+                            status.otaOnTrial);
     row("Uppdatering",      Updater::statusText());
 
     p += F("</table></div>"
@@ -216,6 +258,7 @@ void handleStatus() {
 }
 
 void handleSettings() {
+    if (stationOnly()) return;
     if (server.hasArg("bright"))
         settings.brightness = (uint8_t)constrain(server.arg("bright").toInt(), 5, 255);
     if (server.hasArg("otasrc")) {
@@ -249,6 +292,7 @@ void handleSettings() {
 }
 
 void handleTest() {
+    if (stationOnly()) return;
     // Utan fördröjning med flit: en testknapp som står tyst i 15 sekunder ser
     // trasig ut. Fördröjningen gäller riktiga mål från SHL.
     Leds::triggerGoal();
@@ -257,6 +301,7 @@ void handleTest() {
 }
 
 void handleNetTest() {
+    if (stationOnly()) return;
     // Testet blockerar i upp till en halv minut på ett trasigt nät. Samma
     // förloppsstapel som vid uppstart, annars ser listen bara död ut så länge.
     NetCheck::run([](uint8_t done, uint8_t total) {
@@ -268,6 +313,7 @@ void handleNetTest() {
 }
 
 void handleRefresh() {
+    if (stationOnly()) return;
     // Hämtningen blockerar i flera sekunder — låt loopen göra jobbet.
     gRefresh = true;
     server.sendHeader("Location", "/");
@@ -275,6 +321,7 @@ void handleRefresh() {
 }
 
 void handleUpdate() {
+    if (stationOnly()) return;
     // Kontrollen tar upp till 30 s och laddar ner ~1 MB. Kör den i loopen
     // istället för här, annars timeoutar webbläsaren mitt i.
     Updater::requestCheck();
@@ -292,6 +339,7 @@ void handleForget() {
 }
 
 void handleDebug() {
+    if (stationOnly()) return;
     String p = head("Felsökning");
     p += F("<h1>Felsökning</h1><p class=sub>Senaste live-ramen från "
            SHL_LIVE_HOST "</p><div class=card><pre>");
@@ -321,8 +369,8 @@ void handleDebug() {
     server.send(200, "text/html; charset=utf-8", p);
 }
 
-// Captive portal: allt okänt leder till setup-sidan.
 void handlePush() {
+    if (stationOnly()) return;
     // Felsökningsläget är porten. Är det av finns endpointen inte — lampan ska
     // inte gå att styra från nätet bara för att någon känner till adressen.
     if (!settings.debugPush) {
@@ -379,29 +427,45 @@ void handleNotFound() {
     server.send(404, "text/plain", "404");
 }
 
+// Samma adress, olika sida beroende på läge. Det är den här förgreningen som
+// ersätter de två uppsättningarna rutter.
+void handleRoot() {
+    if (gApMode) handleSetup();
+    else         handleStatus();
+}
+
+// Operativsystemens kontroll-URL:er för "finns internet?". Svarar vi inte som
+// förväntat här öppnas aldrig inloggningsrutan. Utanför portalläget betyder de
+// ingenting.
+void handleCaptiveProbe() {
+    if (apOnly()) return;
+    handleSetup();
+}
+
 void registerRoutes() {
-    if (gApMode) {
-        server.on("/", HTTP_GET, handleSetup);
-        // Operativsystemens kontroll-URL:er för "finns internet?".
-        // Svarar vi inte som förväntat här öppnas aldrig inloggningsrutan.
-        server.on("/hotspot-detect.html",     HTTP_GET, handleSetup);  // iOS/macOS
-        server.on("/library/test/success.html", HTTP_GET, handleSetup);
-        server.on("/generate_204",            HTTP_GET, handleSetup);  // Android
-        server.on("/gen_204",                 HTTP_GET, handleSetup);
-        server.on("/ncsi.txt",                HTTP_GET, handleSetup);  // Windows
-        server.on("/connecttest.txt",         HTTP_GET, handleSetup);
-        server.on("/redirect",                HTTP_GET, handleSetup);
-        server.on("/canonical.html",          HTTP_GET, handleSetup);
-    } else {
-        server.on("/", HTTP_GET, handleStatus);
-        server.on("/settings", HTTP_POST, handleSettings);
-        server.on("/test",     HTTP_POST, handleTest);
-        server.on("/debug",    HTTP_GET,  handleDebug);
-        server.on("/update",   HTTP_POST, handleUpdate);
-        server.on("/refresh",  HTTP_POST, handleRefresh);
-        server.on("/nettest",  HTTP_POST, handleNetTest);
-        server.on("/push",     HTTP_POST, handlePush);
-    }
+    if (gRoutesRegistered) return;
+    gRoutesRegistered = true;
+
+    server.on("/", HTTP_GET, handleRoot);
+
+    for (const char *probe : {"/hotspot-detect.html",       // iOS/macOS
+                              "/library/test/success.html",
+                              "/generate_204",              // Android
+                              "/gen_204",
+                              "/ncsi.txt",                  // Windows
+                              "/connecttest.txt",
+                              "/redirect",
+                              "/canonical.html"})
+        server.on(probe, HTTP_GET, handleCaptiveProbe);
+
+    server.on("/settings", HTTP_POST, handleSettings);
+    server.on("/test",     HTTP_POST, handleTest);
+    server.on("/debug",    HTTP_GET,  handleDebug);
+    server.on("/update",   HTTP_POST, handleUpdate);
+    server.on("/refresh",  HTTP_POST, handleRefresh);
+    server.on("/nettest",  HTTP_POST, handleNetTest);
+    server.on("/push",     HTTP_POST, handlePush);
+
     server.on("/save",   HTTP_POST, handleSave);
     server.on("/forget", HTTP_POST, handleForget);
     server.onNotFound(handleNotFound);

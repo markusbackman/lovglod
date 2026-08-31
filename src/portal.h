@@ -9,6 +9,8 @@ struct StatusInfo {
     String liveScore   = "—";
     bool   wonYesterday = false;
     bool   sseLive      = false;
+    bool   timeSynced   = false;   // utan klocka är matchläge och seger tyst av
+    bool   otaOnTrial   = false;   // nyss installerad, inte kvitterad än
     bool   pushMode     = false;   // matchläget matas in via POST /push
 };
 

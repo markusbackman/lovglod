@@ -5,7 +5,7 @@
 //  Vann igår      några glittrande gnistor ovanpå glöden
 //  Mål            snabb gul eldgivning i 12 sekunder
 //  Inget WiFi     eget nät + captive portal som frågar efter SSID/lösenord
-//  Uppdatering    ArduinoOTA (push) + valfri self-update från URL
+//  Uppdatering    signerad self-update från GitHub Releases, annars USB
 //
 //  Data: SHL:s eget publika API (www.shl.se/api) + live-SSE från
 //        game-broadcaster.s8y.se. Björklöven spelar i SHL från 2026/27.
@@ -13,6 +13,7 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <ESPmDNS.h>
+#include <esp_ota_ops.h>
 
 #include "config.h"
 #include "settings.h"
@@ -21,6 +22,15 @@
 #include "shl.h"
 #include "updater.h"
 #include "netcheck.h"
+
+// Skjuter upp OTA-kvittensen. Arduino-kärnan kvitterar annars redan i
+// initArduino() (cores/esp32/esp32-hal-misc.c), alltså innan setup() ens körts,
+// och då fångar bootloaderns rollback bara en binär som inte startar alls — inte
+// den som startar fint och är oanvändbar. Med den här skjuts beslutet till
+// serviceOtaValidation() nedan.
+//
+// extern "C" krävs: den svaga originalfunktionen är definierad i en C-fil.
+extern "C" bool verifyRollbackLater() { return true; }
 
 // ── Tillstånd ───────────────────────────────────────────────────────────────
 enum class AppState { Boot, Portal, Connecting, Online };
@@ -37,6 +47,11 @@ static uint32_t  gNextOtaCheck      = 0;
 static uint32_t  gPortalSince       = 0;
 static uint32_t  gConnectStarted    = 0;
 static uint32_t  gNextMidnightCheck = 0;
+static uint32_t  gNextTimeRetry     = 0;
+
+// Kör vi en firmware som ännu inte kvitterat sig frisk? Se B5.
+static bool      gOtaOnTrial        = false;
+static bool      gWifiEverUp        = false;
 
 static uint32_t  gPushUntil         = 0;      // push-läget lever tills hit
 static bool      gDataOk            = true;   // false när SHL inte svarar alls
@@ -248,36 +263,77 @@ static void handleSerialCommands() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-static void syncTime() {
-    configTzTime(TZ_STOCKHOLM, NTP_SERVER_1, NTP_SERVER_2);
-
-    // Vänta max 10 s på att klockan blir rimlig — allt annat (matchfönster,
-    // "vann igår") bygger på korrekt tid.
-    const uint32_t deadline = millis() + 10000;
-    while (time(nullptr) < 1700000000 && millis() < deadline) {
-        Leds::render();
-        delay(50);
-    }
-    gTimeSynced = time(nullptr) > 1700000000;
-
-    if (gTimeSynced) {
-        char buf[32];
-        const time_t now = time(nullptr);
-        struct tm lt;
-        localtime_r(&now, &lt);
-        strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M", &lt);
-        Serial.printf("[tid] synkad: %s\n", buf);
-    } else {
-        Serial.println("[tid] NTP misslyckades");
-    }
-}
-
 static String formatLocal(time_t utc, const char *fmt) {
     struct tm lt;
     localtime_r(&utc, &lt);
     char buf[48];
     strftime(buf, sizeof(buf), fmt, &lt);
     return String(buf);
+}
+
+// 1700000000 = november 2023. Allt under betyder att klockan aldrig blivit
+// satt — ESP32:n startar på epoch noll.
+static bool clockIsSane() { return time(nullptr) > 1700000000; }
+
+static void markTimeSynced() {
+    gTimeSynced        = true;
+    status.timeSynced  = true;
+    Serial.printf("[tid] synkad: %s\n",
+                  formatLocal(time(nullptr), "%Y-%m-%d %H:%M").c_str());
+}
+
+static void syncTime() {
+    configTzTime(TZ_STOCKHOLM, NTP_SERVER_1, NTP_SERVER_2);
+
+    // Vänta max 10 s på att klockan blir rimlig — allt annat (matchfönster,
+    // "vann igår") bygger på korrekt tid.
+    const uint32_t deadline = millis() + 10000;
+    while (!clockIsSane() && millis() < deadline) {
+        Leds::render();
+        delay(50);
+    }
+
+    if (clockIsSane()) {
+        markTimeSynced();
+    } else {
+        // Inte ett slutgiltigt nej. serviceTimeSync() fortsätter pröva.
+        Serial.println("[tid] NTP gick inte fram — prövar vidare i bakgrunden");
+        gNextTimeRetry = millis() + TIME_RETRY_MS;
+    }
+}
+
+// Klockan kan komma i efterhand, och gör den det ska lampan ta emot den.
+//
+// Utan det här blir tio sekunders otur permanent: syncTime() kördes bara från
+// goOnline(), så en enhet som råkade starta när namnuppslaget mot pool.ntp.org
+// var trögt stod utan klocka tills WiFi råkade tappa och komma tillbaka. Och
+// det syns inte — lampan hämtar schema och resultat som vanligt, men
+// insideLiveWindow(), victoryActive() och maybeArmVictory() är alla false för
+// alltid. Matchen kommer och går utan att listen reagerar.
+//
+// SNTP-klienten som configTzTime() startade fortsätter fråga på egen hand, så
+// oftast räcker det att titta efter igen. Vi startar ändå om den varje varv:
+// gick namnuppslaget i väggen just när WiFi nyss kommit upp hjälper ingen
+// väntan, bara ett nytt försök.
+static void serviceTimeSync() {
+    if (gTimeSynced || (int32_t)(millis() - gNextTimeRetry) < 0) return;
+    gNextTimeRetry = millis() + TIME_RETRY_MS;
+
+    if (!clockIsSane()) {
+        Serial.println("[tid] klockan står stilla — ber om tiden igen");
+        configTzTime(TZ_STOCKHOLM, NTP_SERVER_1, NTP_SERVER_2);
+        return;
+    }
+
+    markTimeSynced();
+
+    // Det vi hämtade utan klocka är räknat på fel datum: "vann igår" jämförde
+    // mot 1970, och maybeArmVictory() hoppade över allt. Hämta om.
+    //
+    // En liten positiv offset och inte 0 — noll som "hämta nu" slutar fungera
+    // efter 24,9 dygns upptid, se R8 i PRODUKTIONSKLAR.md.
+    gNextScheduleFetch = millis() + 1000;
+    Serial.println("[tid] hämtar om matchdata som räknades utan klocka");
 }
 
 // ── Datahämtning ────────────────────────────────────────────────────────────
@@ -477,6 +533,13 @@ static void endPushMode() {
 static void beginConnect() {
     Serial.printf("[wifi] ansluter till \"%s\"\n", settings.wifiSsid.c_str());
     Portal::stop();
+
+    // Släck innan radion går igång. Uppstartsflödet lämnar hela listen tänd, och
+    // den lasten plus WiFi:s första TX-burst tog enheten under brownout-gränsen.
+    // Det jagande ljuset bygger upp sig från svart igen direkt efteråt.
+    Leds::setMode(LED_CONNECTING);
+    Leds::blank();
+
     WiFi.persistent(false);
     WiFi.mode(WIFI_STA);
     WiFi.setSleep(false);            // WiFi-sleep ger hack i LED-timingen
@@ -485,7 +548,6 @@ static void beginConnect() {
 
     gConnectStarted = millis();
     gState = AppState::Connecting;
-    Leds::setMode(LED_CONNECTING);
     status.state = "Ansluter";
 }
 
@@ -496,15 +558,21 @@ static void enterPortal(bool credentialsFailed) {
     Serial.printf("[wifi] %s — startar portalen\n",
                   credentialsFailed ? "sparat WiFi svarar inte"
                                     : "inget WiFi sparat");
+
+    // Samma skäl som i beginConnect(): softAP() startar radion, och listen står
+    // kvar fulltänd från uppstartsflödet när den gör det.
+    Leds::setMode(credentialsFailed ? LED_PORTAL_RETRY : LED_PORTAL);
+    Leds::blank();
+
     Portal::startAccessPoint();
     gPortalSince = millis();
     gState = AppState::Portal;
-    Leds::setMode(credentialsFailed ? LED_PORTAL_RETRY : LED_PORTAL);
     status.state = credentialsFailed ? "WiFi svarar inte" : "Setup-läge";
 }
 
 static void goOnline() {
     Serial.printf("[wifi] ansluten, IP %s\n", WiFi.localIP().toString().c_str());
+    gWifiEverUp = true;               // halva friskkriteriet, se B5
 
     syncTime();
 
@@ -514,7 +582,6 @@ static void goOnline() {
 
     if (MDNS.begin(DEVICE_HOSTNAME)) MDNS.addService("http", "tcp", 80);
     Portal::startStationServer();
-    Updater::beginPush();
 
     gState = AppState::Online;
     Leds::setMode(LED_STANDBY);
@@ -525,6 +592,72 @@ static void goOnline() {
     gNextOtaCheck      = millis() + 60000;        // men vänta lite med OTA-kollen
 }
 
+// ── OTA-validering ──────────────────────────────────────────────────────────
+// Läser av vad bootloadern gjorde med oss vid start.
+static void checkRollbackState() {
+    const esp_partition_t *running = esp_ota_get_running_partition();
+    esp_ota_img_states_t   st;
+
+    if (esp_ota_get_state_partition(running, &st) == ESP_OK &&
+        st == ESP_OTA_IMG_PENDING_VERIFY) {
+        gOtaOnTrial = true;
+        Serial.printf("[ota] ny firmware på prov — kvitteras när WiFi varit uppe "
+                      "och %lu min gått\n", OTA_VALIDATE_AFTER_MS / 60000UL);
+        return;                       // otaPendingVersion namnger den vi provar
+    }
+
+    if (!settings.otaPendingVersion.length()) return;
+
+    if (settings.otaPendingVersion == FW_VERSION) {
+        // Vi kör den och den är redan kvitterad. Städa bokföringen.
+        settings.clearOtaPending();
+        return;
+    }
+
+    // Vi kör något annat än det som installerades. Innan det tolkas som en
+    // rollback: fanns det verkligen en partition som bootloadern dömde ut?
+    // Utan den kontrollen skulle en vanlig USB-flash mitt i ett pågående prov
+    // se likadan ut, och versionen svartlistas helt i onödan.
+    if (esp_ota_get_last_invalid_partition() == nullptr) {
+        Serial.printf("[ota] %s ersattes utan rollback (USB-flash?) — glömmer den\n",
+                      settings.otaPendingVersion.c_str());
+        settings.clearOtaPending();
+        return;
+    }
+
+    Serial.printf("[ota] %s rullades tillbaka av bootloadern — kör %s igen\n",
+                  settings.otaPendingVersion.c_str(), FW_VERSION);
+    settings.noteOtaRollback(settings.otaPendingVersion);
+}
+
+// Kvitterar, eller startar om så att bootloadern får rulla tillbaka.
+static void serviceOtaValidation() {
+    if (!gOtaOnTrial) return;
+
+    const bool healthy = gWifiEverUp && millis() >= OTA_VALIDATE_AFTER_MS;
+    const bool expired = millis() >= OTA_VALIDATE_DEADLINE_MS;
+
+    // Har någon medvetet glömt WiFi står lampan och väntar på en människa. Det
+    // är inte firmwarens fel, och att rulla tillbaka en frisk version för det
+    // vore fel svar.
+    if (healthy || (expired && !settings.hasWifi())) {
+        if (esp_ota_mark_app_valid_cancel_rollback() != ESP_OK) return;
+        gOtaOnTrial       = false;
+        status.otaOnTrial = false;
+        settings.clearOtaPending();
+        Serial.println(healthy ? "[ota] kvitterad som frisk — rollback avblåst"
+                               : "[ota] inget WiFi konfigurerat — kvitterar ändå");
+        return;
+    }
+
+    if (!expired) return;
+
+    Serial.println("[ota] blev aldrig frisk — startar om så bootloadern kan "
+                   "rulla tillbaka");
+    delay(200);
+    ESP.restart();
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 void setup() {
     Serial.begin(115200);
@@ -533,6 +666,8 @@ void setup() {
     printSerialHelp();
 
     settings.load();
+    checkRollbackState();
+    status.otaOnTrial = gOtaOnTrial;
     Leds::begin();
     Leds::setBrightness(settings.brightness);
     Leds::setMode(LED_BOOT);
@@ -548,7 +683,7 @@ void setup() {
 void loop() {
     Leds::render();
     Portal::loop();
-    Updater::loop();
+    serviceOtaValidation();
     handleSerialCommands();
     demoLoop();
 
@@ -587,6 +722,8 @@ void loop() {
                 beginConnect();
                 break;
             }
+
+            serviceTimeSync();
 
             if (Portal::pushPending()) applyPush(Portal::takePush());
 
@@ -631,7 +768,12 @@ void loop() {
                 const bool manual = Updater::checkRequested();
                 const bool due    = (int32_t)(millis() - gNextOtaCheck) >= 0;
 
-                if (settings.otaSource.length() && (manual || due)) {
+                if (gOtaOnTrial && (manual || due)) {
+                    // esp_ota_set_boot_partition() vägrar ändå så länge
+                    // nuvarande image står i PENDING_VERIFY.
+                    if (manual) Updater::clearRequest();
+                    gNextOtaCheck = millis() + 60000;
+                } else if (settings.otaSource.length() && (manual || due)) {
                     gNextOtaCheck = millis() + OTA_CHECK_MS;
                     Updater::clearRequest();
                     // Aldrig automatiskt mitt i en match — en omstart i tredje

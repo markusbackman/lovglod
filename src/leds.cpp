@@ -366,6 +366,11 @@ void setWorkProgress(uint8_t done, uint8_t total) {
     setMode(LED_WORKING);
 }
 
+void blank() {
+    fill_solid(leds, LED_COUNT, CRGB::Black);
+    FastLED.show();
+}
+
 void renderNow() {
     gLastFrame = millis() - (1000u / FPS);
     render();

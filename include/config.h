@@ -255,9 +255,37 @@
 // Filnamnet på .bin-filen i releasen som ska installeras.
 #define OTA_ASSET_NAME  "firmware.bin"
 
+// Manifestet intill binären. Bär sha256 och signatur — det som binären inte kan
+// bära om sig själv. Saknas det installerar enheten ingenting: en release utan
+// manifest är inte "osignerad men okej", den är en release vi inte kan avgöra
+// något om. Se ota_pubkey.h och tools/generate-ota-key.sh.
+#define OTA_MANIFEST_NAME "firmware.json"
+
 // Ge upp efter så här många misslyckade försök på samma version, så att en
 // trasig release inte får lampan att ladda ner 1 MB var 12:e timme för alltid.
 #define OTA_MAX_FAILURES 3
+
+// ── Rollback: när en ny firmware får kvittera sig som frisk ─────────────────
+// Bootloadern sätter en nyss installerad binär i PENDING_VERIFY. Kvitteras den
+// inte innan nästa omstart rullas den tillbaka och väljs aldrig mer.
+//
+// Arduino-kärnan kvitterar annars redan i initArduino(), innan setup() ens
+// körts — då fångar rollback bara en binär som inte startar alls, inte den som
+// startar fint och är oanvändbar. Vi skjuter upp kvittensen med
+// verifyRollbackLater() och sätter kriteriet själva.
+//
+// Frisk = WiFi har varit uppe OCH enheten har kört så här länge utan omstart.
+// Nätverksberoende kriterier (t.ex. lyckad SHL-hämtning) är medvetet valda
+// bort: då rullar en fungerande firmware tillbaka bara för att routern var
+// nere, och den gamla klarar sig inte bättre.
+#define OTA_VALIDATE_AFTER_MS    (3UL * 60 * 1000)
+
+// Blir den aldrig frisk startar vi om med flit — utan omstart kommer
+// bootloadern aldrig åt att rulla tillbaka. Fönstret är kort med flit: en
+// oväntad reset här inne ser ut som ett misslyckat första försök, och under
+// tiden går det inte att installera någon ny uppdatering
+// (ESP_ERR_OTA_ROLLBACK_INVALID_STATE).
+#define OTA_VALIDATE_DEADLINE_MS (10UL * 60 * 1000)
 
 // Matchfönster: när enheten anses vara "på matchdag/live".
 #define LIVE_WINDOW_PRE_MS  (15UL * 60 * 1000)     // öppna 15 min före nedsläpp
@@ -283,7 +311,12 @@
 // ─────────────────────────────────────────────────────────────
 #define AP_SSID_PREFIX  "Bjorkloven-Setup"
 #define AP_PASSWORD     ""          // tomt = öppet nät (enklast för captive portal)
-#define OTA_PASSWORD    "***"
+
+// Inget OTA_PASSWORD här: ArduinoOTA-push finns inte längre. Den vägen gick
+// förbi signaturkontrollen och skyddades bara av ett lösenord som låg i
+// klartext i källkoden och i varje binär. Uppdateringar går numera antingen som
+// signerad self-update eller över USB — och har någon fysisk access är varje
+// mjukvaruspärr ändå passerad.
 
 // Hur länge vi försöker ansluta till sparat WiFi innan portalen startar.
 #define WIFI_CONNECT_TIMEOUT_MS 25000
@@ -294,3 +327,8 @@
 #define TZ_STOCKHOLM "CET-1CEST,M3.5.0,M10.5.0/3"
 #define NTP_SERVER_1 "pool.ntp.org"
 #define NTP_SERVER_2 "time.google.com"
+
+// Hur ofta lampan prövar klockan igen när NTP inte gick fram vid uppkoppling.
+// Utan omprövning blir ett tillfälligt fel permanent, och det syns inte: utan
+// klocka är matchfönstret, målen och segerläget alla tyst avstängda.
+#define TIME_RETRY_MS (5UL * 60 * 1000)

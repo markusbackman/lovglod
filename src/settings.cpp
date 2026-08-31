@@ -13,6 +13,7 @@ void Settings::load() {
     otaSource       = prefs.getString("otasrc", OTA_DEFAULT_SOURCE);
     otaToken        = prefs.getString("otatok", "");
     otaBadVersion   = prefs.getString("otabadv", "");
+    otaPendingVersion = prefs.getString("otapend", "");
     otaBadCount     = prefs.getUChar("otabadc", 0);
     brightness      = prefs.getUChar("bright", LED_DEFAULT_BRIGHTNESS);
     goalOnlyOurTeam = prefs.getBool("ouronly", GOAL_ONLY_OUR_TEAM);
@@ -32,6 +33,7 @@ void Settings::save() {
     prefs.putString("otasrc", otaSource);
     prefs.putString("otatok", otaToken);
     prefs.putString("otabadv", otaBadVersion);
+    prefs.putString("otapend", otaPendingVersion);
     prefs.putUChar("otabadc", otaBadCount);
     prefs.putUChar("bright", brightness);
     prefs.putBool("ouronly", goalOnlyOurTeam);
@@ -70,6 +72,28 @@ void Settings::noteOtaFailure(const String &version) {
         otaBadCount   = 0;
     }
     if (otaBadCount < 255) otaBadCount++;
+    save();
+}
+
+// En version som installerades, startade och sedan rullades tillbaka har haft
+// sin chans. Till skillnad från en misslyckad nedladdning — som gärna får
+// försökas om — blockeras den direkt: den är bevisligen oanvändbar på just den
+// här enheten, och varje nytt försök kostar 1 MB och två omstarter.
+void Settings::noteOtaRollback(const String &version) {
+    otaBadVersion     = version;
+    otaBadCount       = OTA_MAX_FAILURES;
+    otaPendingVersion = "";
+    save();
+}
+
+void Settings::noteOtaPending(const String &version) {
+    otaPendingVersion = version;
+    save();
+}
+
+void Settings::clearOtaPending() {
+    if (!otaPendingVersion.length()) return;
+    otaPendingVersion = "";
     save();
 }
 

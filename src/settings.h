@@ -17,6 +17,13 @@ struct Settings {
     String  otaBadVersion;
     uint8_t otaBadCount;
 
+    // Versionen som installerades och som enheten nu startar om i. Ligger kvar
+    // tills den kvitterat sig frisk. Kör vi något annat vid nästa start har
+    // bootloadern rullat tillbaka den, och då är det den här strängen som säger
+    // oss vilken version som ska svartlistas — annars hämtas samma trasiga
+    // release om igen var tolfte timme.
+    String  otaPendingVersion;
+
     // Segerläget. Fönstret räknas från när lampan fick veta om vinsten, så det
     // går inte att räkna fram på nytt efter en omstart — sluttiden måste ligga
     // kvar i NVS. victoryGame är matchens nedsläppstid och används som identitet
@@ -31,6 +38,9 @@ struct Settings {
     void noteVictory(uint32_t gameStartUtc, uint32_t untilUtc);
     void clearVictory();
     void noteOtaFailure(const String &version);
+    void noteOtaRollback(const String &version);
+    void noteOtaPending(const String &version);
+    void clearOtaPending();
     void clearOtaFailures();
     bool otaBlocked(const String &version) const;
     bool hasWifi() const { return wifiSsid.length() > 0; }
