@@ -44,10 +44,45 @@ sänkt till 40 och huvudet till 120, vilket ger ~0,22 A vid full stapel.
 `v1.0.4` på under 24 sekunder utan brownout. Kvitterad som frisk vid tre
 minuter. Två hela OTA-cykler i följd, båda rena.
 
-Hårdvarumarginalen är fortfarande tunn — det var LED-lasten som ensam avgjorde
-utfallet, vilket betyder att det inte finns mycket att gå på. Nästa tunga last
-som inte provats är målfyrverkeriet: hela listen på full styrka i
-stroboskopfasen, tolv sekunder, medan WiFi är aktivt.
+#### Målfyrverkeriet fäller enheten vid standardljusstyrka (2026-09-01)
+
+Provat, och det är värre än OTA-fallet. `drawGoal()` fyller hela listen med
+nästan vitt (255,244,210) i stroboskopfasen — vid ljusstyrka 160 är det **~2,1 A**,
+mot uppstartsflödets 1,4 A och OTA-stapelns 0,87 A. Dessutom växlar det mot
+nästan släckt i 14 Hz, alltså en stor strömsvängning och inte en jämn last.
+
+| Ljusstyrka | WiFi-last | Utfall |
+|---|---|---|
+| 160 | fyra parallella HTTP-strömmar | startade om |
+| 160 | inaktiv | startade om |
+| 25 (~0,33 A) | fyra parallella HTTP-strömmar | överlevde |
+
+**WiFi är inte den avgörande faktorn** — stroboskopet ensamt räcker. Lampans
+huvudfunktion kraschar alltså enheten vid standardinställningen.
+
+Tillsammans med OTA-mätningarna ligger brytpunkten för LED-ström någonstans
+mellan **0,33 A (fungerar) och 0,87 A (fäller)**. Det är långt under de 3000 mA
+som `LED_MAX_MILLIAMPS` utlovar, och kommentaren där antar "ett 5 V/4 A-nät".
+En total budget kring en halv ampere ser mer ut som USB-matning än som ett eget
+nät — värt att mäta upp.
+
+**Två vägar:**
+
+1. **`LED_MAX_MILLIAMPS` till något matningen faktiskt klarar.** Det är precis
+   vad FastLEDs strömtak är till för: den dimmar automatiskt ner för att hålla
+   taket, så glöden — som ligger långt under — blir orörd medan bara topparna
+   kapas. En konstant, och den täcker hela klassen av fall: fyrverkeri,
+   uppstartsflöde, OTA-stapel, segerläge.
+2. **Matning som klarar designens 3 A.** Då behöver ingenting i ljusspråket
+   kompromissas.
+
+Väg 1 gör lampan säker på vilken matning som helst men kostar topparnas
+ljusstyrka. De två utesluter inte varandra.
+
+Obs att en enhet som startar om under ett fyrverkeri inte bara tappar
+animationen: sker det under valideringsfönstret efter en OTA (B5) tolkar
+bootloadern det som ett misslyckat första försök och rullar tillbaka en frisk
+firmware.
 
 Uppmätt på skarp enhet 2026-08-30 (`/dev/cu.usbserial-0001`, v1.0.0-dev).
 Fyra starter av fyra, alltid på samma millisekund:
@@ -619,7 +654,7 @@ USB-flash nollställer alltså otadata till app0 och slår alltid igenom, även
 efter en OTA som flyttat enheten till app1. Ingen `erase` behövs, och den
 manuella återvägen är intakt. Inget att testa.
 
-### 6. B0 — det värsta strömfallet är inte provat
+### 6. ~~B0 — det värsta strömfallet~~ — provat 2026-09-01, se B0 ovan
 
 Firmwarefixen täcker uppstarten. Målfyrverkeriet är en tyngre last än så: hela
 listen på full styrka i stroboskopfasen, samtidigt som WiFi sänder. Det har
