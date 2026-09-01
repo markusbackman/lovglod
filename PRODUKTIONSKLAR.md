@@ -487,6 +487,30 @@ Inte en att göra-lista — noterat så att det inte rivs upp av misstag.
 Enheten är urkopplad. Det här är vad som ska provas när den är tillbaka,
 i ordning.
 
+### 0. Släppkedjan — VERIFIERAD 2026-08-31
+
+Committat, pushat, `OTA_SIGNING_KEY` satt, `v1.0.2` taggad och byggd av CI.
+Release-workflowen signerade och verifierade mot `include/ota_pubkey.h` (den
+kontrollen hade fällt bygget om nyckelparet glidit isär). Den publicerade
+releasen kontrollerad lokalt:
+
+| Kontroll | Resultat |
+|---|---|
+| Assets | `firmware.bin`, `firmware.json`, `firmware.sig` |
+| `sha256` i manifestet mot binären | matchar |
+| Signatur, 256 byte, mot nyckeln i enhetens firmware | `Verified OK` |
+
+Kvar är enhetens egen halva: att hämta, kontrollera och installera.
+
+**Obs att repot är privat.** Enheten går därför via `resolvePrivateAssetUrl()`
+för *både* binären och manifestet — den mest komplicerade grenen i `updater.cpp`
+och helt oprövad. Det är den vägen provet nedan faktiskt testar.
+
+**Gratis negativt prov:** de gamla releaserna `v1.0.0` och `v1.0.1` från
+2026-08-24 byggdes med den förra workflowen och har `sha256` men **ingen `sig`**.
+Pekas enheten mot en av dem ska den vägra med "Releasen saknar sha256 eller
+signatur — installerar inte", utan att ladda ner en enda byte.
+
 ### 1. OTA end-to-end — har aldrig körts skarpt
 
 Viktigast av allt. Self-update har aldrig gått igenom en enda gång; statussidan

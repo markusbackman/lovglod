@@ -258,13 +258,17 @@ void drawWorking() {
 // Till skillnad från drawWorking() får den här röra sig: en OTA-nedladdning är
 // en ström, förloppet uppdateras kontinuerligt och processorn är ledig. Ett
 // pulserande huvud betyder "data flödar"; ett stillastående betyder "väntar".
+//
+// Medvetet dämpad. Det här är den enda animationen som ritas medan radion tar
+// emot kontinuerligt och flashen skrivs, och den växer dessutom mot full list
+// just som nedladdningen är som längst gången. Se UPDATE_BODY_VAL i config.h.
 void drawUpdating() {
     // Samma golv som uppstartsstapeln — se BAR_MIN_LIT i config.h.
     const uint16_t lit = BAR_MIN_LIT +
                          (uint16_t)((uint32_t)gUpdatePercent * (LED_COUNT - BAR_MIN_LIT) / 100);
     fill_solid(leds, LED_COUNT, CRGB::Black);
     for (uint16_t i = 0; i < lit && i < LED_COUNT; i++) leds[i] = gold(UPDATE_BODY_VAL);
-    if (lit < LED_COUNT) leds[lit] = gold(beatsin8(120, 4, 255));
+    if (lit < LED_COUNT) leds[lit] = gold(beatsin8(120, 4, UPDATE_HEAD_VAL));
 }
 
 void drawError() {

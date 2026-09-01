@@ -61,11 +61,23 @@
 // Kroppens ljusstyrka. WORK_BODY_VAL låg tidigare på GLOW_MIN_VAL (20), alltså
 // den svagaste nivå som fortfarande är gul — mot ett huvud på 255 gav det 12:1
 // och lästes inte som en stapel med ljust huvud, utan som en ensam ljus punkt
-// med en suddig skugga bakom sig. OTA-stapeln ligger ljusare än
-// uppstartsstapeln med flit: den ena är en väntan, den andra är enhetens mest
-// ingripande ögonblick.
+// med en suddig skugga bakom sig. Kvoten mellan kropp och huvud är det som gör
+// formen läsbar, inte de absoluta nivåerna.
+//
+// OTA-stapeln låg tidigare ljusast av de två, med motiveringen att det är
+// enhetens mest ingripande ögonblick. Den avsikten är riktig men fick ge sig
+// för strömmen: en OTA-nedladdning är ihållande WiFi-mottagning och
+// flashskrivning i tiotals sekunder, och ovanpå det växte stapeln mot ~0,9 A
+// över listen. Enheten brownoutade mitt i nedladdningen, två försök av två, och
+// gick i loop eftersom en död nedladdning inte hinner bokföra något.
+//
+// Ljus är billigare att offra än en uppdatering som aldrig går fram — samma
+// avvägning som Leds::blank() före radiostart. Kroppen ligger nu på 40, vilket
+// vid full stapel är ~0,22 A i stället för ~0,87 A. Kvoten mot huvudet hålls
+// runt 3:1, alltså samma som uppstartsstapelns 75:255, så formen läses likadant.
 #define WORK_BODY_VAL   75
-#define UPDATE_BODY_VAL 157
+#define UPDATE_BODY_VAL 40
+#define UPDATE_HEAD_VAL 120
 
 // Golv i antal dioder, gemensamt för båda staplarna. Utan det står stapeln på
 // noll under just den längsta väntan i respektive förlopp — första
