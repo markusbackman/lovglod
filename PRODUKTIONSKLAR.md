@@ -524,12 +524,20 @@ aldrig och kan ruttna tyst. Ingen `pio check` heller.
 
 ### D17. Ingen felsökningsdata efter en krasch
 
-- [ ] Åtgärdad
+- [x] Delvis åtgärdad 2026-09-01 — omstartsorsak visas på statussidan
 
-Ingenting sparar `esp_reset_reason()` eller en starträknare. En lampa som startar
-om varje natt i någons vardagsrum ger dig noll att gå på.
+Ingenting sparade `esp_reset_reason()`. Det slog till på riktigt under
+strömfelsökningen: utan seriekabel gick det inte att skilja en brownout från en
+krasch, vilket är precis den skillnad man behöver när matningen misstänks.
 
-**Fix:** spara reset-orsak och startantal i NVS, visa på statussidan.
+Statussidan visar nu **Senaste omstart**, markerad när den är onormal. En
+brownout på ESP32 syns som `SW_CPU_RESET` i ROM-loggen — avbrottet skriver ut
+sin varning och gör en mjuk omstart — men ESP-IDF lämnar en hint efter sig, så
+`esp_reset_reason()` svarar ändå `ESP_RST_BROWNOUT`. Verifierat i
+`libesp_system.a` att brownout-hanteraren anropar `esp_reset_reason_set_hint`.
+
+**Kvar:** ingen starträknare i NVS, så en lampa som startar om var tionde minut
+ser likadan ut som en som gjort det en gång. Orsaken syns, frekvensen inte.
 
 ---
 

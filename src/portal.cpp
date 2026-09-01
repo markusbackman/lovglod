@@ -212,6 +212,7 @@ void handleStatus() {
     row("Signal",           String(WiFi.RSSI()) + " dBm");
     row("Ledigt minne",     String(ESP.getFreeHeap() / 1024) + " kB");
     row("Upptid",           String(millis() / 60000) + " min");
+    row("Senaste omstart",  status.resetReason, status.resetAbnormal);
     row("Firmware",         status.otaOnTrial
                                 ? String(FW_VERSION) + "  — på prov, inte kvitterad"
                                 : String(FW_VERSION),

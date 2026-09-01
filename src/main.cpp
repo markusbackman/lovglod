@@ -14,6 +14,7 @@
 #include <WiFi.h>
 #include <ESPmDNS.h>
 #include <esp_ota_ops.h>
+#include <esp_system.h>
 
 #include "config.h"
 #include "settings.h"
@@ -592,6 +593,36 @@ static void goOnline() {
     gNextOtaCheck      = millis() + 60000;        // men vänta lite med OTA-kollen
 }
 
+// ── Omstartsorsak ───────────────────────────────────────────────────────────
+// En lampa som startar om i någons vardagsrum ger annars ingenting att gå på.
+// Utan seriekabel gick det inte att skilja en brownout från en krasch, och det
+// är precis den skillnaden man behöver när matningen misstänks.
+//
+// Obs att en brownout på ESP32 syns som SW_CPU_RESET i ROM-loggen — avbrottet
+// skriver ut sin varning och gör en mjuk omstart. ESP-IDF lämnar dock en hint
+// efter sig, så esp_reset_reason() svarar ändå ESP_RST_BROWNOUT.
+static const char *resetReasonText() {
+    switch (esp_reset_reason()) {
+        case ESP_RST_POWERON:   return "strömpåslag";
+        case ESP_RST_SW:        return "omstart från koden";
+        case ESP_RST_BROWNOUT:  return "BROWNOUT — matningen sviktade";
+        case ESP_RST_PANIC:     return "KRASCH — undantag i koden";
+        case ESP_RST_INT_WDT:   return "WATCHDOG — avbrott blockerat";
+        case ESP_RST_TASK_WDT:  return "WATCHDOG — task svarade inte";
+        case ESP_RST_WDT:       return "WATCHDOG";
+        case ESP_RST_EXT:       return "extern reset";
+        case ESP_RST_DEEPSLEEP: return "uppvaknad ur djupsömn";
+        default:                return "okänd";
+    }
+}
+
+// Allt utom ett rent strömpåslag eller en omstart vi bad om själva är värt att
+// lyfta fram på statussidan.
+static bool resetWasAbnormal() {
+    const esp_reset_reason_t r = esp_reset_reason();
+    return r != ESP_RST_POWERON && r != ESP_RST_SW;
+}
+
 // ── OTA-validering ──────────────────────────────────────────────────────────
 // Läser av vad bootloadern gjorde med oss vid start.
 static void checkRollbackState() {
@@ -664,6 +695,10 @@ void setup() {
     delay(200);
     Serial.println("\n\n== Björklöven-lampan v" FW_VERSION " ==");
     printSerialHelp();
+
+    status.resetReason   = resetReasonText();
+    status.resetAbnormal = resetWasAbnormal();
+    Serial.printf("[boot] föregående omstart: %s\n", status.resetReason.c_str());
 
     settings.load();
     checkRollbackState();

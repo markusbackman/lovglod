@@ -11,6 +11,8 @@ struct StatusInfo {
     bool   sseLive      = false;
     bool   timeSynced   = false;   // utan klocka är matchläge och seger tyst av
     bool   otaOnTrial   = false;   // nyss installerad, inte kvitterad än
+    String resetReason  = "okänd";  // varför enheten startade om sist
+    bool   resetAbnormal = false;   // ...och om det var något att bry sig om
     bool   pushMode     = false;   // matchläget matas in via POST /push
 };
 
