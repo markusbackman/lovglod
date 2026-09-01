@@ -39,6 +39,16 @@ Uppmätt, samma enhet, samma release, enda skillnaden global ljusstyrka:
 Därmed är LED-lasten bevisad som orsak, inte en hypotes. `UPDATE_BODY_VAL`
 sänkt till 40 och huvudet till 120, vilket ger ~0,22 A vid full stapel.
 
+**Fixen provad under exakt de förhållanden som fällde den förut:** enheten körde
+`v1.0.3` med den dämpade stapeln, global ljusstyrka tillbaka på 160, och hämtade
+`v1.0.4` på under 24 sekunder utan brownout. Kvitterad som frisk vid tre
+minuter. Två hela OTA-cykler i följd, båda rena.
+
+Hårdvarumarginalen är fortfarande tunn — det var LED-lasten som ensam avgjorde
+utfallet, vilket betyder att det inte finns mycket att gå på. Nästa tunga last
+som inte provats är målfyrverkeriet: hela listen på full styrka i
+stroboskopfasen, tolv sekunder, medan WiFi är aktivt.
+
 Uppmätt på skarp enhet 2026-08-30 (`/dev/cu.usbserial-0001`, v1.0.0-dev).
 Fyra starter av fyra, alltid på samma millisekund:
 
