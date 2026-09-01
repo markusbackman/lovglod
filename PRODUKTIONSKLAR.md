@@ -17,10 +17,27 @@ B3 och B4 som stänger den realistiska vägen in.
 
 ### B0. Enheten bootloopar på brownout innan den ens når WiFi
 
-- [x] **Firmware** — listen släcks före radiostart. Verifierat 2026-08-30:
-      7 starter av 7 utan brownout, mot 4 av 4 med brownout före fixen.
-- [ ] **Hårdvara** — 5 V-nät som orkar, plus elektrolyt. Kvarstår: enheten är
-      fortfarande marginell, firmwaren har bara flyttat den bort från kanten.
+- [x] **Firmware, uppstart** — listen släcks före radiostart. Verifierat
+      2026-08-30: 7 starter av 7 utan brownout, mot 4 av 4 med brownout före.
+- [x] **Firmware, OTA** — förloppsstapeln dämpad, se nedan.
+- [ ] **Hårdvara** — kvarstår. Marginalen är fortfarande tunn nog att LED-lasten
+      ensam avgör om en OTA går igenom.
+
+#### Nedladdningen var ett andra, hårdare strömfall (2026-09-01)
+
+Uppstarten var en kort topp. Nedladdningen är ihållande WiFi-mottagning och
+flashskrivning i tiotals sekunder, med en förloppsstapel som växer mot full list
+just som nedladdningen hunnit längst — `UPDATE_BODY_VAL 157` gav ~0,87 A.
+
+Uppmätt, samma enhet, samma release, enda skillnaden global ljusstyrka:
+
+| Ljusstyrka | Utfall |
+|---|---|
+| 160 | brownout mitt i nedladdningen, 2 försök av 2, omstartsloop var ~64 s |
+| 25 | nedladdningen gick igenom, installerad och omstartad |
+
+Därmed är LED-lasten bevisad som orsak, inte en hypotes. `UPDATE_BODY_VAL`
+sänkt till 40 och huvudet till 120, vilket ger ~0,22 A vid full stapel.
 
 Uppmätt på skarp enhet 2026-08-30 (`/dev/cu.usbserial-0001`, v1.0.0-dev).
 Fyra starter av fyra, alltid på samma millisekund:
@@ -92,7 +109,10 @@ i `stop()`.
 ### B2. OTA har ingen integritetskontroll alls
 
 - [x] Kod klar 2026-08-30 — sha256 + RSA-2048-signatur, båda före commit
-- [ ] **Otestad skarpt.** Se "Väntar på hårdvara" sist i filen
+- [x] **Verifierad skarpt 2026-08-31**: enheten hämtade, kontrollerade och
+      installerade `v1.0.2` från det privata repot, via signerade asset-URL:er
+      för både manifest och binär. Att den kör versionen *är* beviset — koden
+      installerar inget som inte passerat både sha256 och signatur.
 
 Var: `setInsecure()`, ingen signaturkontroll, och den sha256 som CI redan
 räknade fram lästes aldrig av enheten.
@@ -180,7 +200,9 @@ BOOT-knappen. Det gör B5 (rollback) mer angeläget, inte mindre.
 ### B5. Rollback finns, men släpper igenom det fall vi bryr oss om
 
 - [x] Kod klar 2026-08-31 — kvittensen uppskjuten, friskkriterium WiFi + upptid
-- [ ] **Otestad skarpt.** Se "Väntar på hårdvara" sist i filen
+- [x] **Verifierad skarpt 2026-09-01**: efter OTA till `v1.0.3` visade
+      statussidan `1.0.3 — på prov, inte kvitterad` i tre minuter, och flaggan
+      försvann vid upptid 3 min — exakt `OTA_VALIDATE_AFTER_MS`.
 
 > **Rättelse 2026-08-31.** Posten påstod tidigare att rollback inte var påslaget
 > i bootloadern. Det var fel — det är påslaget. Verifierat i den sdkconfig.h som
