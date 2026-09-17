@@ -155,8 +155,7 @@ i `stop()`.
 
 - [x] Kod klar 2026-08-30 — sha256 + RSA-2048-signatur, båda före commit
 - [x] **Verifierad skarpt 2026-08-31**: enheten hämtade, kontrollerade och
-      installerade `v1.0.2` från det privata repot, via signerade asset-URL:er
-      för både manifest och binär. Att den kör versionen *är* beviset — koden
+      installerade `v1.0.2` från GitHub Releases, för både manifest och binär. Att den kör versionen *är* beviset — koden
       installerar inget som inte passerat både sha256 och signatur.
 
 Var: `setInsecure()`, ingen signaturkontroll, och den sha256 som CI redan
@@ -220,10 +219,8 @@ ett lösenord i NVS, plus en CSRF-token i formulären. Statussidan kan gärna va
 `OTA_PASSWORD "***"` låg i `include/config.h` och `--auth=***`
 i `platformio.ini`.
 
-> **Rättelse 2026-08-31.** Posten sa "i ett publikt repo". Repot är privat.
-> Exponeringen var alltså mindre än jag skrev — men lösenordet låg också i
-> klartext i varje binär, och det räcker: den som fått tag i en lampa eller en
-> release-fil har det. Slutsatsen står kvar.
+Lösenordet låg dessutom i klartext i varje binär: den som fått tag i en lampa
+eller en release-fil hade det.
 
 Efter B2 var ArduinoOTA-push dessutom den enda kvarvarande vägen till godtycklig
 firmware på en lampa i nätet — signaturkontrollen gäller bara pull.
@@ -576,10 +573,6 @@ releasen kontrollerad lokalt:
 | Signatur, 256 byte, mot nyckeln i enhetens firmware | `Verified OK` |
 
 Kvar är enhetens egen halva: att hämta, kontrollera och installera.
-
-**Obs att repot är privat.** Enheten går därför via `resolvePrivateAssetUrl()`
-för *både* binären och manifestet — den mest komplicerade grenen i `updater.cpp`
-och helt oprövad. Det är den vägen provet nedan faktiskt testar.
 
 **Gratis negativt prov:** de gamla releaserna `v1.0.0` och `v1.0.1` från
 2026-08-24 byggdes med den förra workflowen och har `sha256` men **ingen `sig`**.

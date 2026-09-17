@@ -124,6 +124,7 @@ String htmlEscape(const String &s) {
             case '<': o += F("&lt;");   break;
             case '>': o += F("&gt;");   break;
             case '"': o += F("&quot;"); break;
+            case '\'': o += F("&#39;"); break;
             default:  o += c;
         }
     }
@@ -368,10 +369,10 @@ void handleStatus() {
     p += F("</select><label>Uppdateringskälla (tom = av)</label>"
            "<input name=otasrc placeholder='markusbackman/bjorkloven-led' value='");
     p += htmlEscape(settings.otaSource);
-    p += F("'><label>GitHub-token (krävs för privat repo)</label>"
+    p += F("'><label>GitHub-token (valfritt, bara för privata repon)</label>"
            "<input name=otatok type=password autocomplete=off placeholder='");
     p += settings.otaToken.length() ? F("•••••• sparad — lämna tomt för att behålla")
-                                    : F("github_pat_… (tomt för publikt repo)");
+                                    : F("github_pat_… (lämna tomt)");
     p += F("'><label>Uppdateringskanal</label><select name=otabeta>");
     p += settings.otaBeta
              ? F("<option value=0>Stabil</option>"
@@ -509,7 +510,7 @@ void handleDebug() {
     p += "<tr><td>OTA-status</td><td>" + htmlEscape(Updater::statusText()) + "</td></tr>";
     p += String("<tr><td>OTA-token</td><td>") +
          (settings.otaToken.length() ? "sparad (" + String(settings.otaToken.length()) +
-                                       " tecken)" : "ingen — publikt repo") + "</td></tr>";
+                                       " tecken)" : "ingen") + "</td></tr>";
     if (settings.otaBadCount)
         p += "<tr><td>Misslyckad version</td><td>" + htmlEscape(settings.otaBadVersion) +
              " (" + String(settings.otaBadCount) + " försök)</td></tr>";

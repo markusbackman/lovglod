@@ -4,7 +4,7 @@ ESP32 + WS2812B- eller APA102-list som lever med Björklöven:
 
 | Läge | Ljus |
 |---|---|
-| **Uppstart** | Ett gult svep som drar en gång längs listen |
+| **Uppstart** | Gult ljus flödar in längs listen och står tänt en kort stund |
 | **Setup** | Lugn **grön** puls — inget WiFi sparat, anslut till lampans eget nät |
 | **Ansluter** | Gul punkt som jagar runt listen |
 | **WiFi svarar inte** | Lugn **röd** puls — sparat WiFi finns men går inte att nå |
@@ -208,8 +208,10 @@ en ström: förloppet uppdateras kontinuerligt och processorn är ledig, så ett
 pulserande huvud är ärligt. Uppstartsstapeln står stilla för att den måste —
 anropen den täcker fryser bilden ändå.
 
-Kroppen ligger ljusare (`UPDATE_BODY_VAL 157` mot uppstartens 75), och samma
-golv på `BAR_MIN_LIT` dioder gäller: utan det visas TLS-handskakningen mot
+Kroppen ligger däremot dämpad (`UPDATE_BODY_VAL 40`, huvudet `UPDATE_HEAD_VAL
+120`). En ljusare stapel drog tillräckligt med ström för att fälla enheten mitt i
+nedladdningen, se B0 i `PRODUKTIONSKLAR.md`. Samma golv på `BAR_MIN_LIT` dioder
+gäller: utan det visas TLS-handskakningen mot
 GitHub — flera sekunder innan första byten kommer — som en enda blinkande diod
 på en släckt list, i det ögonblick då enheten skriver om sin egen firmware och
 man tittar som mest.
@@ -237,7 +239,7 @@ svagare, så sätt taket efter ditt nätaggregat och inte tvärtom.
 |---|---|
 | ESP32 DevKit v1 (ESP32-WROOM-32) | Vilken klon som helst duger |
 | LED-list, 5 V | **WS2812B** (NeoPixel) eller **APA102** (DotStar), 8–150 LEDs |
-| 5 V nätaggregat, ≥ 4 A | 60 LEDs på full vit ≈ 3,6 A |
+| 5 V-matning, minst 3 A | Lampan i `hardware/` matas via USB-C. Startar ESP32:n om vid målfyrverkeriet räcker matningen inte — sänk `LED_MAX_MILLIAMPS` |
 | Motstånd 330–470 Ω | I serie på datalinjen — bara WS2812B |
 | Kondensator 1000 µF / 6,3 V+ | Över 5 V och GND vid listens början |
 
@@ -309,8 +311,10 @@ vitt, grönt och blått är:
   med 4,5 V istället för 5 V.
 - Innan en list är vald drivs båda utgångarna samtidigt, så portalens gröna
   puls syns vilken list som än är inkopplad.
-- Firmware håller sig under 3000 mA via `FastLED.setMaxPowerInVoltsAndMilliamps()`.
-  Justera `LED_MAX_MILLIAMPS` i `include/config.h` efter ditt nätaggregat.
+- Firmware håller listen under `LED_MAX_MILLIAMPS` (3000 mA) via
+  `FastLED.setMaxPowerInVoltsAndMilliamps()`. Justera det i `include/config.h`
+  efter din matning. ESP32:n drar sitt ovanpå, och en svag matning ger
+  brownout-omstarter vid målfyrverkeriet långt under taket.
 
 ---
 
@@ -404,56 +408,24 @@ flasha manuellt, inte för enheterna.
     · omstart in i den nya firmwaren
 ```
 
-### Privat repo — extra steg
+### Token — bara för privata repon
 
-Repot är privat, vilket betyder att **`browser_download_url` inte fungerar
-anonymt** (verifierat: 404 både på API:t och nedladdningslänken). Enheten
-behöver en token, och tar då en annan väg:
+Repot är publikt, så lamporna hämtar releaser utan inloggning och fältet
+**GitHub-token** på statussidan ska vara tomt.
 
-```
-  1. GET api.github.com/repos/OWNER/REPO/releases/latest
-       Authorization: Bearer <token>              → tag_name + assets[].id
-
-  2. GET api.github.com/repos/OWNER/REPO/releases/assets/<id>
-       Authorization: Bearer <token>
-       Accept: application/octet-stream
-       redirect EJ följd                          → 302, Location: signerad URL
-
-  3. httpUpdate hämtar den signerade URL:en utan auth-header
-```
-
-Steg 2 följer redirecten för hand med flit. `HTTPClient` skickar annars samma
-headers vidare till målet, och den signerade URL:en bär redan sina egna
-engångscredentials — vår PAT har inget där att göra.
-
-**Skapa token:** GitHub → Settings → Developer settings → Fine-grained tokens.
-
-| Inställning | Värde |
-|---|---|
-| Repository access | Only select repositories → `bjorkloven-led` |
-| Permissions | Contents: **Read-only** |
-| Expiration | Sätt en påminnelse — enheten slutar uppdatera den dagen den går ut |
-
-Klistra in den i fältet **GitHub-token** på statussidan. Tomt fält vid senare
-sparningar betyder "rör inte" — skriv `-` för att radera. Token visas aldrig i
-klartext igen, bara som antal tecken på felsökningssidan.
-
-> **Den ligger i klartext i NVS.** Någon med fysisk åtkomst kan läsa ut den med
-> `esptool read_flash`. Därför en fine-grained token med `contents:read` på
-> *bara* det här repot — värsta fall är att någon kan läsa din firmwarekod.
-> Ska lampan stå någon annanstans än hemma: överväg att göra repot publikt och
-> hoppa över token helt, eller signera firmwaren (se Säkerhet nedan).
-
-**Actions-minuter:** privata repon drar från gratiskvoten (2 000 min/månad).
-Ett bygge tar ~1–2 min, så det är ingen praktisk gräns — men publika repon är
-gratis obegränsat, om du någon gång vill byta.
+Pekar du lampan mot ett eget privat repo behövs en fine-grained token
+(Contents: **Read-only**, bara det repot). Enheten hämtar då releasen via
+`api.github.com/repos/OWNER/REPO/releases/assets/<id>` och följer redirecten
+till den signerade nedladdningslänken för hand, så att token inte skickas
+vidare. Token ligger i klartext i NVS och kan läsas ut av den som har lampan i
+handen. Tomt fält vid senare sparningar betyder "rör inte", och `-` raderar.
 
 ### Sätta upp
 
-1. Repot ligger på `markusbackman/bjorkloven-led` (privat). Workflowsen är
-   aktiva och `v1.0.0` är redan publicerad.
+1. Repot ligger på `markusbackman/bjorkloven-led`. Workflowsen är aktiva och
+   releaser publiceras där.
 2. Öppna lampans statussida och fyll i **Uppdateringskälla**:
-   `markusbackman/bjorkloven-led` — plus en token, eftersom repot är privat.
+   `markusbackman/bjorkloven-led` (standardvärdet).
    Kortformen `owner/repo` expanderas automatiskt till Releases-API:t. Vill du
    hosta själv går det lika bra att ange en full URL till ett `firmware.json`.
 3. Släpp en version:
@@ -733,9 +705,10 @@ Allt sitter i `include/config.h`:
 
 ```c
 #define YELLOW_G        224    // lägre = varmare gult (255 = citrongult)
-#define GLOW_MAX_VAL    44     // hur ljus toppen av andetaget är
-#define GLOW_BPM        6      // lägre = långsammare andetag
-#define GLOW_MIN_VAL    20     // hårt golv — höj om glöden drar åt rött
+#define GLOW_MAX_VAL    140    // hur ljus toppen av andetaget är
+#define GLOW_BPM        9      // lägre = långsammare andetag
+#define GLOW_MIN_VAL    22     // andetagets botten
+#define GLOW_FLOOR_VAL  15     // hårt golv per diod — höj om glöden drar åt rött
 #define LED_DITHER      BINARY_DITHER  // DISABLE_DITHER om du ser flimmer
 #define GOAL_DURATION_MS 12000
 #define GOAL_DELAY_DEFAULT_S 15        // tv-fördröjning, ändras på statussidan
@@ -788,7 +761,7 @@ Detaljer värda att känna till:
 ## 9. Filer
 
 ```
-platformio.ini          byggkonfiguration, två miljöer (USB + OTA)
+platformio.ini          byggkonfiguration: firmware + kopplingstest
 include/config.h        all justerbar konfiguration
 src/main.cpp            tillståndsmaskin, schemaläggning
 src/leds.cpp            effekterna (glöd, gnistor, målfyrverkeri)
@@ -797,9 +770,13 @@ src/portal.cpp          captive portal + statussida
 src/settings.cpp        NVS-lagring
 src/netcheck.cpp        nätverksdiagnostik (DNS/TCP) för /debug
 src/updater.cpp         signerad self-update från GitHub Releases
+src/wiring_test.cpp     kopplingstest för listen, egen miljö (esp32dev_wiring)
+include/ota_pubkey.h    publik nyckel för OTA-signaturen
+tools/generate-ota-key.sh  skapar nyckelparet
 mock/server.py          mockserver för labbtest, styrsida på /
 hardware/README.md      skriva ut och montera skylten
 hardware/v2/            STL-filer per utskriftsplatta, plus limfixturen
+site/                   webbplatsen med utskriftsguide
 .github/workflows/
   release.yml           tagg v* -> bygg -> publicera release
   ci.yml                bygg varje push/PR

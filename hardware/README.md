@@ -219,6 +219,8 @@ Datatrådarna, samma pinnar som i [README §2](../README.md#koppling):
 - Uttaget och dess ledare är märkta för 3 A, och firmware begränsar listen till
   `LED_MAX_MILLIAMPS` (3000 mA) i `include/config.h`. ESP32:n drar sitt ovanpå
   det, så sänk gärna taket något i den här lampan. Laddaren måste klara 5 V/3 A.
+- **Använd en USB-A→USB-C-kabel.** Uttaget ger ingen ström från en
+  USB-C→USB-C-kabel eller en ren USB-C-laddare.
 
 Motstånd och kondensator får plats i facket bredvid kortet; krympslang om dem.
 

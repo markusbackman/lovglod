@@ -3,3 +3,4 @@
 *.bin
 __pycache__/
 ota_signing_key.pem
+.DS_Store

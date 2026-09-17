@@ -275,7 +275,7 @@
 // Skrivs in i webbportalen. Två format stöds:
 //   "markusbackman/bjorkloven-led"     → GitHub Releases (rekommenderat)
 //   "https://.../firmware.json"        → eget manifest, valfri webbserver
-// Privat repo kräver dessutom en token, se README.
+// Ett privat repo kräver dessutom en token, se README.
 #define OTA_DEFAULT_SOURCE "markusbackman/bjorkloven-led"
 
 // Filnamnet på .bin-filen i releasen som ska installeras.
