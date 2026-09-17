@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1440">
+<title>LövGlöd – Björklöven i ljus</title>
+<link rel="icon" href="assets/crest.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Antonio:wght@400;700&amp;family=Barlow:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+  <style>
+    body { margin: 0; background: #071912; font-family: Barlow, "Arial Narrow", Arial, sans-serif; color: #000000; -webkit-font-smoothing: antialiased; }
+    h1, h2, h3, h4, p { margin: 0; }
+    p { text-wrap: pretty; }
+    a { color: #124734; text-decoration: none; }
+    a:hover { color: #1c5f45; }
+    a:focus-visible { outline: 2px solid #124734; outline-offset: 2px; }
+    .dark a:focus-visible { outline-color: #ffffff; }
+    img { display: block; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 48px; box-sizing: border-box; font-family: Barlow, sans-serif; font-weight: 700; text-transform: uppercase; letter-spacing: 0.02em; transition: background-color .3s cubic-bezier(.4,0,.2,1), color .3s cubic-bezier(.4,0,.2,1); }
+    .btn-gold { background: #f8d12b; color: #000000; }
+    .btn-gold:hover { background: #f1d458; color: #000000; }
+    .btn-white { border: 1px solid #ffffff; color: #ffffff; }
+    .btn-white:hover { background: #ffffff; color: #000000; }
+    .navlink { color: #ffffff; }
+    .navlink:hover { color: #f8d12b; }
+  </style>
+<style>html { scroll-behavior: smooth; } section[id], [id] { scroll-margin-top: 64px; }</style>
+</head>
+<body>
+<div style="width: 100%; min-width: 1440px; display: flex; flex-direction: column; background: #071912;">
+
+  <!-- NAV -->
+  <header class="dark" style="position: sticky; top: 0; z-index: 10; background: #154734; height: 64px; display: flex; justify-content: center;">
+    <div style="width: 1280px; display: flex; align-items: center; gap: 40px;">
+      <a href="#top" style="display: flex; align-items: center; gap: 12px; color: #ffffff;">
+        <img src="assets/crest.svg" alt="IF Björklöven" style="width: 40px; height: 40px;">
+        <span style="font-family: Antonio, sans-serif; font-weight: 700; font-size: 26px; letter-spacing: 0.01em;">LövGlöd</span>
+      </a>
+      <nav aria-label="Huvudmeny" style="display: flex; gap: 32px; flex-grow: 1; font-size: 15px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em;">
+        <a class="navlink" href="#film">Film</a>
+        <a class="navlink" href="#lagen">Lägen</a>
+        <a class="navlink" href="#detaljer">Detaljer</a>
+        <a class="navlink" href="#specifikation">Specifikation</a>
+      </nav>
+      <a class="btn btn-gold" href="skriv-ut.html" style="min-height: 40px; padding: 8px 20px; font-size: 14px;">Skriv ut själv</a>
+    </div>
+  </header>
+
+  <!-- HERO: produkten -->
+  <section id="top" class="dark" style="position: relative; overflow: hidden; background: #071912; color: #ffffff; display: flex; flex-direction: column; align-items: center; padding-top: 72px;">
+    <div aria-hidden="true" style="position: absolute; left: calc(50% - 520px); top: 120px; width: 1040px; height: 1040px; border-radius: 50%; background: radial-gradient(closest-side, rgba(248, 209, 43, 0.24), rgba(248, 209, 43, 0));"></div>
+    <div style="position: relative; display: flex; flex-direction: column; align-items: center; gap: 20px; text-align: center;">
+      <p style="font-size: 15px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.16em; color: #f8d12b;">Björklöven, i ljus</p>
+      <h1 style="font-family: Antonio, sans-serif; font-weight: 700; font-size: 200px; line-height: 0.85; text-transform: uppercase;">LövGlöd</h1>
+      <p style="font-size: 26px; line-height: 1.35; font-weight: 500; max-width: 720px; color: rgba(255,255,255,0.88);">Lövet som följer Löven. Det glöder lugnt en vanlig tisdag, vaknar när pucken släpps och exploderar när vi gör mål.</p>
+    </div>
+    <img src="assets/hero.webp" alt="LövGlöd tänd: grönt löv med lysande gult band och vit text, i en grön sockel märkt SM Guld 1987" style="position: relative; width: 600px; height: auto; margin-top: 8px;">
+    <div style="position: relative; display: flex; gap: 16px; padding: 8px 0 72px;">
+      <a class="btn btn-gold" href="skriv-ut.html" style="padding: 18px 44px; font-size: 18px; min-height: 64px;">
+        Skriv ut själv
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </a>
+      <a class="btn btn-white" href="#film" style="padding: 18px 32px; font-size: 18px; min-height: 64px;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M10 8l6 4-6 4z" fill="currentColor"/></svg>
+        Se den lysa
+      </a>
+    </div>
+    <div style="position: relative; width: 100%; background: #0c2a1f; display: flex; justify-content: center;">
+      <ul style="list-style: none; margin: 0; width: 1280px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 48px; padding: 36px 0;">
+        <li style="display: flex; flex-direction: column; gap: 6px;"><span style="font-family: Antonio, sans-serif; font-weight: 700; font-size: 34px; text-transform: uppercase;">Följer varje match</span><span style="font-size: 16px; color: rgba(255,255,255,0.78);">Spelschema och mål direkt från SHL. Inga appar, inga konton.</span></li>
+        <li style="display: flex; flex-direction: column; gap: 6px;"><span style="font-family: Antonio, sans-serif; font-weight: 700; font-size: 34px; text-transform: uppercase;">Tolv sekunders mål</span><span style="font-size: 16px; color: rgba(255,255,255,0.78);">Stroboskop och kometer, i takt med tv-sändningen.</span></li>
+        <li style="display: flex; flex-direction: column; gap: 6px;"><span style="font-family: Antonio, sans-serif; font-weight: 700; font-size: 34px; text-transform: uppercase;">Sköter sig själv</span><span style="font-size: 16px; color: rgba(255,255,255,0.78);">Koppla in med USB-C, ställ in med mobilen. Uppdaterar sig över WiFi.</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- FILM -->
+  <section id="film" class="dark" style="background: #154734; color: #ffffff; display: flex; justify-content: center; padding: 120px 0;">
+    <div style="width: 1280px; display: flex; flex-direction: column; gap: 40px;">
+      <div style="display: flex; flex-direction: column; gap: 16px;">
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <span style="width: 6px; height: 26px; background: #f8d12b;"></span>
+          <h2 style="font-family: Antonio, sans-serif; font-weight: 700; font-size: 56px; line-height: 1; text-transform: uppercase;">Se den leva</h2>
+        </div>
+        <p style="font-size: 20px; line-height: 1.45; max-width: 640px; color: rgba(255,255,255,0.85);">Lampan läser matchen åt dig. Du behöver aldrig röra den.</p>
+      </div>
+
+      <div style="position: relative; width: 1280px; height: 720px; background: #04100c; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+        <img src="assets/front.webp" alt="" style="position: absolute; height: 640px; width: auto; opacity: 0.35;">
+        <div style="position: relative; display: flex; flex-direction: column; align-items: center; gap: 20px;">
+          <button type="button" aria-label="Spela film" style="width: 112px; height: 112px; border-radius: 50%; border: 2px solid #ffffff; background: rgba(0,0,0,0.5); color: #ffffff; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+            <svg width="40" height="40" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5l12 7-12 7z" fill="currentColor"/></svg>
+          </button>
+          <p style="font-size: 16px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; background: #f8d12b; color: #000000; padding: 6px 12px;">[Huvudfilm: lövet tänds, glöd till mål · 16:9]</p>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px;">
+        <figure style="margin: 0; display: flex; flex-direction: column;">
+          <div style="height: 226px; background: #04100c; display: flex; align-items: center; justify-content: center; gap: 12px; color: #ffffff;">
+            <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M10 8l6 4-6 4z" fill="currentColor"/></svg>
+            <span style="font-size: 13px; font-weight: 700; color: #f1d458;">[KLIPP · LOOP]</span>
+          </div>
+          <figcaption style="background: #ffffff; color: #000000; border-left: 6px solid #124734; padding: 16px 20px; display: flex; flex-direction: column; gap: 4px;">
+            <span style="font-family: Antonio, sans-serif; font-weight: 700; font-size: 26px;">Glöden</span>
+            <span style="font-size: 15px; color: #484848;">Ett gult andetag på sju sekunder. Här står lampan nästan all tid.</span>
+          </figcaption>
+        </figure>
+        <figure style="margin: 0; display: flex; flex-direction: column;">
+          <div style="height: 226px; background: #04100c; display: flex; align-items: center; justify-content: center; gap: 12px; color: #ffffff;">
+            <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M10 8l6 4-6 4z" fill="currentColor"/></svg>
+            <span style="font-size: 13px; font-weight: 700; color: #f1d458;">[KLIPP · LOOP]</span>
+          </div>
+          <figcaption style="background: #ffffff; color: #000000; border-left: 6px solid #124734; padding: 16px 20px; display: flex; flex-direction: column; gap: 4px;">
+            <span style="font-family: Antonio, sans-serif; font-weight: 700; font-size: 26px;">Match pågår</span>
+            <span style="font-size: 15px; color: #484848;">Glöden drar åt bärnsten och andas dubbelt så fort.</span>
+          </figcaption>
+        </figure>
+        <figure style="margin: 0; display: flex; flex-direction: column;">
+          <div style="height: 226px; background: #04100c; display: flex; align-items: center; justify-content: center; gap: 12px; color: #ffffff;">
+            <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M10 8l6 4-6 4z" fill="currentColor"/></svg>
+            <span style="font-size: 13px; font-weight: 700; color: #f1d458;">[KLIPP · LJUD PÅ]</span>
+          </div>
+          <figcaption style="background: #ffffff; color: #000000; border-left: 6px solid #124734; padding: 16px 20px; display: flex; flex-direction: column; gap: 4px;">
+            <span style="font-family: Antonio, sans-serif; font-weight: 700; font-size: 26px;">MÅL</span>
+            <span style="font-size: 15px; color: #484848;">Tolv sekunder stroboskop och kometer, 15 s fördröjt så tv:n hinner ikapp.</span>
+          </figcaption>
+        </figure>
+      </div>
+
+      <div id="lagen" style="display: flex; flex-direction: column; gap: 16px; padding-top: 16px;">
+        <h3 style="font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #f1d458;">Ljusspråket</h3>
+        <ul style="list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 2px;">
+          
+            <li style="background: #0c2a1f; padding: 16px; display: flex; flex-direction: column; gap: 10px;">
+              <span style="width: 14px; height: 14px; border-radius: 50%; background: #ffe000; box-shadow: 0 0 12px #ffe000;"></span>
+              <span style="font-size: 17px; font-weight: 700;">Glöd</span>
+              <span style="font-size: 14px; line-height: 1.35; color: rgba(255,255,255,0.78);">Vardag. Ett långsamt gult andetag.</span>
+            </li>
+          
+            <li style="background: #0c2a1f; padding: 16px; display: flex; flex-direction: column; gap: 10px;">
+              <span style="width: 14px; height: 14px; border-radius: 50%; background: #ffffff; box-shadow: 0 0 12px #ffffff;"></span>
+              <span style="font-size: 17px; font-weight: 700;">Vann igår</span>
+              <span style="font-size: 14px; line-height: 1.35; color: rgba(255,255,255,0.78);">Vita gnistor ovanpå glöden till midnatt.</span>
+            </li>
+          
+            <li style="background: #0c2a1f; padding: 16px; display: flex; flex-direction: column; gap: 10px;">
+              <span style="width: 14px; height: 14px; border-radius: 50%; background: #ffa500; box-shadow: 0 0 12px #ffa500;"></span>
+              <span style="font-size: 17px; font-weight: 700;">Match pågår</span>
+              <span style="font-size: 14px; line-height: 1.35; color: rgba(255,255,255,0.78);">Bärnsten och snabbare andetag.</span>
+            </li>
+          
+            <li style="background: #0c2a1f; padding: 16px; display: flex; flex-direction: column; gap: 10px;">
+              <span style="width: 14px; height: 14px; border-radius: 50%; background: #f8d12b; box-shadow: 0 0 12px #f8d12b;"></span>
+              <span style="font-size: 17px; font-weight: 700;">MÅL</span>
+              <span style="font-size: 14px; line-height: 1.35; color: rgba(255,255,255,0.78);">Tolv sekunder fyrverkeri.</span>
+            </li>
+          
+            <li style="background: #0c2a1f; padding: 16px; display: flex; flex-direction: column; gap: 10px;">
+              <span style="width: 14px; height: 14px; border-radius: 50%; background: #1c8f45; box-shadow: 0 0 12px #1c8f45;"></span>
+              <span style="font-size: 17px; font-weight: 700;">Setup</span>
+              <span style="font-size: 14px; line-height: 1.35; color: rgba(255,255,255,0.78);">Grön puls. Anslut med mobilen.</span>
+            </li>
+          
+            <li style="background: #0c2a1f; padding: 16px; display: flex; flex-direction: column; gap: 10px;">
+              <span style="width: 14px; height: 14px; border-radius: 50%; background: #e0302a; box-shadow: 0 0 12px #e0302a;"></span>
+              <span style="font-size: 17px; font-weight: 700;">Ingen data</span>
+              <span style="font-size: 14px; line-height: 1.35; color: rgba(255,255,255,0.78);">Svagt rött. SHL svarar inte.</span>
+            </li>
+          
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- DETALJER -->
+  <section id="detaljer" style="background: #ffffff; display: flex; justify-content: center; padding: 120px 0;">
+    <div style="width: 1280px; display: grid; grid-template-columns: 520px minmax(0, 1fr); gap: 80px; align-items: center;">
+      <img src="assets/front.webp" alt="LövGlöd rakt framifrån" style="width: 520px; height: auto;">
+      <div style="display: flex; flex-direction: column; gap: 40px;">
+        <div style="display: flex; flex-direction: column; gap: 16px;">
+          <div style="display: flex; align-items: center; gap: 14px;">
+            <span style="width: 6px; height: 26px; background: #124734;"></span>
+            <h2 style="font-family: Antonio, sans-serif; font-weight: 700; font-size: 56px; line-height: 1; text-transform: uppercase;">Formgiven in i detalj</h2>
+          </div>
+          <p style="font-size: 20px; line-height: 1.5; color: #242424;">Klubbens löv i 220 mm, med det gula bandet som ljusfönster och texten i vitt, i nivå med ytan.</p>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 40px; row-gap: 32px;">
+          <div style="border-top: 2px solid #124734; padding-top: 16px; display: flex; flex-direction: column; gap: 8px;">
+            <h3 style="font-size: 22px; font-weight: 700;">Färgen sitter i ytan</h3>
+            <p style="font-size: 16px; line-height: 1.5; color: #484848;">Text och band är inlagda, inte målade. Framsidan är helt plan och skarp.</p>
+          </div>
+          <div style="border-top: 2px solid #124734; padding-top: 16px; display: flex; flex-direction: column; gap: 8px;">
+            <h3 style="font-size: 22px; font-weight: 700;">Jämnt ljus runt om</h3>
+            <p style="font-size: 16px; line-height: 1.5; color: #484848;">LED-listen lyser från sidan in i bandet, så det glöder jämnt utan synliga prickar.</p>
+          </div>
+          <div style="border-top: 2px solid #124734; padding-top: 16px; display: flex; flex-direction: column; gap: 8px;">
+            <h3 style="font-size: 22px; font-weight: 700;">Ventilerad baksida</h3>
+            <p style="font-size: 16px; line-height: 1.5; color: #484848;">Arton ventiler precis över listen håller lövet svalt.</p>
+          </div>
+          <div style="border-top: 2px solid #124734; padding-top: 16px; display: flex; flex-direction: column; gap: 8px;">
+            <h3 style="font-size: 22px; font-weight: 700;">Inga synliga skruvar</h3>
+            <p style="font-size: 16px; line-height: 1.5; color: #484848;">Elektroniken bor i sockeln. Framifrån syns bara lövet och SM Guld 1987.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SPECIFIKATION -->
+  <section id="specifikation" style="background: #f7f7f7; display: flex; justify-content: center; padding: 120px 0;">
+    <div style="width: 1280px; display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 80px; align-items: center;">
+      <div style="display: flex; flex-direction: column; gap: 32px;">
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <span style="width: 6px; height: 26px; background: #124734;"></span>
+          <h2 style="font-family: Antonio, sans-serif; font-weight: 700; font-size: 56px; line-height: 1; text-transform: uppercase;">Specifikation</h2>
+        </div>
+        <dl style="margin: 0; display: grid; grid-template-columns: 240px minmax(0, 1fr); font-size: 18px;">
+          <dt style="padding: 14px 0; border-bottom: 1px solid #cecece; font-weight: 600; color: #484848;">Mått (b × d × h)</dt><dd style="margin: 0; padding: 14px 0; border-bottom: 1px solid #cecece;">182,6 × 84 × 250,5 mm</dd>
+          <dt style="padding: 14px 0; border-bottom: 1px solid #cecece; font-weight: 600; color: #484848;">Material</dt><dd style="margin: 0; padding: 14px 0; border-bottom: 1px solid #cecece;">PLA i grönt, vitt och transparent gult, 307 g</dd>
+          <dt style="padding: 14px 0; border-bottom: 1px solid #cecece; font-weight: 600; color: #484848;">Ljus</dt><dd style="margin: 0; padding: 14px 0; border-bottom: 1px solid #cecece;">Adresserbar LED-list bakom det gula bandet</dd>
+          <dt style="padding: 14px 0; border-bottom: 1px solid #cecece; font-weight: 600; color: #484848;">Styrenhet</dt><dd style="margin: 0; padding: 14px 0; border-bottom: 1px solid #cecece;">ESP32 med WiFi (2,4 GHz)</dd>
+          <dt style="padding: 14px 0; border-bottom: 1px solid #cecece; font-weight: 600; color: #484848;">Ström</dt><dd style="margin: 0; padding: 14px 0; border-bottom: 1px solid #cecece;">USB-C i sockelns baksida, 5 V</dd>
+          <dt style="padding: 14px 0; border-bottom: 1px solid #cecece; font-weight: 600; color: #484848;">Matchdata</dt><dd style="margin: 0; padding: 14px 0; border-bottom: 1px solid #cecece;">SHL:s publika API</dd>
+          <dt style="padding: 14px 0; border-bottom: 1px solid #cecece; font-weight: 600; color: #484848;">Uppdateringar</dt><dd style="margin: 0; padding: 14px 0; border-bottom: 1px solid #cecece;">Automatiska och signerade, med rollback</dd>
+          <dt style="padding: 14px 0; border-bottom: 1px solid #cecece; font-weight: 600; color: #484848;">Inställningar</dt><dd style="margin: 0; padding: 14px 0; border-bottom: 1px solid #cecece;">Statussida i webbläsaren: ljusstyrka, tv-fördröjning, målfyrverkeri</dd>
+        </dl>
+      </div>
+      <img src="assets/back.webp" alt="LövGlöd bakifrån: baklucka med ventiler och USB-C-uttag i sockeln" style="width: 380px; height: auto;">
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="dark" style="position: relative; overflow: hidden; background: #124734; color: #ffffff; display: flex; justify-content: center; padding: 104px 0;">
+    <div style="width: 1280px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 64px; align-items: center;">
+      <div style="display: flex; flex-direction: column; gap: 20px;">
+        <p style="font-size: 15px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.16em; color: #f8d12b;">Finns inte i butik</p>
+        <h2 style="font-family: Antonio, sans-serif; font-weight: 700; font-size: 96px; line-height: 0.9; text-transform: uppercase;">Skriv ut din egen</h2>
+        <p style="font-size: 22px; line-height: 1.45; max-width: 680px; color: rgba(255,255,255,0.88);">Modellerna, byggbeskrivningen och koden är öppna. Åtta timmars utskrift, en halvtimmes montering och några lödpunkter.</p>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 16px;">
+        <a class="btn btn-gold" href="skriv-ut.html" style="padding: 20px 48px; font-size: 20px; min-height: 68px;">
+          Skriv ut själv
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </a>
+        <a class="btn btn-white" href="https://github.com/markusbackman/bjorkloven-led" style="padding: 14px 32px; font-size: 16px;">
+          Koden på GitHub
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v6H4V6h6"/></svg>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="dark" style="background: #04100c; color: #ffffff; display: flex; justify-content: center; padding: 48px 0 56px;">
+    <div style="width: 1280px; display: flex; align-items: center; gap: 20px;">
+      <img src="assets/crest.svg" alt="IF Björklöven" style="width: 56px; height: 56px;">
+      <div style="display: flex; flex-direction: column; gap: 4px; flex-grow: 1;">
+        <span style="font-family: Antonio, sans-serif; font-weight: 700; font-size: 24px;">LövGlöd V2</span>
+        <span style="font-size: 14px; color: rgba(255,255,255,0.72);">Ett fanprojekt för Green Devils. Umeå, 2026.</span>
+      </div>
+      <nav aria-label="Sidfot" style="display: flex; gap: 28px; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em;">
+        <a class="navlink" href="skriv-ut.html">Skriv ut själv</a>
+        <a class="navlink" href="https://github.com/markusbackman/bjorkloven-led">GitHub</a>
+      </nav>
+    </div>
+  </footer>
+</div>
+</body>
+</html>
