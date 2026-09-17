@@ -10,11 +10,6 @@ ryggen.
 Färdigt mått **182,6 × 84 × 250,5 mm**, cirka **307 g** filament och **7 h 59 min**
 utskrift före purge (Bambu X2D, 0,2 mm, PLA Basic).
 
-Modellerna är ritade parametriskt i [nurb](https://nurb.dev) i ett separat
-projekt (`../Björklöven`). Här ligger bara de exporterade STL-filerna, klara att
-dra in i slicern. Ska en del ändras görs det i CAD-projektet och exporteras om
-hit — redigera inte STL-filerna.
-
 ```
 hardware/v2/
   plate-1/   bjorkloven_sign, _core, _window, _letters   lövet, flerfärg
@@ -165,9 +160,6 @@ långa nog att nå ner genom sockeln till facket.
 Det vilar på toppen av den vita kärnan, som slutar 5 mm under lövets baksida för
 just det, och kantens insida styr det i sidled. Fyra M3 × 8; huvudena hamnar i
 nivå med lövet.
-
-**Tejpa inte över de arton ventilerna.** De sitter över spåret med flit: ett
-slutet löv runt en list på flera watt blir en ugn, och PLA mjuknar kring 60 °C.
 
 ### 4. Sätt USB-C-uttaget — innan kortet åker i
 
