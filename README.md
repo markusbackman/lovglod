@@ -241,6 +241,9 @@ svagare, så sätt taket efter ditt nätaggregat och inte tvärtom.
 | Motstånd 330–470 Ω | I serie på datalinjen — bara WS2812B |
 | Kondensator 1000 µF / 6,3 V+ | Över 5 V och GND vid listens början |
 
+Själva lampan — det utskrivna lövet med sockel — har egna modeller och
+monteringsanvisningar i [`hardware/README.md`](hardware/README.md).
+
 Samma firmware driver båda listorna. Vilken som sitter på, och hur många
 dioder den har, väljs i setup-portalen (se avsnitt 4) och sparas i NVS — det
 överlever omstart och OTA, och går att ändra i efterhand på statussidan.
@@ -795,6 +798,8 @@ src/settings.cpp        NVS-lagring
 src/netcheck.cpp        nätverksdiagnostik (DNS/TCP) för /debug
 src/updater.cpp         signerad self-update från GitHub Releases
 mock/server.py          mockserver för labbtest, styrsida på /
+hardware/README.md      skriva ut och montera skylten
+hardware/v2/            STL-filer per utskriftsplatta, plus limfixturen
 .github/workflows/
   release.yml           tagg v* -> bygg -> publicera release
   ci.yml                bygg varje push/PR
