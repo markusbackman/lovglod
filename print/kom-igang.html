@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>LövGlöd – Kom igång</title>
+<link rel="icon" href="assets/crest.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Antonio:wght@700&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* A6-kort (105 × 148 mm), fram- och baksida. Skriv ut i 100 %, dubbelsidigt, vänd på kortsidan.
+     Färgerna går ut i kant: skriv ut utan marginaler, eller på större ark och skär till. */
+  @page { size: 105mm 148mm; margin: 0; }
+  :root {
+    --green: #124734;        /* primary-base */
+    --green-nav: #154734;    /* primary-dark */
+    --green-deep: #0c2a1f;   /* primary-xDark */
+    --green-mid: #1c5f45;    /* secondary-dark */
+    --night: #071912;        /* background-xDark */
+    --gold: #f8d12b;         /* secondary-light */
+    --gold-soft: #f1d458;    /* secondary-xLight */
+    --cream: #f0ebd6;        /* secondary-xxLight */
+    --ink: #000000;
+    --ink-2: #242424;        /* grey-xxDark */
+    --muted: #484848;        /* grey-xDark */
+    --line: #e8e8e8;         /* grey-xLight */
+    --display: "Antonio", "Arial Narrow", Impact, sans-serif;
+    --body: "Barlow", "Arial Narrow", Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #d9d9d9; }
+  body { font-family: var(--body); color: var(--ink); -webkit-print-color-adjust: exact; print-color-adjust: exact; -webkit-font-smoothing: antialiased; }
+  h1, h2, h3, p { margin: 0; }
+  img { display: block; }
+  code { font-family: var(--body); font-weight: 700; white-space: nowrap; background: var(--cream); padding: 0 .9mm; }
+
+  .card {
+    width: 105mm; height: 148mm; margin: 10mm auto; background: #fff;
+    position: relative; overflow: hidden; display: flex; flex-direction: column;
+    box-shadow: 0 2px 12px rgba(0,0,0,.15);
+  }
+  @media print {
+    html, body { background: none; }
+    .card { margin: 0; box-shadow: none; break-after: page; }
+  }
+
+  .kicker { font-weight: 700; font-size: 6.8pt; letter-spacing: .16em; text-transform: uppercase; color: var(--gold); }
+  .heading { display: flex; align-items: center; gap: 2.2mm; font-family: var(--display); font-weight: 700; text-transform: uppercase; line-height: 1; }
+  .heading::before { content: ""; flex: none; width: 1.5mm; height: 5.5mm; background: var(--green); }
+  .on-dark .heading::before { background: var(--gold); }
+
+  .dot { display: inline-block; flex: none; width: 2.6mm; height: 2.6mm; border-radius: 50%; }
+  .g { background: #1c8f45; } .y { background: #ffd000; } .r { background: #e0302a; } .o { background: #f29a00; } .w { background: #fff; border: .25mm solid #b5b5b5; }
+
+  /* ---------- Framsida ---------- */
+  .hero { position: relative; background: var(--night); color: #fff; height: 62mm; padding: 8mm 0 0 7mm; overflow: hidden; }
+  .hero::before { content: ""; position: absolute; right: -22mm; top: -4mm; width: 78mm; height: 78mm; border-radius: 50%;
+    background: radial-gradient(closest-side, rgba(248,209,43,.30), rgba(248,209,43,0)); }
+  .hero .text { position: relative; width: 58mm; display: flex; flex-direction: column; gap: 2.4mm; }
+  .hero h1 { font-family: var(--display); font-weight: 700; text-transform: uppercase; font-size: 23pt; line-height: .95; }
+  .hero h1 span { display: block; color: var(--gold); }
+  .hero p { font-size: 8.6pt; line-height: 1.35; color: rgba(255,255,255,.86); }
+  .hero .lamp { position: absolute; right: 5mm; top: 4mm; width: 30mm; height: auto; }
+  
+  .needs { background: var(--green-deep); color: #fff; padding: 3mm 7mm 3.2mm; display: grid; grid-template-columns: 1fr 1fr; column-gap: 4mm; row-gap: 1.2mm; }
+  .needs .kicker { grid-column: 1 / -1; color: var(--gold-soft); }
+  .needs div { font-size: 7.8pt; line-height: 1.3; color: rgba(255,255,255,.84); }
+  .needs strong { display: block; font-family: var(--display); font-size: 11pt; line-height: 1.05; color: #fff; text-transform: uppercase; margin-bottom: .5mm; }
+
+  .steps { list-style: none; margin: 0; padding: 3.8mm 7mm 0; display: flex; flex-direction: column; gap: 2mm; flex: 1; }
+  .steps li { display: grid; grid-template-columns: 9mm 1fr; column-gap: 2.5mm; padding-top: 1.8mm; border-top: .35mm solid var(--green); }
+  .steps .n { font-family: var(--display); font-weight: 700; font-size: 20pt; line-height: .9; color: var(--green); }
+  .steps h2 { font-family: var(--display); font-weight: 700; font-size: 12pt; line-height: 1.05; text-transform: uppercase; }
+  .steps p { margin-top: .7mm; font-size: 8.4pt; line-height: 1.32; color: var(--ink-2); }
+  .steps .dot { vertical-align: -.35mm; margin-right: .6mm; }
+
+  .front-foot { background: var(--green-nav); color: #fff; padding: 2.4mm 7mm; display: flex; justify-content: space-between; align-items: center; font-size: 7pt; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
+  .front-foot span:last-child { color: var(--gold); }
+
+  /* ---------- Baksida ---------- */
+  .back-head { background: var(--green-nav); color: #fff; padding: 6mm 7mm 4.5mm; }
+  .back-head .heading { font-size: 18pt; margin-top: 1.4mm; }
+
+  .legend { list-style: none; margin: 0; padding: 2.2mm 7mm 0; }
+  .legend li { display: grid; grid-template-columns: 3.4mm 25mm 1fr; column-gap: 1.8mm; align-items: baseline; padding: 1.35mm 0; border-bottom: .2mm solid var(--line); font-size: 8.2pt; line-height: 1.28; }
+  .legend .dot { align-self: center; }
+  .legend b { font-weight: 700; }
+  .legend span:last-child { color: var(--ink-2); }
+
+  .tips { padding: 4mm 7mm 0; display: flex; flex-direction: column; gap: 1.8mm; }
+  .tips .heading { font-size: 12.5pt; margin-bottom: .6mm; }
+  .tips p { font-size: 8pt; line-height: 1.32; color: var(--ink-2); }
+  .tips p b { display: block; color: var(--ink); font-weight: 700; }
+
+  .back-foot { margin-top: auto; background: var(--night); color: #fff; padding: 3.6mm 7mm 4mm; display: flex; align-items: center; gap: 3mm; }
+  .back-foot .url { flex: 1; }
+  .back-foot .url small { display: block; font-size: 6.8pt; color: rgba(255,255,255,.72); margin-bottom: .8mm; }
+  .back-foot .url div { font-family: var(--display); font-weight: 700; font-size: 15pt; line-height: 1; }
+  .back-foot .url span { color: var(--gold); }
+  .back-foot .sign { display: flex; align-items: center; gap: 2mm; font-family: var(--display); font-weight: 700; font-size: 9.5pt; text-transform: uppercase; text-align: right; line-height: 1.05; }
+  .back-foot .sign img { width: 10mm; height: 10mm; }
+</style>
+</head>
+<body>
+
+<!-- ============ FRAMSIDA ============ -->
+<section class="card">
+  <header class="hero">
+    <div class="text">
+      <div class="kicker">Kom igång på två minuter</div>
+      <h1>Välkommen till<span style="font-size: 2em; line-height: 1; margin-top: 1.2mm;">LövGlöd</span></h1>
+      <p>Lövet som följer Löven. Koppla in, anslut med mobilen, klart.</p>
+    </div>
+    <img class="lamp" src="assets/hero.webp" alt="">
+  </header>
+
+  <div class="needs">
+    <div class="kicker">Det här behöver du</div>
+    <div><strong>USB-C-laddare, 15 W+</strong>5 V / 3 A, med kabel. Medföljer inte. Gamla 5 W-laddare är för svaga.</div>
+    <div><strong>WiFi på 2,4 GHz</strong>Lampan hittar inte nät som bara sänder på 5 GHz.</div>
+  </div>
+
+  <ol class="steps">
+    <li>
+      <span class="n">01</span>
+      <div><h2>Koppla in laddaren</h2><p>Efter ett gult svep pulserar lampan <span class="dot g"></span><strong>grönt</strong>. Då väntar den på dig.</p></div>
+    </li>
+    <li>
+      <span class="n">02</span>
+      <div><h2>Anslut till lampans nät</h2><p>Välj <code>LövGlöd-Setup-XXXX</code> i mobilens WiFi-inställningar. Inget lösenord behövs.</p></div>
+    </li>
+    <li>
+      <span class="n">03</span>
+      <div><h2>Välj ditt WiFi</h2><p>En sida öppnas av sig själv, annars gå till <code>192.168.4.1</code>. Välj nätverk, skriv lösenord, spara.</p></div>
+    </li>
+    <li>
+      <span class="n">04</span>
+      <div><h2>Klart</h2><p>Lampan ansluter och glöder <span class="dot y"></span><strong>gult</strong>. Nu följer den varje match.</p></div>
+    </li>
+  </ol>
+
+  <footer class="front-foot"><span>LövGlöd V2</span><span>Vänd för ljusspråket</span></footer>
+</section>
+
+<!-- ============ BAKSIDA ============ -->
+<section class="card">
+  <header class="back-head on-dark">
+    <div class="kicker">Ljusspråket</div>
+    <h2 class="heading">Vad betyder ljuset?</h2>
+  </header>
+
+  <ul class="legend">
+    <li><span class="dot y"></span><b>Lugn gul glöd</b><span>Allt är som det ska. Väntar på nästa match.</span></li>
+    <li><span class="dot w"></span><b>Vita gnistor</b><span>Vi vann igår!</span></li>
+    <li><span class="dot o"></span><b>Orange glöd</b><span>Match pågår.</span></li>
+    <li><span class="dot y"></span><b>Fyrverkeri</b><span><b>MÅL!</b> Kommer några sekunder efter SHL, så tv:n hinner ikapp.</span></li>
+    <li><span class="dot y"></span><b>Gul stapel fylls</b><span>Uppdaterar sig själv. Dra inte ur sladden.</span></li>
+    <li><span class="dot g"></span><b>Grön puls</b><span>Behöver WiFi. Följ stegen på framsidan.</span></li>
+    <li><span class="dot r"></span><b>Röd puls</b><span>Når inte ditt WiFi. Försöker igen var 5:e minut.</span></li>
+    <li><span class="dot r"></span><b>Svagt rött</b><span>Uppkopplad, men SHL svarar inte just nu.</span></li>
+  </ul>
+
+  <div class="tips">
+    <h3 class="heading">Bra att veta</h3>
+    <p><b>Målet kommer före tv:n?</b>Öka <em>Fördröjning på mål</em> på statussidan. Standard är 15 s.</p>
+    <p><b>Startar lampan om vid mål?</b>Laddaren orkar inte med fyrverkeriet. Byt till en starkare, minst 15 W.</p>
+    <p><b>Nytt WiFi eller ny router?</b>Lampan pulserar rött. Anslut till <code>LövGlöd-Setup-XXXX</code> igen och välj det nya nätet.</p>
+  </div>
+
+  <footer class="back-foot">
+    <div class="url">
+      <small>Statussida, från samma WiFi</small>
+      <div>bjorkloven-led<span>.local</span></div>
+    </div>
+    <div class="sign">Heja<br>Löven!<img src="assets/crest.svg" alt="IF Björklöven"></div>
+  </footer>
+</section>
+
+</body>
+</html>
