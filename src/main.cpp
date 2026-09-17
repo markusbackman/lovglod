@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────────────────────
-//  Björklöven-lampan
+//  LövGlöd
 //
 //  Standby        långsam gul glöd
 //  Vann igår      några glittrande gnistor ovanpå glöden
@@ -225,6 +225,8 @@ static void handleSerialCommands() {
             Serial.printf("[cmd] v%s  läge=%s  SSID=\"%s\"  IP=%s  heap=%u kB\n",
                           FW_VERSION, status.state.c_str(), settings.wifiSsid.c_str(),
                           WiFi.localIP().toString().c_str(), ESP.getFreeHeap() / 1024);
+            Serial.printf("      LED-list:    %s, %u dioder\n",
+                          Leds::stripName(settings.ledStrip), settings.ledCount);
             if (status.pushMode)
                 Serial.println("      datakälla:   push från mockservern");
             else
@@ -693,7 +695,7 @@ static void serviceOtaValidation() {
 void setup() {
     Serial.begin(115200);
     delay(200);
-    Serial.println("\n\n== Björklöven-lampan v" FW_VERSION " ==");
+    Serial.println("\n\n== LövGlöd v" FW_VERSION " ==");
     printSerialHelp();
 
     status.resetReason   = resetReasonText();
@@ -703,7 +705,7 @@ void setup() {
     settings.load();
     checkRollbackState();
     status.otaOnTrial = gOtaOnTrial;
-    Leds::begin();
+    Leds::begin(settings.ledStrip, settings.ledCount);
     Leds::setBrightness(settings.brightness);
     Leds::setMode(LED_BOOT);
 

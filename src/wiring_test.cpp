@@ -9,13 +9,19 @@
 //  Titta:    pio device monitor
 //  Tillbaka: pio run -e esp32dev -t upload
 //
-//  Annan pinne eller antal, utan att röra config.h:
-//    PLATFORMIO_BUILD_FLAGS="-DLED_PIN=5 -DLED_COUNT=30" \
-//      pio run -e esp32dev_wiring -t upload
+//  Båda listtyperna drivs samtidigt — WS2812B på sin pinne, APA102 på sina
+//  två — så testet fungerar vilken list som än är inkopplad.
+//
+//  Annat antal, utan att röra config.h:
+//    PLATFORMIO_BUILD_FLAGS="-DLED_COUNT=30" pio run -e esp32dev_wiring -t upload
 // ─────────────────────────────────────────────────────────────────────────────
 #include <Arduino.h>
 #include <FastLED.h>
 #include "config.h"
+
+#ifndef LED_COUNT
+#define LED_COUNT LED_COUNT_DEFAULT
+#endif
 
 // Strömtak. Lågt som standard: räcker för att driva listen från USB ensamt
 // utan att kortet browner ut. Har du externt nätaggregat inkopplat kan du
@@ -61,7 +67,8 @@ static void phaseWalk(uint32_t elapsed) {
     if (!gAnnounced) {
         say("Vandrande punkt",
             "EN vit punkt som långsamt går från listens ena ände till den andra");
-        Serial.println("   → Inget alls lyser?  Fel datapinne, ingen ström, eller DIN/DOUT omvänt.");
+        Serial.println("   → Inget alls lyser?  Fel pinne, ingen ström, eller listen kopplad i");
+        Serial.println("      utgångsänden (DO/CO i stället för DIN, DI/CI).");
         Serial.println("   → Punkten stannar halvvägs?  Skadad LED eller glapp där den stannar.");
         Serial.println("   → Räkna dioderna den passerar — det är ditt LED_COUNT.");
         gAnnounced = true;
@@ -83,8 +90,8 @@ static void phaseWalk(uint32_t elapsed) {
 static void phaseColors(uint32_t elapsed) {
     if (!gAnnounced) {
         say("Färgtest", "hela listen RÖD, sedan GRÖN, sedan BLÅ — 2 sekunder var");
-        Serial.println("   → Rött och grönt byter plats?  Ändra LED_COLOR_ORDER i config.h");
-        Serial.printf("      (nu: %s — prova RGB)\n", "GRB");
+        Serial.println("   → Fel färger?  Ändra LED_WS2812_ORDER (nu GRB) eller");
+        Serial.println("      LED_APA102_ORDER (nu BGR) i config.h");
         Serial.println("   → Färgerna flimrar eller är slumpmässiga?  Signalproblem:");
         Serial.println("      kortare datakabel, motstånd 330–470 Ω, eller nivåomvandlare.");
         gAnnounced = true;
@@ -209,19 +216,26 @@ void setup() {
     delay(400);
 
     Serial.println("\n\n╔══════════════════════════════════════════════╗");
-    Serial.println("║  Björklöven-lampan — KOPPLINGSTEST           ║");
+    Serial.println("║  LövGlöd — KOPPLINGSTEST                     ║");
     Serial.println("╚══════════════════════════════════════════════╝");
-    Serial.printf("  Datapinne     GPIO%d\n", LED_PIN);
+    Serial.printf("  WS2812B       DIN på GPIO%d\n", LED_WS2812_PIN);
+    Serial.printf("  APA102        DI på GPIO%d, CI på GPIO%d\n", LED_APA102_DATA, LED_APA102_CLOCK);
+    Serial.println("                (båda drivs samtidigt — koppla in den list du har)");
     Serial.printf("  Antal dioder  %d\n", LED_COUNT);
-    Serial.printf("  Typ           WS2812B, färgordning GRB\n");
     Serial.printf("  Strömtak      %d mA\n", TEST_MAX_MA);
     Serial.println("  ────────────────────────────────────────────");
     Serial.println("  Tryck ENTER i monitorn för att hoppa till nästa fas.");
     Serial.println("  Varje fas kör 12 sekunder och loopar sedan runt.");
 
-    FastLED.addLeds<LED_TYPE, LED_PIN, LED_COLOR_ORDER>(leds, LED_COUNT)
+    FastLED.addLeds<WS2812B, LED_WS2812_PIN, LED_WS2812_ORDER>(leds, LED_COUNT)
         .setCorrection(LED_COLOR_CORRECTION);
-    FastLED.setMaxPowerInVoltsAndMilliamps(LED_PSU_VOLTS, TEST_MAX_MA);
+    FastLED.addLeds<APA102, LED_APA102_DATA, LED_APA102_CLOCK, LED_APA102_ORDER,
+                    DATA_RATE_MHZ(LED_APA102_MHZ)>(leds, LED_COUNT)
+        .setCorrection(LED_COLOR_CORRECTION);
+    // FastLED räknar strömmen för varje drivrutin för sig, fast de delar buffert.
+    // Med en list inkopplad hamnar det verkliga taket därför på TEST_MAX_MA
+    // först när budgeten dubblas.
+    FastLED.setMaxPowerInVoltsAndMilliamps(LED_PSU_VOLTS, TEST_MAX_MA * 2);
     FastLED.setDither(LED_DITHER);
     FastLED.setBrightness(255);   // strömtaket sköter begränsningen
     FastLED.clear(true);

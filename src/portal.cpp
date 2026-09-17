@@ -5,6 +5,7 @@
 #include "updater.h"
 #include "netcheck.h"
 #include "leds.h"
+#include "crest_svg.h"
 #include <WiFi.h>
 #include <WebServer.h>
 #include <DNSServer.h>
@@ -20,6 +21,8 @@ namespace {
 #define STRINGIFY_(x) #x
 #define STRINGIFY(x)  STRINGIFY_(x)
 #define GOAL_DELAY_MAX_STR STRINGIFY(GOAL_DELAY_MAX_S)
+#define LED_COUNT_MIN_STR  STRINGIFY(LED_COUNT_MIN)
+#define LED_COUNT_MAX_STR  STRINGIFY(LED_COUNT_MAX)
 
 WebServer  server(80);
 DNSServer  dns;
@@ -41,31 +44,65 @@ bool       gPushPending = false;
 String     gScanCache;
 uint32_t   gScanAt     = 0;
 
+// IF Björklövens formspråk (bjorkloven-design): skogsgrönt som yta och
+// handling, guld bara som accent, rött enbart för LIVE, raka hörn överallt.
+// Antonio och Barlow bäddas inte in — portalen har inget internet och
+// typsnitten väger mer än sidorna — så rubrikerna faller tillbaka på
+// systemets smala sans-serif.
 const char PAGE_CSS[] PROGMEM = R"CSS(
-:root{--bg:#0d1210;--card:#161d1a;--edge:#26332d;--txt:#e8f0ea;--dim:#8fa398;--gold:#ffc21a}
+:root{--g9:#071912;--g8:#0C2A1F;--g7:#124734;--g5:#1C5F45;--gold:#FFD000;
+--bg:#F7F7F7;--line:#E8E8E8;--edge:#B5B5B5;--mut:#484848;
+--disp:Antonio,"Avenir Next Condensed","Roboto Condensed","Arial Narrow",sans-serif-condensed,Impact,sans-serif;
+--body:Barlow,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
 *{box-sizing:border-box}
-body{margin:0;padding:20px;background:var(--bg);color:var(--txt);
-     font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
-.wrap{max-width:440px;margin:0 auto}
-h1{font-size:22px;margin:0 0 4px;letter-spacing:-.01em}
-h1 span{color:var(--gold)}
-.sub{color:var(--dim);font-size:13px;margin:0 0 22px}
-.card{background:var(--card);border:1px solid var(--edge);border-radius:14px;padding:18px;margin-bottom:14px}
-label{display:block;font-size:13px;color:var(--dim);margin:14px 0 6px}
-label:first-child{margin-top:0}
-input,select{width:100%;padding:11px 12px;border-radius:9px;border:1px solid var(--edge);
-     background:#0b100e;color:var(--txt);font-size:16px}
-button{width:100%;margin-top:20px;padding:13px;border:0;border-radius:9px;
-     background:var(--gold);color:#10160f;font-size:16px;font-weight:640;cursor:pointer}
-button.ghost{background:transparent;color:var(--dim);border:1px solid var(--edge);font-weight:400;margin-top:10px}
-table{width:100%;border-collapse:collapse;font-size:14px}
-td{padding:7px 0;border-bottom:1px solid var(--edge);vertical-align:top}
-td:first-child{color:var(--dim);width:42%}
-tr:last-child td{border-bottom:0}
-.ok{color:var(--gold)}
-pre{white-space:pre-wrap;word-break:break-all;font-size:11px;color:var(--dim);
-     background:#0b100e;padding:10px;border-radius:8px;max-height:220px;overflow:auto}
-a{color:var(--gold)}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:#000;font:16px/1.5 var(--body)}
+.in{max-width:560px;margin:0 auto;padding:0 16px}
+.bar{position:sticky;top:0;z-index:2;background:var(--g8);color:#fff}
+.bar .in{display:flex;align-items:center;gap:10px;height:50px}
+.bar img{width:34px;height:34px;display:block}
+.bar b{font:700 24px/1 var(--disp);letter-spacing:.02em;text-transform:uppercase}
+.bar small{margin-left:auto;font-size:12px;font-weight:600;letter-spacing:.1em;
+ text-transform:uppercase;color:rgba(255,255,255,.7)}
+.hero{background:var(--g7);color:#fff;padding:28px 0 32px}
+.eye{margin:0 0 8px;font-size:13px;font-weight:700;letter-spacing:.12em;
+ text-transform:uppercase;color:var(--gold)}
+h1{margin:0;font:700 44px/.95 var(--disp);text-transform:uppercase;overflow-wrap:anywhere}
+.lead{margin:12px 0 0;font-size:17px;color:rgba(255,255,255,.88)}
+.lead b{color:#fff}
+main.in{padding-top:24px;padding-bottom:48px}
+h2{display:flex;align-items:center;gap:10px;margin:32px 0 12px;
+ font:700 26px/1 var(--disp);text-transform:uppercase}
+h2:before{content:"";flex:none;width:7px;height:26px;background:var(--g7)}
+main>h2:first-child{margin-top:0}
+.card{background:#fff;padding:20px;margin-bottom:16px}
+label{display:block;margin:18px 0 6px;font-size:13px;font-weight:600;
+ letter-spacing:.04em;text-transform:uppercase;color:var(--mut)}
+form>label:first-child{margin-top:0}
+input,select{width:100%;min-height:48px;padding:10px 12px;border:1px solid var(--edge);
+ border-radius:0;background:#fff;color:#000;font:16px var(--body)}
+input{-webkit-appearance:none;appearance:none}
+input:focus,select:focus{outline:2px solid var(--g7);outline-offset:0;border-color:var(--g7)}
+button{width:100%;min-height:48px;margin-top:22px;padding:12px 20px;border:2px solid var(--g7);
+ border-radius:0;background:var(--g7);color:#fff;font:700 15px var(--body);
+ letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
+button:hover{filter:brightness(1.25)}
+button:focus-visible,a:focus-visible{outline:2px solid var(--g7);outline-offset:2px}
+button.ghost{margin-top:10px;background:#fff;color:var(--g7)}
+button.ghost:hover{filter:none;background:var(--g7);color:#fff}
+table{width:100%;border-collapse:collapse;font-size:15px}
+td{padding:10px 0;vertical-align:top;overflow-wrap:anywhere}
+tr+tr td{border-top:1px solid var(--line)}
+td:first-child{width:40%;padding-right:12px;font-size:13px;font-weight:600;
+ letter-spacing:.03em;text-transform:uppercase;color:var(--mut)}
+.ok{font-weight:700;color:var(--g7)}
+.note{margin:12px 0 0;font-size:14px;color:var(--mut)}
+.card>.note:first-child{margin-top:0}
+pre{margin:0 0 4px;white-space:pre-wrap;word-break:break-all;font:12px/1.45 ui-monospace,Menlo,monospace;
+ background:var(--g9);color:#D8E3DD;padding:12px;max-height:260px;overflow:auto}
+a{color:var(--g7);font-weight:700}
+.back{display:inline-flex;align-items:center;min-height:44px;text-transform:uppercase;
+ letter-spacing:.06em;font-size:14px;text-decoration:none}
 )CSS";
 
 String formatNow(const char *fmt) {
@@ -93,15 +130,35 @@ String htmlEscape(const String &s) {
     return o;
 }
 
-String head(const char *title) {
+// Sidhuvud: mörkgrön list med klubbmärket, grön hero med rubrik, sedan <main>.
+// eyebrow och lead är färdig HTML — anroparen escapar det som kommer utifrån.
+String head(const char *title, const char *eyebrow, const String &heading,
+            const String &lead = String()) {
     String h = F("<!doctype html><html lang=sv><head><meta charset=utf-8>"
                  "<meta name=viewport content='width=device-width,initial-scale=1'>"
-                 "<title>");
+                 "<meta name=theme-color content='#0C2A1F'>"
+                 "<link rel=icon href=/crest.svg><title>");
     h += title;
     h += F("</title><style>");
     h += FPSTR(PAGE_CSS);
-    h += F("</style></head><body><div class=wrap>");
+    h += F("</style></head><body><header class=bar><div class=in>"
+           "<img src=/crest.svg alt='IF Björklöven'><b>LövGlöd</b><small>");
+    h += gApMode ? F("Setup") : F("Admin");
+    h += F("</small></div></header><section class=hero><div class=in><p class=eye>");
+    h += eyebrow;
+    h += F("</p><h1>");
+    h += heading;
+    h += F("</h1>");
+    if (lead.length()) h += "<p class=lead>" + lead + "</p>";
+    h += F("</div></section><main class=in>");
     return h;
+}
+
+const char PAGE_END[] PROGMEM = "</main></body></html>";
+
+void handleCrest() {
+    server.sendHeader("Cache-Control", "public, max-age=604800");
+    server.send_P(200, "image/svg+xml", CREST_SVG);
 }
 
 // Nätverksscan cachas — en scan tar ~2 s och blockerar webbservern.
@@ -136,47 +193,122 @@ bool apOnly() {
     return true;
 }
 
+// Listval och antal dioder. Samma fält i setup-formuläret och på statussidan.
+// Så länge ingen list är vald finns ett tomt förval, och required gör att
+// setup inte går att skicka utan att man tagit ställning.
+String stripFields() {
+    const auto opt = [](LedStrip s, const char *text) -> String {
+        return String("<option value=") + String((int)s) +
+               (settings.ledStrip == s ? " selected>" : ">") + text + "</option>";
+    };
+    String f = F("<label>LED-list</label><select name=strip required>");
+    if (settings.ledStrip == LED_STRIP_UNSET)
+        f += F("<option value='' selected>— välj list —</option>");
+    f += opt(LED_STRIP_WS2812, "WS2812B / NeoPixel — 3 trådar: 5V, GND, DIN");
+    f += opt(LED_STRIP_APA102, "APA102 / DotStar — 4 trådar: 5V, GND, DI, CI");
+    f += F("</select><label>Antal dioder</label><input name=count type=number required "
+           "min=" LED_COUNT_MIN_STR " max=" LED_COUNT_MAX_STR " value='");
+    f += String(settings.ledCount);
+    f += F("'>");
+    return f;
+}
+
+// Läser listval och antal ur formuläret och byter drivrutin direkt om något
+// ändrats. Anroparen sparar. false = ingen giltig list vald.
+bool takeStripArgs() {
+    const long strip = server.arg("strip").toInt();
+    if (strip != LED_STRIP_WS2812 && strip != LED_STRIP_APA102) return false;
+
+    const uint16_t count =
+        server.hasArg("count")
+            ? (uint16_t)constrain(server.arg("count").toInt(), LED_COUNT_MIN, LED_COUNT_MAX)
+            : settings.ledCount;
+
+    if ((LedStrip)strip == settings.ledStrip && count == settings.ledCount) return true;
+    settings.ledStrip = (LedStrip)strip;
+    settings.ledCount = count;
+    Leds::configure(settings.ledStrip, settings.ledCount);
+    return true;
+}
+
+// Listvalet är administratörens steg, inte kundens. Den som monterar lampan vet
+// vilken list som sitter i; den som packar upp den hemma vet det inte, och ska
+// bara behöva sitt eget WiFi. Därför sparas listen på en egen sida, utan WiFi,
+// och portalen visar den i stället för WiFi-formuläret så länge ingen list är
+// vald. Nås även på statussidan via Felsökning.
+void handleStripPage() {
+    String p = head("LövGlöd — LED-list", gApMode ? "Steg 1 · För montören" : "Admin",
+                    F("Välj LED-list"),
+                    F("Välj vilken list som sitter i. Valet sparas i lampan och ligger "
+                      "kvar när den sedan kopplas till ett WiFi."));
+    p += F("<div class=card><form method=POST action=/strip>");
+    p += stripFields();
+    p += F("<button type=submit>Spara list</button></form>"
+           "<p class=note>Listen byter direkt — den gröna pulsen flyttar till den "
+           "valda listen. Syns den inte är valet fel.</p></div>");
+    if (settings.ledStrip != LED_STRIP_UNSET)
+        p += F("<a class=back href=/>← Tillbaka</a>");
+    p += FPSTR(PAGE_END);
+    server.send(200, "text/html; charset=utf-8", p);
+}
+
+void handleStripSave() {
+    if (!takeStripArgs()) { server.send(400, "text/plain", "välj LED-list"); return; }
+    settings.save();
+    server.sendHeader("Location", "/");
+    server.send(303);
+}
+
 void handleSetup() {
-    String p = head("Björklöven — WiFi");
-    p += F("<h1>Björk<span>löven</span></h1><p class=sub>Anslut lampan till ditt WiFi</p>"
-           "<div class=card><form method=POST action=/save>"
+    if (settings.ledStrip == LED_STRIP_UNSET) { handleStripPage(); return; }
+
+    String p = head("LövGlöd — WiFi", "Välkommen hem", F("Anslut din LövGlöd"),
+                    F("Välj ditt WiFi så börjar lampan följa Björklöven."));
+    p += F("<div class=card><form method=POST action=/save>"
            "<label>Nätverk</label><select name=ssid_pick "
            "onchange=\"document.getElementById('ssid').value=this.value\">");
     p += scanNetworks();
     p += F("</select>"
-           "<label>SSID</label><input id=ssid name=ssid required value='");
+           "<label>Nätverksnamn (SSID)</label><input id=ssid name=ssid required value='");
     p += htmlEscape(settings.wifiSsid);
     p += F("'><label>Lösenord</label><input name=pass type=password value=''>"
-           "<button type=submit>Spara och anslut</button></form></div>"
-           "<p class=sub>Lampan startar om och ansluter. Lyckas det inte dyker "
-           "det här nätverket upp igen.</p></div></body></html>");
+           "<button type=submit>Spara och anslut</button></form>"
+           "<p class=note>Lampan startar om och ansluter. Lyckas det inte dyker "
+           "det här nätverket upp igen.</p></div>");
+    p += FPSTR(PAGE_END);
     server.send(200, "text/html; charset=utf-8", p);
 }
 
 void handleSave() {
     if (!server.hasArg("ssid")) { server.send(400, "text/plain", "ssid saknas"); return; }
+    // Portalen visar inte WiFi-formuläret förrän listen är vald; det här fångar
+    // en gammal cachad sida.
+    if (settings.ledStrip == LED_STRIP_UNSET) {
+        server.send(400, "text/plain", "LED-list inte vald");
+        return;
+    }
 
     settings.wifiSsid = server.arg("ssid");
     settings.wifiPass = server.arg("pass");
     settings.save();
     gSubmitted = true;
 
-    String p = head("Sparat");
-    p += F("<h1>Sparat</h1><p class=sub>Lampan ansluter till <b>");
-    p += htmlEscape(settings.wifiSsid);
-    p += F("</b> och startar om.</p><div class=card>Glöden blir gul när "
-           "anslutningen lyckats. Pulserar listen <b>rött</b> gick det inte "
-           "att ansluta — kontrollera lösenordet."
-           "</div></div></body></html>");
+    String p = head("LövGlöd — Sparat", "Sparat", F("Nu ansluter vi"),
+                    "Lampan ansluter till <b>" + htmlEscape(settings.wifiSsid) +
+                    "</b> och startar om.");
+    p += F("<h2>Så ser du hur det gick</h2><div class=card><table>"
+           "<tr><td>Gul glöd</td><td>Anslutningen lyckades</td></tr>"
+           "<tr><td>Röd puls</td><td>Det gick inte — kontrollera lösenordet och "
+           "anslut till setup-nätet igen</td></tr></table></div>");
+    p += FPSTR(PAGE_END);
     server.send(200, "text/html; charset=utf-8", p);
 }
 
 void handleStatus() {
-    String p = head("Björklöven-lampan");
-    p += F("<h1>Björk<span>löven</span></h1><p class=sub>");
-    p += F("v" FW_VERSION " · ");
-    p += WiFi.localIP().toString();
-    p += F("</p><div class=card><table>");
+    String p = head("LövGlöd — Admin",
+                    ("v" FW_VERSION " · " + WiFi.localIP().toString()).c_str(),
+                    F("LövGlöd"), "Läge: <b>" + htmlEscape(status.state) + "</b>");
+    p += F("<h2>Status</h2><div class=card><table>");
 
     auto row = [&](const char *k, const String &v, bool hi = false) {
         p += "<tr><td>" + String(k) + "</td><td" + (hi ? " class=ok" : "") + ">" +
@@ -208,6 +340,8 @@ void handleStatus() {
                             status.timeSynced);
     row("Vann igår",        status.wonYesterday ? "Ja — gnistor på" : "Nej");
     row("Live-ström",       status.sseLive ? "Ansluten" : "Av");
+    row("LED-list",         String(Leds::stripName(settings.ledStrip)) + ", " +
+                            String(settings.ledCount) + " dioder");
     row("WiFi-nät",         WiFi.SSID() + "  (" + WiFi.localIP().toString() + ")");
     row("Signal",           String(WiFi.RSSI()) + " dBm");
     row("Ledigt minne",     String(ESP.getFreeHeap() / 1024) + " kB");
@@ -220,16 +354,9 @@ void handleStatus() {
     row("Uppdatering",      Updater::statusText());
 
     p += F("</table></div>"
-           "<div class=card><form method=POST action=/settings>"
-           "<label>Ljusstyrka (0–255)</label><input name=bright type=number min=5 max=255 value='");
+           "<h2>Inställningar</h2><div class=card><form method=POST action=/settings>"
+           "<label>Ljusstyrka (5–255)</label><input name=bright type=number min=5 max=255 value='");
     p += String(settings.brightness);
-    p += F("'><label>Uppdateringskälla (tom = av)</label>"
-           "<input name=otasrc placeholder='markusbackman/bjorkloven-led' value='");
-    p += htmlEscape(settings.otaSource);
-    p += F("'><label>GitHub-token (krävs för privat repo)</label>"
-           "<input name=otatok type=password autocomplete=off placeholder='");
-    p += settings.otaToken.length() ? F("•••••• sparad — lämna tomt för att behålla")
-                                    : F("github_pat_… (tomt för publikt repo)");
     p += F("'><label>Fördröjning på mål (sekunder — tv-sändningen ligger efter)</label>"
            "<input name=goaldly type=number min=0 max=" GOAL_DELAY_MAX_STR " value='");
     p += String(settings.goalDelayS);
@@ -237,14 +364,22 @@ void handleStatus() {
     p += settings.goalOnlyOurTeam
              ? F("<option value=1 selected>Ja</option><option value=0>Nej</option>")
              : F("<option value=1>Ja</option><option value=0 selected>Nej</option>");
-    p += F("</select><label>Felsökningsläge — ta emot matchläge på /push</label>"
+    p += F("</select><label>Uppdateringskälla (tom = av)</label>"
+           "<input name=otasrc placeholder='markusbackman/bjorkloven-led' value='");
+    p += htmlEscape(settings.otaSource);
+    p += F("'><label>GitHub-token (krävs för privat repo)</label>"
+           "<input name=otatok type=password autocomplete=off placeholder='");
+    p += settings.otaToken.length() ? F("•••••• sparad — lämna tomt för att behålla")
+                                    : F("github_pat_… (tomt för publikt repo)");
+    p += F("'><label>Felsökningsläge — ta emot matchläge på /push</label>"
            "<select name=dbgpush>");
     p += settings.debugPush
              ? F("<option value=1 selected>På — mockservern får styra</option>"
                  "<option value=0>Av</option>")
              : F("<option value=1>På — mockservern får styra</option>"
                  "<option value=0 selected>Av</option>");
-    p += F("</select><button type=submit>Spara</button></form>"
+    p += F("</select><button type=submit>Spara inställningar</button></form></div>"
+           "<h2>Åtgärder</h2><div class=card>"
            "<form method=POST action=/test><button class=ghost type=submit>"
            "Testa målfyrverkeriet</button></form>"
            "<form method=POST action=/refresh><button class=ghost type=submit>"
@@ -253,7 +388,8 @@ void handleStatus() {
            "Sök efter uppdatering nu</button></form>"
            "<form method=POST action=/forget onsubmit=\"return confirm('Glöm WiFi och starta setup-portalen?')\">"
            "<button class=ghost type=submit>Glöm WiFi</button></form>"
-           "</div><p class=sub><a href=/debug>Felsökning</a></p></div></body></html>");
+           "</div><a class=back href=/debug>Felsökning →</a>");
+    p += FPSTR(PAGE_END);
 
     server.send(200, "text/html; charset=utf-8", p);
 }
@@ -333,20 +469,22 @@ void handleUpdate() {
 void handleForget() {
     settings.clearWifi();
     server.send(200, "text/html; charset=utf-8",
-                head("Nollställt") + F("<h1>WiFi glömt</h1><p class=sub>Startar om i setup-läge…"
-                                       "</p></div></body></html>"));
+                head("LövGlöd — Nollställt", "Nollställt", F("WiFi glömt"),
+                     F("Lampan startar om i setup-läge. Anslut till nätet "
+                       "LövGlöd-Setup för att välja ett nytt WiFi.")) +
+                    FPSTR(PAGE_END));
     delay(600);
     ESP.restart();
 }
 
 void handleDebug() {
     if (stationOnly()) return;
-    String p = head("Felsökning");
-    p += F("<h1>Felsökning</h1><p class=sub>Senaste live-ramen från "
-           SHL_LIVE_HOST "</p><div class=card><pre>");
+    String p = head("LövGlöd — Felsökning", "Admin", F("Felsökning"));
+    p += F("<h2>Senaste live-ram</h2><div class=card><p class=note>Från "
+           SHL_LIVE_HOST "</p><pre>");
     p += htmlEscape(Shl::lastRawFrame().length() ? Shl::lastRawFrame()
                                                  : String("(ingen ram mottagen ännu)"));
-    p += F("</pre></div><div class=card><table>");
+    p += F("</pre></div><h2>Källor</h2><div class=card><table>");
     p += "<tr><td>Senaste fel</td><td>" + htmlEscape(Shl::lastError()) + "</td></tr>";
     p += "<tr><td>Team-UUID</td><td>" SHL_TEAM_UUID "</td></tr>";
     p += "<tr><td>API-URL</td><td>" + htmlEscape(Shl::apiBaseUrl()) + "</td></tr>";
@@ -361,12 +499,17 @@ void handleDebug() {
         p += "<tr><td>Misslyckad version</td><td>" + htmlEscape(settings.otaBadVersion) +
              " (" + String(settings.otaBadCount) + " försök)</td></tr>";
     p += F("</table></div>");
-    p += F("<div class=card><b>Nätverksdiagnostik</b><pre>");
+    p += F("<h2>Nätverk</h2><div class=card><pre>");
     p += htmlEscape(NetCheck::report().length() ? NetCheck::report()
                                                 : String("(inte körd)"));
     p += F("</pre><form method=POST action=/nettest>"
            "<button class=ghost type=submit>Kör om nätverkstestet</button></form></div>");
-    p += F("<p class=sub><a href=/>Tillbaka</a></p></div></body></html>");
+    p += F("<h2>LED-list</h2><div class=card><p class=note>");
+    p += htmlEscape(String(Leds::stripName(settings.ledStrip)) + ", " +
+                    String(settings.ledCount) + " dioder");
+    p += F("</p><a class=back href=/strip>Ändra LED-list →</a></div>"
+           "<a class=back href=/>← Tillbaka</a>");
+    p += FPSTR(PAGE_END);
     server.send(200, "text/html; charset=utf-8", p);
 }
 
@@ -448,6 +591,7 @@ void registerRoutes() {
     gRoutesRegistered = true;
 
     server.on("/", HTTP_GET, handleRoot);
+    server.on("/crest.svg", HTTP_GET, handleCrest);
 
     for (const char *probe : {"/hotspot-detect.html",       // iOS/macOS
                               "/library/test/success.html",
@@ -466,6 +610,10 @@ void registerRoutes() {
     server.on("/refresh",  HTTP_POST, handleRefresh);
     server.on("/nettest",  HTTP_POST, handleNetTest);
     server.on("/push",     HTTP_POST, handlePush);
+
+    // Listvalet i båda lägena: i portalen före WiFi, på statussidan i efterhand.
+    server.on("/strip",  HTTP_GET,  handleStripPage);
+    server.on("/strip",  HTTP_POST, handleStripSave);
 
     server.on("/save",   HTTP_POST, handleSave);
     server.on("/forget", HTTP_POST, handleForget);

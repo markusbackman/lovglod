@@ -21,9 +21,23 @@ void Settings::load() {
     goalDelayS      = prefs.getUChar("goaldly", GOAL_DELAY_DEFAULT_S);
     victoryUntil    = prefs.getULong("victuntil", 0);
     victoryGame     = prefs.getULong("victgame", 0);
+    ledStrip        = (LedStrip)prefs.getUChar("ledstrip", LED_STRIP_UNSET);
+    ledCount        = prefs.getUShort("ledcount", LED_COUNT_DEFAULT);
+
+    // Lampor från före listvalet har WiFi men ingen listnyckel. De sitter alla
+    // med WS2812B — det var den enda list firmwaren kunde driva — och utan det
+    // här skulle varje lampa ute i fält börja driva båda utgångarna efter OTA.
+    const bool legacy = !prefs.isKey("ledstrip") && wifiSsid.length();
     prefs.end();
 
     if (goalDelayS > GOAL_DELAY_MAX_S) goalDelayS = GOAL_DELAY_MAX_S;
+    if (ledStrip > LED_STRIP_APA102)   ledStrip = LED_STRIP_UNSET;
+    ledCount = constrain(ledCount, LED_COUNT_MIN, LED_COUNT_MAX);
+
+    if (legacy) {
+        ledStrip = LED_STRIP_WS2812;
+        save();
+    }
 }
 
 void Settings::save() {
@@ -41,6 +55,8 @@ void Settings::save() {
     prefs.putUChar("goaldly", goalDelayS);
     prefs.putULong("victuntil", victoryUntil);
     prefs.putULong("victgame", victoryGame);
+    prefs.putUChar("ledstrip", ledStrip);
+    prefs.putUShort("ledcount", ledCount);
     prefs.end();
 }
 

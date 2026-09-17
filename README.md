@@ -1,6 +1,6 @@
-# Björklöven-lampan 🍃
+# LövGlöd 🍃
 
-ESP32 + WS2812B-list som lever med Björklöven:
+ESP32 + WS2812B- eller APA102-list som lever med Björklöven:
 
 | Läge | Ljus |
 |---|---|
@@ -27,7 +27,7 @@ så ligans officiella API är rätt källa.
 Lägena ligger i `LedMode` (`src/leds.h`) och ritas i `src/leds.cpp`. Exakt ett
 läge är aktivt åt gången; gnistorna är det enda som ligger *ovanpå* ett annat
 läge. Alla tider nedan gäller standardvärdena i `include/config.h`
-(`YELLOW_R`/`YELLOW_G`, `LED_COUNT 60`).
+(`YELLOW_R`/`YELLOW_G`, 60 dioder).
 
 ### `LED_BOOT` — uppstartsflöde
 
@@ -50,7 +50,7 @@ slutar och anslutningen börjar.
 Hela listen i Björklövens gröna (`hue 96`, full mättnad), som andas mellan
 mörkt och ljust ungefär var tredje sekund. Inget flimmer, ingen rörelse längs
 listen — en lugn helyta. Betyder: *lampan har inget sparat WiFi och har startat
-sitt eget nät `Bjorkloven-Setup-XXXX`*. Grönt för att det inte är ett fel, det
+sitt eget nät `LövGlöd-Setup-XXXX`*. Grönt för att det inte är ett fel, det
 är bara din tur att göra något — och för att grönt och gult är lagets färger,
 så lampan håller sig till dem även innan den vet något om hockey.
 
@@ -236,12 +236,18 @@ svagare, så sätt taket efter ditt nätaggregat och inte tvärtom.
 | Del | Anmärkning |
 |---|---|
 | ESP32 DevKit v1 (ESP32-WROOM-32) | Vilken klon som helst duger |
-| WS2812B-list, 60 LEDs | 5 V, adresserbar (NeoPixel) |
+| LED-list, 5 V | **WS2812B** (NeoPixel) eller **APA102** (DotStar), 8–150 LEDs |
 | 5 V nätaggregat, ≥ 4 A | 60 LEDs på full vit ≈ 3,6 A |
-| Motstånd 330–470 Ω | I serie på datalinjen |
+| Motstånd 330–470 Ω | I serie på datalinjen — bara WS2812B |
 | Kondensator 1000 µF / 6,3 V+ | Över 5 V och GND vid listens början |
 
+Samma firmware driver båda listorna. Vilken som sitter på, och hur många
+dioder den har, väljs i setup-portalen (se avsnitt 4) och sparas i NVS — det
+överlever omstart och OTA, och går att ändra i efterhand på statussidan.
+
 ### Koppling
+
+Matningen är densamma för båda listorna:
 
 ```
    5V PSU ──┬──────────────► LED 5V
@@ -251,15 +257,55 @@ svagare, så sätt taket efter ditt nätaggregat och inte tvärtom.
    PSU GND ─┴──┬───────────► LED GND
                │
         ESP32 GND
+```
 
+**WS2812B** — en datatråd:
+
+```
    ESP32 GPIO13 ──[390Ω]────► LED DIN
 ```
 
+**APA102 / DotStar** — data och klocka:
+
+```
+   ESP32 GPIO23 ────────────► LED DI   (data)
+   ESP32 GPIO18 ────────────► LED CI   (klocka)
+```
+
+APA102-listen har fyra färgade trådar. Den vanligaste färgkoden för rött,
+vitt, grönt och blått är:
+
+| Tråd | Listens märkning | Kopplas till |
+|---|---|---|
+| **Röd** | 5V (VCC) | Nätaggregatets +5 V |
+| **Vit** | GND | Nätaggregatets GND **och** en GND-pinne på ESP32 |
+| **Grön** | DI (data in) | ESP32 **GPIO23** |
+| **Blå** | CI (klocka in) | ESP32 **GPIO18** |
+
+```
+   Röd   ──── PSU +5V
+   Vit   ──┬─ PSU GND
+           └─ ESP32 GND
+   Grön  ──── ESP32 GPIO23
+   Blå   ──── ESP32 GPIO18
+```
+
+> **Kontrollera mot listen innan du slår på strömmen.** Färgerna är ingen
+> standard och varierar mellan tillverkare. Det som gäller är texten på
+> kopparblecken där trådarna är lödda — `5V`, `CI`, `DI`, `GND` — och att
+> pilarna på listen pekar *bort* från trådarna (det är ingångsänden). Byts 5V
+> och GND kan listen gå sönder direkt. Byts bara data och klocka tar inget
+> skada, men listen förblir mörk eller visar skräp: byt då grön och blå.
+
 **Viktigt:**
 - ESP32 och listen måste dela GND, annars blir datasignalen skräp.
+- Koppla till listens *ingång* — DIN, respektive DI/CI. Utgångsänden heter DO/CO.
 - Mata *inte* 60 LEDs genom ESP32:ns 5V-pinne — dra 5 V direkt från nätaggregatet.
-- ESP32:ns 3,3 V-signal räcker oftast till WS2812B. Vid glitch: sätt in en
-  nivåomvandlare (74AHCT125) eller mata listen med 4,5 V istället för 5 V.
+- ESP32:ns 3,3 V-signal räcker oftast till båda listorna. Vid glitch: sätt in en
+  nivåomvandlare (74AHCT125) — för APA102 på både DI och CI — eller mata listen
+  med 4,5 V istället för 5 V.
+- Innan en list är vald drivs båda utgångarna samtidigt, så portalens gröna
+  puls syns vilken list som än är inkopplad.
 - Firmware håller sig under 3000 mA via `FastLED.setMaxPowerInVoltsAndMilliamps()`.
   Justera `LED_MAX_MILLIAMPS` i `include/config.h` efter ditt nätaggregat.
 
@@ -275,14 +321,34 @@ pio device monitor      # seriell logg, 115200 baud
 
 ## 4. Första start — captive portal
 
-1. Lampan hittar inget sparat WiFi → **grön puls** och den startar eget nät
-   `Bjorkloven-Setup-XXXX` (öppet).
+Setup sker i två steg, av två olika personer.
+
+**Administratören — innan lampan lämnas ut:**
+
+1. Starta lampan utan WiFi → **grön puls** och den startar eget nät
+   `LövGlöd-Setup-XXXX` (öppet). Innan en list är vald drivs båda
+   utgångarna, så pulsen syns vilken list som än sitter i.
 2. Anslut med mobilen. Inloggningsrutan poppar upp av sig själv (iOS, Android
    och Windows kontroll-URL:er är hanterade). Gör den inte det: gå till
    `http://192.168.4.1`.
-3. Välj nätverk i listan, skriv lösenord, spara.
-4. Lampan ansluter och glöden blir gul. Uppgifterna ligger kvar i NVS och
-   överlever både omstart och OTA.
+3. Portalen visar bara listvalet: välj **WS2812B** eller **APA102** och antal
+   dioder, tryck *Spara list*. Inget WiFi behövs. Pulsen flyttar direkt till
+   den valda listen — syns den inte är valet fel.
+4. Dra ur strömmen och lämna ut lampan.
+
+Listvalet ligger i NVS och överlever omstart, OTA och "Glöm WiFi". Ändra det i
+efterhand på `http://192.168.4.1/strip` i portalen, eller via *Felsökning* på
+statussidan.
+
+**Kunden — hemma:**
+
+1. Kopplar in lampan → grön puls, nätet `LövGlöd-Setup-XXXX` dyker upp.
+2. Ansluter med mobilen och ser bara WiFi-formuläret: välj nätverk, skriv
+   lösenord, spara.
+3. Lampan ansluter och glöden blir gul.
+
+Lampor som uppgraderas över OTA från en version utan listval behåller sin
+WS2812B — firmwaren känner igen dem på att WiFi redan är sparat.
 
 Går anslutningen inte igenom öppnas portalen igen. Står portalen öppen utan att
 någon gör något provar lampan de sparade uppgifterna på nytt var 5:e minut —

@@ -4,8 +4,12 @@
 
 namespace {
 
-CRGB      leds[LED_COUNT];
-uint8_t   sparkleLevel[LED_COUNT];   // separat lager så gnistor kan tona ut ovanpå glöden
+CRGB      leds[LED_COUNT_MAX];
+uint8_t   sparkleLevel[LED_COUNT_MAX];   // separat lager så gnistor kan tona ut ovanpå glöden
+uint16_t  gCount = LED_COUNT_DEFAULT;    // dioder på den inkopplade listen
+
+CLEDController *gWs2812 = nullptr;
+CLEDController *gApa102 = nullptr;
 
 LedMode   gMode          = LED_BOOT;
 bool      gSparkles      = false;
@@ -80,7 +84,7 @@ void drawGlow(uint8_t minVal, uint8_t maxVal, uint8_t bpm, uint8_t green = YELLO
     const uint8_t  breath = minVal + (uint8_t)(((uint32_t)eased * span + 32768) >> 16);
     const uint16_t t      = millis() / 24;
 
-    for (uint16_t i = 0; i < LED_COUNT; i++) {
+    for (uint16_t i = 0; i < gCount; i++) {
         // ±18 % variation per LED, långsamt vandrande längs listen
         const uint8_t n     = inoise8(i * 26, t);
         const int16_t delta = ((int16_t)n - 128) * breath / 700;
@@ -101,13 +105,13 @@ void drawGlow(uint8_t minVal, uint8_t maxVal, uint8_t bpm, uint8_t green = YELLO
 // det vet redan att laget vann, medan gSparkles står för gårdagens resultat.
 void updateSparkles(bool force = false) {
     if ((gSparkles || force) && (int32_t)(millis() - gNextSparkle) >= 0) {
-        sparkleLevel[random16(LED_COUNT)] = 255;
+        sparkleLevel[random16(gCount)] = 255;
         // Slumpad väntan runt medelvärdet ger ett oregelbundet, naturligt glitter
         gNextSparkle = millis() + random16(SPARKLE_MEAN_INTERVAL_MS / 2,
                                           SPARKLE_MEAN_INTERVAL_MS * 3 / 2);
     }
 
-    for (uint16_t i = 0; i < LED_COUNT; i++) {
+    for (uint16_t i = 0; i < gCount; i++) {
         if (!sparkleLevel[i]) continue;
         // Adderas ovanpå glöden, blandas inte in i den — se SPARKLE_R i
         // config.h. CRGB::operator+= mättar vid 255, så en gnista på full
@@ -128,36 +132,36 @@ void drawGoal() {
         const uint16_t phase = (millis() / 36) % 2;
         const bool     white = ((millis() / 72) % 2) == 0;
         if (phase) {
-            fill_solid(leds, LED_COUNT, white ? CRGB(255, 244, 210) : gold(255));
+            fill_solid(leds, gCount, white ? CRGB(255, 244, 210) : gold(255));
         } else {
-            fill_solid(leds, LED_COUNT, gold(7));
+            fill_solid(leds, gCount, gold(7));
         }
         return;
     }
 
-    fadeToBlackBy(leds, LED_COUNT, 48);
+    fadeToBlackBy(leds, gCount, 48);
 
     // Kometer: en ny salva skjuts ut från mitten var 110:e ms.
-    const uint16_t center = LED_COUNT / 2;
+    const uint16_t center = gCount / 2;
     const uint16_t travel = (elapsed % 110) * center / 110;
 
     for (int8_t dir = -1; dir <= 1; dir += 2) {
         const int16_t pos = center + dir * (int16_t)travel;
-        if (pos < 0 || pos >= LED_COUNT) continue;
+        if (pos < 0 || pos >= gCount) continue;
         leds[pos] = CRGB(255, 248, 220);                       // vitglödande kärna
-        if (pos - dir >= 0 && pos - dir < LED_COUNT) leds[pos - dir] += gold(190);
-        if (pos - 2 * dir >= 0 && pos - 2 * dir < LED_COUNT) leds[pos - 2 * dir] += gold(32);
+        if (pos - dir >= 0 && pos - dir < gCount) leds[pos - dir] += gold(190);
+        if (pos - 2 * dir >= 0 && pos - 2 * dir < gCount) leds[pos - 2 * dir] += gold(32);
     }
 
     // Slumpade "gnistregn" ovanpå så det inte blir mekaniskt
     for (uint8_t k = 0; k < 3; k++) {
-        if (random8() < 90) leds[random16(LED_COUNT)] += gold(random8(101, 255));
+        if (random8() < 90) leds[random16(gCount)] += gold(random8(101, 255));
     }
 
     // Sista sekunden tonar ner mot standby istället för att slockna tvärt
     const int32_t left = (int32_t)(gGoalUntil - millis());
     if (left < 1200 && left > 0) {
-        nscale8(leds, LED_COUNT, (uint8_t)map(left, 0, 1200, 60, 255));
+        nscale8(leds, gCount, (uint8_t)map(left, 0, 1200, 60, 255));
     }
 }
 
@@ -170,7 +174,7 @@ void drawVictory() {
     // Botten först — kometerna adderas ovanpå.
     drawGlow(VICTORY_GLOW_MIN, VICTORY_GLOW_MAX, VICTORY_GLOW_BPM, LIVE_YELLOW_G);
 
-    const uint16_t center = LED_COUNT / 2;
+    const uint16_t center = gCount / 2;
 
     for (uint8_t v = 0; v < VICTORY_VOLLEYS; v++) {
         // Salvorna är samma resa förskjuten i tid, så strömmen aldrig tar slut.
@@ -183,10 +187,10 @@ void drawVictory() {
 
         for (int8_t dir = -1; dir <= 1; dir += 2) {
             const int16_t pos = center + dir * (int16_t)travel;
-            if (pos < 0 || pos >= LED_COUNT) continue;
+            if (pos < 0 || pos >= gCount) continue;
             leds[pos] += gold(scale8(VICTORY_HEAD_VAL, life), LIVE_YELLOW_G);
             const int16_t tail = pos - dir;
-            if (tail >= 0 && tail < LED_COUNT)
+            if (tail >= 0 && tail < gCount)
                 leds[tail] += gold(scale8(VICTORY_TAIL_VAL, life), LIVE_YELLOW_G);
         }
     }
@@ -205,12 +209,12 @@ void drawVictory() {
 // av det.
 void drawPortal(uint8_t hue, uint8_t sat) {
     const uint8_t v = beatsin8(20, 25, 190);
-    fill_solid(leds, LED_COUNT, CHSV(hue, sat, v));
+    fill_solid(leds, gCount, CHSV(hue, sat, v));
 }
 
 void drawConnecting() {
-    fadeToBlackBy(leds, LED_COUNT, 28);
-    const uint16_t pos = (millis() / 18) % LED_COUNT;
+    fadeToBlackBy(leds, gCount, 28);
+    const uint16_t pos = (millis() / 18) % gCount;
     leds[pos] = gold(255);
 }
 
@@ -233,9 +237,9 @@ void drawBoot() {
     // Kanten går 3 dioder förbi listens slut, annars hinner de sista aldrig
     // upp i full styrka innan tiden är ute.
     const int32_t edge = map(constrain(e, 0, BOOT_FILL_MS), 0, BOOT_FILL_MS,
-                             0, LED_COUNT * 256 + BOOT_EDGE_SOFTNESS);
+                             0, gCount * 256 + BOOT_EDGE_SOFTNESS);
 
-    for (uint16_t i = 0; i < LED_COUNT; i++) {
+    for (uint16_t i = 0; i < gCount; i++) {
         const int32_t d = edge - (int32_t)i * 256;      // hur långt bakom kanten
         uint8_t level;
         if      (d <= 0)                    level = 0;
@@ -250,9 +254,9 @@ void drawBoot() {
 // mitt i ett blockerande anrop är det medvetet en stapel utan egen rörelse:
 // det som står stilla ska se ut att stå stilla med flit.
 void drawWorking() {
-    fill_solid(leds, LED_COUNT, CRGB::Black);
-    for (uint16_t i = 0; i < gWorkLit && i < LED_COUNT; i++) leds[i] = gold(WORK_BODY_VAL);
-    if (gWorkLit < LED_COUNT) leds[gWorkLit] = gold(255);
+    fill_solid(leds, gCount, CRGB::Black);
+    for (uint16_t i = 0; i < gWorkLit && i < gCount; i++) leds[i] = gold(WORK_BODY_VAL);
+    if (gWorkLit < gCount) leds[gWorkLit] = gold(255);
 }
 
 // Till skillnad från drawWorking() får den här röra sig: en OTA-nedladdning är
@@ -265,15 +269,15 @@ void drawWorking() {
 void drawUpdating() {
     // Samma golv som uppstartsstapeln — se BAR_MIN_LIT i config.h.
     const uint16_t lit = BAR_MIN_LIT +
-                         (uint16_t)((uint32_t)gUpdatePercent * (LED_COUNT - BAR_MIN_LIT) / 100);
-    fill_solid(leds, LED_COUNT, CRGB::Black);
-    for (uint16_t i = 0; i < lit && i < LED_COUNT; i++) leds[i] = gold(UPDATE_BODY_VAL);
-    if (lit < LED_COUNT) leds[lit] = gold(beatsin8(120, 4, UPDATE_HEAD_VAL));
+                         (uint16_t)((uint32_t)gUpdatePercent * (gCount - BAR_MIN_LIT) / 100);
+    fill_solid(leds, gCount, CRGB::Black);
+    for (uint16_t i = 0; i < lit && i < gCount; i++) leds[i] = gold(UPDATE_BODY_VAL);
+    if (lit < gCount) leds[lit] = gold(beatsin8(120, 4, UPDATE_HEAD_VAL));
 }
 
 void drawError() {
     const uint8_t v = beatsin8(12, 6, 70);
-    fill_solid(leds, LED_COUNT, CHSV(0, 230, v));
+    fill_solid(leds, gCount, CHSV(0, 230, v));
 }
 
 }  // namespace
@@ -281,14 +285,60 @@ void drawError() {
 // ─────────────────────────────────────────────────────────────────────────────
 namespace Leds {
 
-void begin() {
-    FastLED.addLeds<LED_TYPE, LED_PIN, LED_COLOR_ORDER>(leds, LED_COUNT)
-        .setCorrection(LED_COLOR_CORRECTION);
+// Båda drivrutinerna är registrerade hela tiden; det är den här som avgör vilken
+// som skriver ut. FastLED kan inte ta bort en drivrutin, så att byta list utan
+// omstart går bara till så här.
+//
+// Den avstängda får dessutom längden noll. show() hoppar över avstängda, men
+// strömtaket räknar ihop varje registrerad drivrutins buffert oavsett — med
+// full längd på båda skulle budgeten i praktiken halveras. Så är det medan
+// ingen list är vald, och det är ett rimligt pris för att portalen syns.
+void applyStrip(LedStrip strip, uint16_t count) {
+    const bool ws  = strip != LED_STRIP_APA102;
+    const bool apa = strip != LED_STRIP_WS2812;
+    gWs2812->setLeds(leds, ws ? count : 0);
+    gWs2812->setEnabled(ws);
+    gApa102->setLeds(leds, apa ? count : 0);
+    gApa102->setEnabled(apa);
+    gCount = count;
+}
+
+void begin(LedStrip strip, uint16_t count) {
+    gWs2812 = &FastLED.addLeds<WS2812B, LED_WS2812_PIN, LED_WS2812_ORDER>(leds, LED_COUNT_MAX);
+    gApa102 = &FastLED.addLeds<APA102, LED_APA102_DATA, LED_APA102_CLOCK, LED_APA102_ORDER,
+                               DATA_RATE_MHZ(LED_APA102_MHZ)>(leds, LED_COUNT_MAX);
+    gWs2812->setCorrection(LED_COLOR_CORRECTION);
+    gApa102->setCorrection(LED_COLOR_CORRECTION);
+    applyStrip(strip, constrain(count, LED_COUNT_MIN, LED_COUNT_MAX));
+
     FastLED.setMaxPowerInVoltsAndMilliamps(LED_PSU_VOLTS, LED_MAX_MILLIAMPS);
     FastLED.setDither(LED_DITHER);       // mjukar upp glödens smala nivåband
     FastLED.clear(true);
     memset(sparkleLevel, 0, sizeof(sparkleLevel));
     gModeSince = millis();
+    Serial.printf("[led] %s, %u dioder\n", stripName(strip), gCount);
+}
+
+void configure(LedStrip strip, uint16_t count) {
+    count = constrain(count, LED_COUNT_MIN, LED_COUNT_MAX);
+
+    // Släck med den gamla uppsättningen innan bytet: en list som kopplas bort
+    // fryser annars på sista bildrutan, och en list som kortas behåller svansen
+    // tänd bortom det nya slutet.
+    fill_solid(leds, LED_COUNT_MAX, CRGB::Black);
+    FastLED.show();
+
+    applyStrip(strip, count);
+    memset(sparkleLevel, 0, sizeof(sparkleLevel));
+    Serial.printf("[led] byter till %s, %u dioder\n", stripName(strip), gCount);
+}
+
+const char *stripName(LedStrip strip) {
+    switch (strip) {
+        case LED_STRIP_WS2812: return "WS2812B";
+        case LED_STRIP_APA102: return "APA102/DotStar";
+        default:               return "inte vald";
+    }
 }
 
 void setMode(LedMode m) {
@@ -361,17 +411,17 @@ void setUpdateProgress(uint8_t percent) {
 
 void setWorkProgress(uint8_t done, uint8_t total) {
     if (done > total) done = total;
-    // Förloppet skalas in i intervallet [WORK_MIN_LIT, LED_COUNT] i stället för
-    // [0, LED_COUNT]. Nollförloppet ska synas som en stapel som just startat,
+    // Förloppet skalas in i intervallet [WORK_MIN_LIT, gCount] i stället för
+    // [0, gCount]. Nollförloppet ska synas som en stapel som just startat,
     // inte som en släckt list.
     gWorkLit = total
-        ? BAR_MIN_LIT + (uint16_t)((uint32_t)done * (LED_COUNT - BAR_MIN_LIT) / total)
+        ? BAR_MIN_LIT + (uint16_t)((uint32_t)done * (gCount - BAR_MIN_LIT) / total)
         : BAR_MIN_LIT;
     setMode(LED_WORKING);
 }
 
 void blank() {
-    fill_solid(leds, LED_COUNT, CRGB::Black);
+    fill_solid(leds, gCount, CRGB::Black);
     FastLED.show();
 }
 

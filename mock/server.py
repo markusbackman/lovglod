@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Mock-server för Björklöven-lampan.
+Mock-server för LövGlöd.
 
 Styr lampan i labbet mitt i sommaruppehållet genom att trycka in ett påhittat
 matchläge i den:
@@ -719,7 +719,7 @@ def push_loop() -> None:
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(description="Mock-server för Björklöven-lampan")
+    ap = argparse.ArgumentParser(description="Mock-server för LövGlöd")
     ap.add_argument("--port", type=int, default=8080)
     ap.add_argument("--host", default="0.0.0.0")
     args = ap.parse_args()

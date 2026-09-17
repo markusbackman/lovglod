@@ -15,8 +15,25 @@ enum LedMode : uint8_t {
     LED_ERROR        // rött andetag — ingen data
 };
 
+// Vilken list som sitter på. Värdet sparas i NVS — numrera aldrig om, lägg
+// bara till.
+enum LedStrip : uint8_t {
+    LED_STRIP_UNSET  = 0,   // inte vald än: båda utgångarna drivs samtidigt
+    LED_STRIP_WS2812 = 1,   // WS2812B/NeoPixel, en datatråd
+    LED_STRIP_APA102 = 2,   // APA102/DotStar, data + klocka
+};
+
 namespace Leds {
-void begin();
+// Registrerar drivrutiner för båda listorna och slår på den som hör till strip.
+void begin(LedStrip strip, uint16_t count);
+
+// Byter list eller antal under drift, utan omstart. Omstart vore enklare men
+// inte ofarligt: står en nyinstallerad OTA på prov rullar bootloadern tillbaka
+// den vid nästa reset. Listen släcks först, så den som kopplas bort inte blir
+// stående på sista bildrutan.
+void configure(LedStrip strip, uint16_t count);
+const char *stripName(LedStrip strip);
+
 void setMode(LedMode m);
 LedMode mode();
 

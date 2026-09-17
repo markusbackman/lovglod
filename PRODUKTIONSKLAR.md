@@ -626,7 +626,7 @@ Görs enklast genom att lägga en trasig `firmware.json` över den riktiga med
 
 Den enda delen av B1 som inte gick att prova. Kräver att WiFi-uppgifterna
 raderas, så ha lösenordet till nätet framme: seriekommandot `w`, anslut till
-`Bjorkloven-Setup-XXXX`, skriv in uppgifterna, och kontrollera sedan att `/`
+`LövGlöd-Setup-XXXX`, skriv in uppgifterna, och kontrollera sedan att `/`
 visar **statussidan** och inte setup-formuläret. Det var det ursprungliga
 symptomet.
 

@@ -1,10 +1,18 @@
 #pragma once
 #include <Arduino.h>
+#include "leds.h"
 
 // Persistent konfiguration i NVS. Överlever omstart och OTA-uppdatering.
 struct Settings {
     String  wifiSsid;
     String  wifiPass;
+
+    // Vilken list som är inkopplad och hur lång den är. Väljs i setup-portalen
+    // och går att ändra på statussidan. Rörs inte av "Glöm WiFi" — listen sitter
+    // kvar även när nätet byts.
+    LedStrip ledStrip;
+    uint16_t ledCount;
+
     String  otaSource;        // "owner/repo" eller manifest-URL. Tom = av.
     String  otaToken;         // GitHub-PAT. Krävs bara för privata repon.
     uint8_t brightness;

@@ -15,16 +15,29 @@
 // ─────────────────────────────────────────────────────────────
 //  LED-hårdvara
 // ─────────────────────────────────────────────────────────────
-// #ifndef så att kopplingstestet kan prova andra pinnar/antal via build-flagga:
-//   PLATFORMIO_BUILD_FLAGS="-DLED_PIN=5 -DLED_COUNT=30" pio run -e esp32dev_wiring -t upload
-#ifndef LED_PIN
-#define LED_PIN         13          // Datapinne till WS2812B (via 330–470 Ω)
-#endif
-#ifndef LED_COUNT
-#define LED_COUNT       60
-#endif
-#define LED_TYPE        WS2812B
-#define LED_COLOR_ORDER GRB
+// Samma binär driver två sorters list: WS2812B (en datatråd) och APA102/DotStar
+// (data + klocka). Vilken som sitter på väljs i setup-portalen och sparas i NVS
+// tillsammans med antalet dioder — därför kan en och samma firmware.bin gå ut
+// över OTA till lampor med vilken list som helst.
+//
+// Pinnarna ligger fast i binären och krockar inte, så båda utgångarna går att
+// driva samtidigt. Det görs så länge ingen list är vald: portalens gröna puls
+// ska synas oavsett vad som är inkopplat.
+#define LED_WS2812_PIN   13          // DIN på WS2812B (via 330–470 Ω)
+#define LED_WS2812_ORDER GRB
+#define LED_APA102_DATA  23          // DI på APA102 — VSPI MOSI
+#define LED_APA102_CLOCK 18          // CI på APA102 — VSPI SCK
+#define LED_APA102_ORDER BGR         // DotStar-listor är nästan alltid BGR
+// Klockfrekvens till APA102. FastLED kör mjukvaru-SPI här, så det är ett tak;
+// 4 MHz tål några decimeter kabel utan nivåomvandlare.
+#define LED_APA102_MHZ   4
+
+// Antal dioder. Standardvärdet gäller lampor som uppgraderas från en firmware
+// som inte sparade det. Taket bestämmer buffertarnas storlek, golvet finns för
+// att förloppsstaplarna (BAR_MIN_LIT) ska ha något att fylla.
+#define LED_COUNT_DEFAULT 60
+#define LED_COUNT_MIN     8
+#define LED_COUNT_MAX     150
 
 // Ingen färgkorrigering. FastLEDs TypicalLEDStrip (255,176,240) drar ner grönt
 // med 30 % och rubbar därmed blandningen i YELLOW_R/YELLOW_G nedan — gulen blir
@@ -321,7 +334,7 @@
 // ─────────────────────────────────────────────────────────────
 //  Nätverk
 // ─────────────────────────────────────────────────────────────
-#define AP_SSID_PREFIX  "Bjorkloven-Setup"
+#define AP_SSID_PREFIX  "LövGlöd-Setup"
 #define AP_PASSWORD     ""          // tomt = öppet nät (enklast för captive portal)
 
 // Inget OTA_PASSWORD här: ArduinoOTA-push finns inte längre. Den vägen gick
