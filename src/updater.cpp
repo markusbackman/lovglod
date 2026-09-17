@@ -531,7 +531,7 @@ bool checkAndApply(const String &source) {
 
     // Skriv ner vad vi startar om i, innan vi gör det. Rullar bootloadern
     // tillbaka den är det här den gamla firmwaren läser för att veta vilken
-    // version som ska svartlistas. Se B5 i PRODUKTIONSKLAR.md.
+    // version som ska svartlistas. Se serviceOtaValidation() i main.cpp.
     settings.noteOtaPending(rel.version);
 
     gStatus = "Installerade " + rel.version;

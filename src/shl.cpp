@@ -315,7 +315,7 @@ void sseStart(const String &gameUuid) {
     gSseGameUuid = gameUuid;
     gSseActive   = true;
     // Inte 0: en nollad tidsstämpel ser ut att ligga i framtiden efter 24,9
-    // dygns upptid, och då återansluter strömmen aldrig. Se R8.
+    // dygns upptid, och då återansluter strömmen aldrig.
     gSseRetryAt  = millis();
     sseConnect();
 }

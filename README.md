@@ -210,7 +210,7 @@ anropen den täcker fryser bilden ändå.
 
 Kroppen ligger däremot dämpad (`UPDATE_BODY_VAL 40`, huvudet `UPDATE_HEAD_VAL
 120`). En ljusare stapel drog tillräckligt med ström för att fälla enheten mitt i
-nedladdningen, se B0 i `PRODUKTIONSKLAR.md`. Samma golv på `BAR_MIN_LIT` dioder
+nedladdningen. Samma golv på `BAR_MIN_LIT` dioder
 gäller: utan det visas TLS-handskakningen mot
 GitHub — flera sekunder innan första byten kommer — som en enda blinkande diod
 på en släckt list, i det ögonblick då enheten skriver om sin egen firmware och
@@ -558,7 +558,8 @@ Webbgränssnittet har medvetet ingen inloggning — lampan är byggd för ett
 hemmanät. Vem som helst på nätet kan därför peka om uppdateringskällan, ändra
 inställningar eller radera WiFi-uppgifterna. Att de *inte* kan få något
 installerat är signaturens förtjänst. Ska lampan stå på ett nät du inte litar
-på, se B3 i `PRODUKTIONSKLAR.md`.
+på behöver den HTTP Basic auth (`server.authenticate()`) med lösenord i NVS
+och en CSRF-token i formulären.
 
 Notera också vad borttagandet av push kostar: går en signerad uppdatering igenom
 och visar sig trasig finns ingen väg tillbaka över nätet. Enda återvägen är USB

@@ -55,7 +55,7 @@ static uint32_t  gConnectStarted    = 0;
 static uint32_t  gNextMidnightCheck = 0;
 static uint32_t  gNextTimeRetry     = 0;
 
-// Kör vi en firmware som ännu inte kvitterat sig frisk? Se B5.
+// Kör vi en firmware som ännu inte kvitterat sig frisk? Se serviceOtaValidation().
 static bool      gOtaOnTrial        = false;
 static bool      gWifiEverUp        = false;
 
@@ -438,7 +438,7 @@ static void serviceLive() {
             Shl::sseStart(gNext.uuid);
             gNextLivePoll   = millis();
             // Tidsstämpeln kan vara månader gammal efter sommaruppehållet, och
-            // då ser den ut att ligga i framtiden. Se R8.
+            // då ser den ut att ligga i framtiden. Se gFetchNow.
             gNextResultPoll = millis();
         } else {
             Serial.println("[live] matchfönster stängt");

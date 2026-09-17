@@ -107,7 +107,7 @@ void drawGlow(uint8_t minVal, uint8_t maxVal, uint8_t bpm, uint8_t green = YELLO
 void updateSparkles(bool force = false) {
     // Förfluten tid och inte en tidsstämpel framåt: gnistorna kan ha stått av i
     // månader, och en så gammal deadline ser ut att ligga i framtiden så fort
-    // millis() passerat 2^31. Då uteblev glittret i upp till 25 dygn. Se R8.
+    // millis() passerat 2^31. Då uteblev glittret i upp till 25 dygn.
     if ((gSparkles || force) && millis() - gLastSparkle >= gSparkleGap) {
         sparkleLevel[random16(gCount)] = 255;
         // Slumpad väntan runt medelvärdet ger ett oregelbundet, naturligt glitter

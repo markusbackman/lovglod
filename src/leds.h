@@ -84,7 +84,7 @@ void setWorkProgress(uint8_t done, uint8_t total);
 //
 // Att bara byta läge räcker inte: drawConnecting() inleder med
 // fadeToBlackBy(28), vilket sänker en fulltänd list med ~11 % per bildruta. Den
-// måste släckas, inte tonas. Se B0 i PRODUKTIONSKLAR.md.
+// måste släckas, inte tonas.
 void blank();
 
 // Anropas varje varv i loop(). Ritar bara om när det är dags för ny bildruta.
