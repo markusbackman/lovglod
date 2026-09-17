@@ -793,3 +793,13 @@ mot `setCACert()` i `src/shl.cpp` och `src/updater.cpp`.
 För firmware spelar det mindre roll numera — binären är signerad, se
 [Signerad firmware](#signerad-firmware). En angripare som kan byta ut svaret kan
 ändå inte producera något enheten installerar.
+
+## Licens
+
+- **Firmware och verktyg** — [MIT](LICENSE).
+- **3D-modeller, byggguide och webbplats** (`hardware/`, `site/`) —
+  [CC BY-SA 4.0](hardware/LICENSE).
+
+IF Björklövens namn, klubbmärke och övriga varumärken omfattas inte av någon av
+licenserna. De tillhör IF Björklöven. Projektet är inte knutet till eller godkänt av
+klubben.
