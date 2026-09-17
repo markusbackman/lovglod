@@ -42,7 +42,15 @@ struct Settings {
     uint32_t victoryUntil;    // UTC epoch, 0 = ingen seger att fira
     uint32_t victoryGame;     // startUtc för matchen vi redan firat
 
+    // Omstartsräknare. Omstartsorsaken ensam säger inte hur ofta: en lampa som
+    // brownoutar var tionde minut såg likadan ut som en som gjort det en gång.
+    // abnormalBoots nollas vid strömpåslag, så den räknar omstarter i följd sedan
+    // lampan senast kopplades in — tillsammans med upptiden ger det frekvensen.
+    uint32_t bootCount;       // alla starter, sedan lampan först flashades
+    uint32_t abnormalBoots;   // onormala omstarter sedan senaste strömpåslag
+
     void load();
+    void noteBoot(bool poweredOn, bool abnormal);
     void save();
     void clearWifi();
     void noteVictory(uint32_t gameStartUtc, uint32_t untilUtc);

@@ -20,8 +20,7 @@ B4 som stänger den realistiska vägen in. B3 lämnas medvetet öppen.
 - [x] **Firmware, uppstart** — listen släcks före radiostart. Verifierat
       2026-08-30: 7 starter av 7 utan brownout, mot 4 av 4 med brownout före.
 - [x] **Firmware, OTA** — förloppsstapeln dämpad, se nedan.
-- [ ] **Hårdvara** — kvarstår. Marginalen är fortfarande tunn nog att LED-lasten
-      ensam avgör om en OTA går igenom.
+- [x] **Hårdvara** — åtgärdad 2026-09-17.
 
 #### Nedladdningen var ett andra, hårdare strömfall (2026-09-01)
 
@@ -362,7 +361,8 @@ stället för att svartlistas.
 
 ### R6. En enda studs hos SHL ger sex timmars rött ljus
 
-- [ ] Fixad
+- [x] Fixad 2026-09-17 — återförsök efter 5 min, dubblas upp mot 6 h
+      (`SCHEDULE_RETRY_MIN_MS`). Ej provad på enhet.
 
 `refreshSchedule()` sätter `gNextScheduleFetch = millis() + POLL_SCHEDULE_MS`
 högst upp (`src/main.cpp:285`), innan den vet hur det gick. Misslyckas båda
@@ -429,7 +429,10 @@ Skarp konfiguration därefter: synkad efter 0,7 s, `Klocka`-raden visar tiden.
 
 ### R8. `gNextScheduleFetch = 0` slutar fungera mellan 24,9 och 49,7 dygns upptid
 
-- [ ] Fixad
+- [x] Fixad 2026-09-17 — `gFetchNow`. Samma fel hittades på tre ställen till och
+      är också fixade: `gSseRetryAt = 0` i `sseStart()` (strömmen återanslöt
+      aldrig), gnisttimern (glittret kunde utebli i veckor efter ett långt
+      uppehåll) och `gNextResultPoll` (månader gammal efter sommaruppehållet).
 
 `(int32_t)(millis() - 0) >= 0` är falskt så fort `millis()` passerat 2^31. De
 fyra ställen som tvingar fram en hämtning genom att nolla variabeln
@@ -443,7 +446,8 @@ inte jämförelsen.
 
 ### R9. All nätverkstrafik blockerar `loop()`
 
-- [ ] Fixad
+- [x] Snabb lindring 2026-09-17 — reservpollningen väntar medan `LED_GOAL` pågår
+- [ ] Riktig fix (hämtning i egen task)
 
 `apiGet` kan hålla i ~20 s (8 s anslutning + 12 s läsning) utan ett enda
 `Leds::render()` däremellan. Fyra gånger per dygn är det en fryst glöd. Under
@@ -533,6 +537,7 @@ aldrig och kan ruttna tyst. Ingen `pio check` heller.
 ### D17. Ingen felsökningsdata efter en krasch
 
 - [x] Delvis åtgärdad 2026-09-01 — omstartsorsak visas på statussidan
+- [x] Starträknare i NVS 2026-09-17 — raden **Omstarter** på statussidan
 
 Ingenting sparade `esp_reset_reason()`. Det slog till på riktigt under
 strömfelsökningen: utan seriekabel gick det inte att skilja en brownout från en
@@ -544,8 +549,8 @@ sin varning och gör en mjuk omstart — men ESP-IDF lämnar en hint efter sig, 
 `esp_reset_reason()` svarar ändå `ESP_RST_BROWNOUT`. Verifierat i
 `libesp_system.a` att brownout-hanteraren anropar `esp_reset_reason_set_hint`.
 
-**Kvar:** ingen starträknare i NVS, så en lampa som startar om var tionde minut
-ser likadan ut som en som gjort det en gång. Orsaken syns, frekvensen inte.
+Starträknaren räknar onormala omstarter sedan senaste strömpåslag; tillsammans
+med upptiden syns nu även frekvensen.
 
 ---
 

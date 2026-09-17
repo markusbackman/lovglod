@@ -24,6 +24,8 @@ void Settings::load() {
     victoryGame     = prefs.getULong("victgame", 0);
     ledStrip        = (LedStrip)prefs.getUChar("ledstrip", LED_STRIP_UNSET);
     ledCount        = prefs.getUShort("ledcount", LED_COUNT_DEFAULT);
+    bootCount       = prefs.getULong("boots", 0);
+    abnormalBoots   = prefs.getULong("badboots", 0);
 
     // Lampor från före listvalet har WiFi men ingen listnyckel. De sitter alla
     // med WS2812B — det var den enda list firmwaren kunde driva — och utan det
@@ -59,6 +61,19 @@ void Settings::save() {
     prefs.putULong("victgame", victoryGame);
     prefs.putUChar("ledstrip", ledStrip);
     prefs.putUShort("ledcount", ledCount);
+    prefs.end();
+}
+
+// Skriver bara räknarna, inte hela inställningsblocket — det här körs vid varje
+// start, även i en omstartsloop.
+void Settings::noteBoot(bool poweredOn, bool abnormal) {
+    bootCount++;
+    if (poweredOn)     abnormalBoots = 0;
+    else if (abnormal) abnormalBoots++;
+
+    prefs.begin(NS, /*readOnly=*/false);
+    prefs.putULong("boots", bootCount);
+    prefs.putULong("badboots", abnormalBoots);
     prefs.end();
 }
 

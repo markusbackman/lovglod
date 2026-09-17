@@ -348,6 +348,10 @@ void handleStatus() {
     row("Ledigt minne",     String(ESP.getFreeHeap() / 1024) + " kB");
     row("Upptid",           String(millis() / 60000) + " min");
     row("Senaste omstart",  status.resetReason, status.resetAbnormal);
+    row("Omstarter",        String(settings.abnormalBoots) +
+                            " onormala sedan strömpåslag  (" +
+                            String(settings.bootCount) + " starter totalt)",
+                            settings.abnormalBoots > 0);
     row("Firmware",         status.otaOnTrial
                                 ? String(FW_VERSION) + "  — på prov, inte kvitterad"
                                 : String(FW_VERSION),

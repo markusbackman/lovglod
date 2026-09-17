@@ -18,7 +18,8 @@ uint32_t  gGoalStart     = 0;
 uint8_t   gUpdatePercent = 0;
 uint32_t  gModeSince     = 0;
 uint32_t  gLastFrame     = 0;
-uint32_t  gNextSparkle   = 0;
+uint32_t  gLastSparkle   = 0;
+uint16_t  gSparkleGap    = 0;
 uint16_t  gWorkLit       = 0;        // antal tända LEDs i uppstartsstapeln
 
 // Mål som väntar på tv-fördröjningen, i tidsordning (tidigast först).
@@ -104,11 +105,15 @@ void drawGlow(uint8_t minVal, uint8_t maxVal, uint8_t bpm, uint8_t green = YELLO
 // `force` tänder gnistorna oavsett gSparkles. Segerläget vill alltid glittra —
 // det vet redan att laget vann, medan gSparkles står för gårdagens resultat.
 void updateSparkles(bool force = false) {
-    if ((gSparkles || force) && (int32_t)(millis() - gNextSparkle) >= 0) {
+    // Förfluten tid och inte en tidsstämpel framåt: gnistorna kan ha stått av i
+    // månader, och en så gammal deadline ser ut att ligga i framtiden så fort
+    // millis() passerat 2^31. Då uteblev glittret i upp till 25 dygn. Se R8.
+    if ((gSparkles || force) && millis() - gLastSparkle >= gSparkleGap) {
         sparkleLevel[random16(gCount)] = 255;
         // Slumpad väntan runt medelvärdet ger ett oregelbundet, naturligt glitter
-        gNextSparkle = millis() + random16(SPARKLE_MEAN_INTERVAL_MS / 2,
-                                          SPARKLE_MEAN_INTERVAL_MS * 3 / 2);
+        gLastSparkle = millis();
+        gSparkleGap  = random16(SPARKLE_MEAN_INTERVAL_MS / 2,
+                                SPARKLE_MEAN_INTERVAL_MS * 3 / 2);
     }
 
     for (uint16_t i = 0; i < gCount; i++) {

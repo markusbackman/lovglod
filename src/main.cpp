@@ -43,6 +43,11 @@ static bool      gInLiveWindow = false;
 static bool      gTimeSynced   = false;
 
 static uint32_t  gNextScheduleFetch = 0;
+// "Hämta nu". Egen flagga och inte gNextScheduleFetch = 0: jämförelsen
+// (int32_t)(millis() - 0) >= 0 är falsk så fort millis() passerat 2^31, så en
+// nollad tidsstämpel blev en tyst no-op mellan 24,9 och 49,7 dygns upptid.
+static bool      gFetchNow          = true;
+static uint32_t  gScheduleRetryMs   = 0;      // backoff efter misslyckad hämtning
 static uint32_t  gNextLivePoll      = 0;
 static uint32_t  gNextOtaCheck      = 0;
 static uint32_t  gPortalSince       = 0;
@@ -332,16 +337,13 @@ static void serviceTimeSync() {
 
     // Det vi hämtade utan klocka är räknat på fel datum: "vann igår" jämförde
     // mot 1970, och maybeArmVictory() hoppade över allt. Hämta om.
-    //
-    // En liten positiv offset och inte 0 — noll som "hämta nu" slutar fungera
-    // efter 24,9 dygns upptid, se R8 i PRODUKTIONSKLAR.md.
-    gNextScheduleFetch = millis() + 1000;
+    gFetchNow = true;
     Serial.println("[tid] hämtar om matchdata som räknades utan klocka");
 }
 
 // ── Datahämtning ────────────────────────────────────────────────────────────
 static void refreshSchedule(bool showProgress) {
-    gNextScheduleFetch = millis() + POLL_SCHEDULE_MS;
+    gFetchNow = false;
     if (showProgress) showWorkStep(0, 2);
 
     const bool resultOk = refreshLastResult();
@@ -367,7 +369,20 @@ static void refreshSchedule(bool showProgress) {
     // Rött andetag först när ingetdera anropet gick fram. Att bara schemat är
     // tomt är normalt under sommaruppehållet och ska inte se ut som ett fel.
     gDataOk = resultOk || nextOk;
-    if (!gDataOk) Serial.println("[shl] ingen kontakt — listen går till felläge");
+
+    // En enda studs hos SHL ska inte ge sex timmars rött ljus. Misslyckas
+    // hämtningen provar vi igen snart, och dubblar väntan för varje miss upp
+    // mot det ordinarie intervallet — så ett längre avbrott inte hamrar på API:t.
+    if (gDataOk) {
+        gScheduleRetryMs   = 0;
+        gNextScheduleFetch = millis() + POLL_SCHEDULE_MS;
+    } else {
+        gScheduleRetryMs   = gScheduleRetryMs ? std::min<uint32_t>(gScheduleRetryMs * 2, POLL_SCHEDULE_MS)
+                                              : SCHEDULE_RETRY_MIN_MS;
+        gNextScheduleFetch = millis() + gScheduleRetryMs;
+        Serial.printf("[shl] ingen kontakt — felläge, nytt försök om %lu min\n",
+                      gScheduleRetryMs / 60000UL);
+    }
 }
 
 // Sant när vi befinner oss i matchfönstret för nästa match.
@@ -421,7 +436,10 @@ static void serviceLive() {
         if (inWindow) {
             Serial.println("[live] matchfönster öppet — kopplar upp mot live-strömmen");
             Shl::sseStart(gNext.uuid);
-            gNextLivePoll = millis();
+            gNextLivePoll   = millis();
+            // Tidsstämpeln kan vara månader gammal efter sommaruppehållet, och
+            // då ser den ut att ligga i framtiden. Se R8.
+            gNextResultPoll = millis();
         } else {
             Serial.println("[live] matchfönster stängt");
             Shl::sseStop();
@@ -440,8 +458,11 @@ static void serviceLive() {
     LiveScore fresh;
     if (Shl::ssePump(fresh)) applyScore(fresh);
 
-    // Reservpollning ifall SSE-strömmen är tyst eller formatet ändrats.
-    if ((int32_t)(millis() - gNextLivePoll) >= 0) {
+    // Reservpollning ifall SSE-strömmen är tyst eller formatet ändrats. Inte
+    // medan målfyrverkeriet brinner: hämtningen blockerar loop() i upp till 20 s
+    // och fryser animationen mitt i. Pollningen skjuts bara upp — den går så
+    // fort fyrverkeriet är slut.
+    if (Leds::mode() != LED_GOAL && (int32_t)(millis() - gNextLivePoll) >= 0) {
         gNextLivePoll = millis() + POLL_LIVE_FALLBACK_MS;
         LiveScore polled;
         if (Shl::pollLiveScore(gNext.uuid, polled)) applyScore(polled);
@@ -529,7 +550,7 @@ static void endPushMode() {
     gScore             = LiveScore();
     status.liveScore   = "—";
     gNext              = NextGame();
-    gNextScheduleFetch = 0;
+    gFetchNow          = true;
 }
 
 // ── WiFi ────────────────────────────────────────────────────────────────────
@@ -590,7 +611,7 @@ static void goOnline() {
     Leds::setMode(LED_STANDBY);
     status.state = "Standby";
 
-    gNextScheduleFetch = 0;                       // hämta direkt
+    gFetchNow          = true;                    // hämta direkt
     gFirstFetchPending = true;                    // ...och visa förlopp medan den går
     gNextOtaCheck      = millis() + 60000;        // men vänta lite med OTA-kollen
 }
@@ -703,6 +724,9 @@ void setup() {
     Serial.printf("[boot] föregående omstart: %s\n", status.resetReason.c_str());
 
     settings.load();
+    settings.noteBoot(esp_reset_reason() == ESP_RST_POWERON, status.resetAbnormal);
+    Serial.printf("[boot] start nr %lu, %lu onormala omstarter sedan strömpåslag\n",
+                  (unsigned long)settings.bootCount, (unsigned long)settings.abnormalBoots);
     checkRollbackState();
     status.otaOnTrial = gOtaOnTrial;
     Leds::begin(settings.ledStrip, settings.ledCount);
@@ -774,11 +798,11 @@ void loop() {
                 gScore             = LiveScore();
                 status.liveScore   = "—";
                 status.sseLive     = false;
-                gNextScheduleFetch = 0;
+                gFetchNow          = true;
                 Serial.printf("[shl] hämtar om från %s\n", Shl::apiBaseUrl().c_str());
             }
 
-            if (!pushActive() && (int32_t)(millis() - gNextScheduleFetch) >= 0) {
+            if (!pushActive() && (gFetchNow || (int32_t)(millis() - gNextScheduleFetch) >= 0)) {
                 refreshSchedule(gFirstFetchPending);
                 gFirstFetchPending = false;
             }
@@ -790,7 +814,7 @@ void loop() {
                     struct tm lt;
                     const time_t now = time(nullptr);
                     localtime_r(&now, &lt);
-                    if (lt.tm_hour == 0 && lt.tm_min < 20) gNextScheduleFetch = 0;
+                    if (lt.tm_hour == 0 && lt.tm_min < 20) gFetchNow = true;
                 }
             }
 

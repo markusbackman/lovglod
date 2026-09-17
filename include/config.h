@@ -264,6 +264,8 @@
 //  Pollningsintervall
 // ─────────────────────────────────────────────────────────────
 #define POLL_SCHEDULE_MS   (6UL * 60 * 60 * 1000)  // spelschema + gårdagens resultat
+#define SCHEDULE_RETRY_MIN_MS (5UL * 60 * 1000)   // första återförsöket när SHL inte svarar,
+                                                  // dubblas sedan upp mot POLL_SCHEDULE_MS
 #define POLL_LIVE_FALLBACK_MS (45UL * 1000)        // reserv-poll under pågående match
 
 #define OTA_CHECK_MS       (12UL * 60 * 60 * 1000) // kolla efter ny firmware
