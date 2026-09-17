@@ -3,10 +3,16 @@
 
 namespace Updater {
 
-// Löser upp källan till en manifest-/API-URL.
-//   "owner/repo"  → https://api.github.com/repos/owner/repo/releases/latest
-//   "https://…"   → oförändrad
-String resolveSourceUrl(const String &source);
+// Löser upp källan till en manifest-/API-URL för en kanal.
+//   "owner/repo", stabil → https://api.github.com/repos/owner/repo/releases/latest
+//   "owner/repo", beta   → https://api.github.com/repos/owner/repo/releases?per_page=5
+//   "https://…/x.json", stabil → oförändrad
+//   "https://…/x.json", beta   → https://…/x-beta.json
+//
+// /releases/latest hoppar alltid över pre-releases. Beta läser listan i stället
+// och tar den nyaste som inte är ett utkast — stabil eller pre-release — så att
+// en beta-lampa följer med när en rc befordras till skarp release.
+String resolveSourceUrl(const String &source, bool beta);
 
 // Allt enheten behöver veta om en publicerad release — både för att kunna
 // installera den och för att kunna vägra. sha256Hex och sigB64 kommer från

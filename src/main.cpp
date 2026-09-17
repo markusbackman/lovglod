@@ -811,7 +811,8 @@ void loop() {
                     if (manual) Updater::clearRequest();
                     gNextOtaCheck = millis() + 60000;
                 } else if (settings.otaSource.length() && (manual || due)) {
-                    gNextOtaCheck = millis() + OTA_CHECK_MS;
+                    gNextOtaCheck = millis() + (settings.otaBeta ? OTA_CHECK_BETA_MS
+                                                                 : OTA_CHECK_MS);
                     Updater::clearRequest();
                     // Aldrig automatiskt mitt i en match — en omstart i tredje
                     // perioden vore synd. Manuell begäran får gå igenom ändå.

@@ -12,6 +12,7 @@ void Settings::load() {
     wifiPass        = prefs.getString("pass", "");
     otaSource       = prefs.getString("otasrc", OTA_DEFAULT_SOURCE);
     otaToken        = prefs.getString("otatok", "");
+    otaBeta         = prefs.getBool("otabeta", false);
     otaBadVersion   = prefs.getString("otabadv", "");
     otaPendingVersion = prefs.getString("otapend", "");
     otaBadCount     = prefs.getUChar("otabadc", 0);
@@ -46,6 +47,7 @@ void Settings::save() {
     prefs.putString("pass", wifiPass);
     prefs.putString("otasrc", otaSource);
     prefs.putString("otatok", otaToken);
+    prefs.putBool("otabeta", otaBeta);
     prefs.putString("otabadv", otaBadVersion);
     prefs.putString("otapend", otaPendingVersion);
     prefs.putUChar("otabadc", otaBadCount);

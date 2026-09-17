@@ -2,13 +2,17 @@ name: Release firmware
 
 # Taggar du v1.2.3 byggs firmwaren och publiceras som en release.
 # Lamporna hittar den via GitHub Releases-API:t och uppdaterar sig själva.
+#
+# En version med suffix (v1.3.0-rc1, v1.3.0-beta.2) publiceras som pre-release
+# och når bara lampor i betaprogrammet. Stabila lampor läser /releases/latest,
+# som aldrig returnerar en pre-release.
 on:
   push:
     tags: ['v*']
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version att bygga, utan v (t.ex. 1.2.3)'
+        description: 'Version att bygga, utan v (1.2.3 = stabil, 1.3.0-rc1 = beta)'
         required: true
 
 permissions:
@@ -143,10 +147,18 @@ jobs:
           V: ${{ steps.ver.outputs.version }}
         run: |
           set -euo pipefail
+          # Kanalen följer versionen, inte ett separat val — så kan en rc aldrig
+          # råka hamna hos stabila lampor.
+          case "$V" in
+            *-*) PRE=true ;;
+            *)   PRE=false ;;
+          esac
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" dist/firmware.bin dist/firmware.json dist/firmware.sig --clobber
+            gh release edit "$TAG" --prerelease="$PRE"
           else
             gh release create "$TAG" dist/firmware.bin dist/firmware.json dist/firmware.sig \
-              --title "v$V" --generate-notes
+              --title "v$V" --generate-notes --prerelease="$PRE"
           fi
+          echo "Kanal: $([ "$PRE" = true ] && echo beta || echo stabil)"
           echo "Publicerad: $(gh release view "$TAG" --json url -q .url)"

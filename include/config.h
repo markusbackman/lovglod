@@ -267,6 +267,7 @@
 #define POLL_LIVE_FALLBACK_MS (45UL * 1000)        // reserv-poll under pågående match
 
 #define OTA_CHECK_MS       (12UL * 60 * 60 * 1000) // kolla efter ny firmware
+#define OTA_CHECK_BETA_MS  (3UL * 60 * 60 * 1000)  // samma, för lampor i betaprogrammet
 
 // ─────────────────────────────────────────────────────────────
 //  OTA-källa

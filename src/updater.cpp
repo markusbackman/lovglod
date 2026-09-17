@@ -108,16 +108,23 @@ bool verifySignature(const uint8_t digest[32], const String &sigB64) {
 namespace Updater {
 
 // ─────────────────────────────────────────────────────────────────────────────
-String resolveSourceUrl(const String &source) {
+String resolveSourceUrl(const String &source, bool beta) {
     String s = source;
     s.trim();
     if (!s.length()) return "";
-    if (s.startsWith("http://") || s.startsWith("https://")) return s;
+    if (s.startsWith("http://") || s.startsWith("https://")) {
+        // Eget manifest: betan ligger intill som firmware-beta.json. En URL
+        // som inte slutar på .json lämnas orörd — då finns ingen konvention
+        // att gissa efter, och båda kanalerna läser samma manifest.
+        if (beta && s.endsWith(".json")) s = s.substring(0, s.length() - 5) + "-beta.json";
+        return s;
+    }
 
     // Kortform "owner/repo"
     const int slash = s.indexOf('/');
     if (slash > 0 && slash < (int)s.length() - 1 && s.indexOf('/', slash + 1) < 0)
-        return "https://api.github.com/repos/" + s + "/releases/latest";
+        return "https://api.github.com/repos/" + s +
+               (beta ? "/releases?per_page=5" : "/releases/latest");
 
     return s;
 }
@@ -131,7 +138,7 @@ String resolveSourceUrl(const String &source) {
 // engångscredentials — att dessutom skicka vår PAT dit är onödig exponering.
 // Vi plockar ut Location och lämnar en ren URL till nedladdningen.
 static bool resolvePrivateAssetUrl(const String &source, uint32_t assetId, String &signedUrl) {
-    const String api = resolveSourceUrl(source);
+    const String api = resolveSourceUrl(source, false);
     const int    idx = api.indexOf("/releases");
     if (idx < 0) return false;
 
@@ -229,33 +236,53 @@ static bool fetchManifest(const String &url, ReleaseInfo &out) {
 bool queryLatest(const String &source, ReleaseInfo &out) {
     out = ReleaseInfo();
 
-    const String url = resolveSourceUrl(source);
+    const String url = resolveSourceUrl(source, settings.otaBeta);
     if (url.length() < 8) return false;
 
-    JsonDocument filter;
-    filter["tag_name"] = true;                       // GitHub Releases
-    JsonObject asset = filter["assets"].add<JsonObject>();
+    // Samma filter tjänar ett objekt (latest, eget manifest) och en lista
+    // (betakanalen). I listläget gäller filter[0] för varje element.
+    JsonDocument relFilter;
+    relFilter["tag_name"] = true;                    // GitHub Releases
+    relFilter["draft"]    = true;
+    relFilter["prerelease"] = true;
+    JsonObject asset = relFilter["assets"].add<JsonObject>();
     asset["name"] = true;
     asset["browser_download_url"] = true;
     asset["id"] = true;                              // behövs för privata repon
-    filter["version"] = true;                        // eget manifest
-    filter["url"]     = true;
-    filter["sha256"]  = true;
-    filter["sig"]     = true;
-    filter["size"]    = true;
+    relFilter["version"] = true;                     // eget manifest
+    relFilter["url"]     = true;
+    relFilter["sha256"]  = true;
+    relFilter["sig"]     = true;
+    relFilter["size"]    = true;
     // Obs: GitHub-svaret har också ett "url" på toppnivå (länken till releasen
     // i API:t). Därför avgörs formatet av "tag_name" nedan, inte av "url".
+
+    JsonDocument filter;
+    if (url.indexOf("/releases?") >= 0) filter.add(relFilter);
+    else                                filter.set(relFilter);
 
     JsonDocument doc;
     if (!getJson(url, doc, filter, true, "application/vnd.github+json")) return false;
 
-    if (!doc["tag_name"].is<const char *>()) {
+    // Betakanalen: listan är sorterad nyast först. Utkast syns bara med token,
+    // och ett utkast är per definition inte publicerat — hoppa över dem. Det är
+    // också vägen att dra tillbaka en trasig beta: gör den till utkast.
+    JsonVariantConst rel = doc.as<JsonVariantConst>();
+    if (doc.is<JsonArray>()) {
+        rel = JsonVariantConst();
+        for (JsonVariantConst r : doc.as<JsonArrayConst>()) {
+            if (!(r["draft"] | false)) { rel = r; break; }
+        }
+        if (rel.isNull()) { gStatus = "Ingen publicerad release hittad"; return false; }
+    }
+
+    if (!rel["tag_name"].is<const char *>()) {
         // ── Eget manifest: allt står redan här ──
-        out.version   = normalizeVersion(doc["version"] | "");
-        out.binUrl    = doc["url"]    | "";
-        out.sha256Hex = doc["sha256"] | "";
-        out.sigB64    = doc["sig"]    | "";
-        out.size      = doc["size"]   | 0UL;
+        out.version   = normalizeVersion(rel["version"] | "");
+        out.binUrl    = rel["url"]    | "";
+        out.sha256Hex = rel["sha256"] | "";
+        out.sigB64    = rel["sig"]    | "";
+        out.size      = rel["size"]   | 0UL;
         if (!out.version.length() || !out.binUrl.length()) {
             gStatus = "Manifestet saknar \"version\" eller \"url\"";
             return false;
@@ -264,11 +291,11 @@ bool queryLatest(const String &source, ReleaseInfo &out) {
     }
 
     // ── GitHub Releases: binär och manifest ligger som var sin asset ──
-    out.version = normalizeVersion(doc["tag_name"].as<const char *>());
+    out.version = normalizeVersion(rel["tag_name"].as<const char *>());
 
     String   manifestUrl;
     uint32_t manifestId = 0;
-    for (JsonVariantConst a : doc["assets"].as<JsonArrayConst>()) {
+    for (JsonVariantConst a : rel["assets"].as<JsonArrayConst>()) {
         const String name = a["name"] | "";
         if (name == OTA_ASSET_NAME) {
             out.binUrl     = a["browser_download_url"] | "";
@@ -421,7 +448,7 @@ bool checkAndApply(const String &source) {
     const String current = normalizeVersion(FW_VERSION);
 
     if (rel.version == current) {
-        gStatus = "Senaste versionen (" + current + ")";
+        gStatus = "Senaste versionen (" + current + (settings.otaBeta ? ", beta)" : ")");
         Serial.printf("[ota] %s\n", gStatus.c_str());
         settings.clearOtaFailures();
         return false;

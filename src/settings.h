@@ -15,6 +15,8 @@ struct Settings {
 
     String  otaSource;        // "owner/repo" eller manifest-URL. Tom = av.
     String  otaToken;         // GitHub-PAT. Krävs bara för privata repon.
+    bool    otaBeta;          // Betaprogrammet: tar även pre-releases, och kollar
+                              // oftare (OTA_CHECK_BETA_MS). Av = bara stabila.
     uint8_t brightness;
     bool    goalOnlyOurTeam;
     bool    debugPush;        // Ta emot matchläge på POST /push. Av = lampan

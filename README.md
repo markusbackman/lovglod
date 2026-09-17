@@ -466,6 +466,36 @@ då skapas taggen åt dig.
 Knappen **"Sök efter uppdatering nu"** på statussidan tvingar fram en kontroll
 direkt istället för att vänta på nästa 12-timmarsintervall.
 
+### Betaprogrammet
+
+Välj **Uppdateringskanal: Beta** på statussidan för att skriva in en lampa.
+Valet ligger i NVS och överlever omstart och OTA.
+
+| | Stabil | Beta |
+|---|---|---|
+| Källa (`owner/repo`) | `/releases/latest` | `/releases?per_page=5`, nyaste som inte är utkast |
+| Källa (egen URL) | `…/firmware.json` | `…/firmware-beta.json` |
+| Får | bara stabila releaser | pre-releases **och** stabila |
+| Kollar | var 12:e timme | var 3:e timme |
+
+Kanalen följer versionen. Taggar du med suffix blir releasen en pre-release och
+når bara betalampor:
+
+```bash
+git tag v1.2.0-rc1 && git push origin v1.2.0-rc1   # bara beta
+git tag v1.2.0     && git push origin v1.2.0       # alla
+```
+
+Betalampor tar den nyaste releasen oavsett sort, så när `v1.2.0` publiceras
+efter `v1.2.0-rc1` går de över till den stabila och fortsätter därifrån.
+
+**Dra tillbaka en trasig beta:** gör den till utkast eller ta bort den.
+Betalamporna rullar då tillbaka till den näst nyaste vid nästa kontroll.
+
+**Gå ur betan:** byt tillbaka till Stabil. Lampan kollar direkt och installerar
+senaste stabila — även om det är en *äldre* version än den beta den kör. Nya
+NVS-nycklar måste därför alltid tåla att äldre firmware ignorerar dem.
+
 ### Versionshantering
 
 `FW_VERSION` sätts av CI via `-DFW_VERSION='"1.1.0"'`. `config.h` har ett
@@ -475,7 +505,8 @@ från en publicerad version och därför alltid uppdaterar vid första kollen.
 Enheten uppdaterar när versionen **skiljer sig**, inte bara när den är nyare.
 Det är avsiktligt och ger en gratis rollback: kryssa i *pre-release* på en
 trasig release, så pekar `/releases/latest` tillbaka på den förra och lamporna
-rullar tillbaka av sig själva vid nästa kontroll.
+rullar tillbaka av sig själva vid nästa kontroll. Betalampor ser fortfarande
+pre-releases — för att nå dem också, gör releasen till utkast i stället.
 
 Misslyckas samma version tre gånger slutar enheten försöka (`OTA_MAX_FAILURES`)
 — annars skulle en trasig release ladda ner 1 MB var 12:e timme för alltid.

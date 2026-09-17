@@ -352,6 +352,7 @@ void handleStatus() {
                                 : String(FW_VERSION),
                             status.otaOnTrial);
     row("Uppdatering",      Updater::statusText());
+    row("Kanal",            String(settings.otaBeta ? "Beta" : "Stabil"));
 
     p += F("</table></div>"
            "<h2>Inställningar</h2><div class=card><form method=POST action=/settings>"
@@ -371,7 +372,13 @@ void handleStatus() {
            "<input name=otatok type=password autocomplete=off placeholder='");
     p += settings.otaToken.length() ? F("•••••• sparad — lämna tomt för att behålla")
                                     : F("github_pat_… (tomt för publikt repo)");
-    p += F("'><label>Felsökningsläge — ta emot matchläge på /push</label>"
+    p += F("'><label>Uppdateringskanal</label><select name=otabeta>");
+    p += settings.otaBeta
+             ? F("<option value=0>Stabil</option>"
+                 "<option value=1 selected>Beta — pre-releases, kollar var 3:e timme</option>")
+             : F("<option value=0 selected>Stabil</option>"
+                 "<option value=1>Beta — pre-releases, kollar var 3:e timme</option>");
+    p += F("</select><label>Felsökningsläge — ta emot matchläge på /push</label>"
            "<select name=dbgpush>");
     p += settings.debugPush
              ? F("<option value=1 selected>På — mockservern får styra</option>"
@@ -410,6 +417,14 @@ void handleSettings() {
         const String tok = server.arg("otatok");
         if (tok == "-")            { settings.otaToken = ""; settings.clearOtaFailures(); }
         else if (tok.length())     { settings.otaToken = tok; settings.clearOtaFailures(); }
+    }
+    if (server.hasArg("otabeta")) {
+        const bool next = server.arg("otabeta") == "1";
+        // Kolla direkt i nya kanalen i stället för att vänta ut det gamla
+        // intervallet. Lämnar man betan betyder det att lampan går tillbaka
+        // till senaste stabila — versionen skiljer sig, och det räcker.
+        if (next != settings.otaBeta) Updater::requestCheck();
+        settings.otaBeta = next;
     }
     if (server.hasArg("ouronly")) settings.goalOnlyOurTeam = server.arg("ouronly") == "1";
     if (server.hasArg("dbgpush")) {
@@ -490,7 +505,7 @@ void handleDebug() {
     p += "<tr><td>API-URL</td><td>" + htmlEscape(Shl::apiBaseUrl()) + "</td></tr>";
     p += "<tr><td>Live-URL</td><td>" + htmlEscape(Shl::liveBaseUrl()) + "</td></tr>";
     p += "<tr><td>OTA-URL</td><td>" +
-         htmlEscape(Updater::resolveSourceUrl(settings.otaSource)) + "</td></tr>";
+         htmlEscape(Updater::resolveSourceUrl(settings.otaSource, settings.otaBeta)) + "</td></tr>";
     p += "<tr><td>OTA-status</td><td>" + htmlEscape(Updater::statusText()) + "</td></tr>";
     p += String("<tr><td>OTA-token</td><td>") +
          (settings.otaToken.length() ? "sparad (" + String(settings.otaToken.length()) +
