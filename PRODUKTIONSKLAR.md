@@ -7,9 +7,9 @@ delen av kodbasen. Det som står här är resten.
 Radnumren gäller commit `64b1a71` och glider när koden ändras — sök på
 funktionsnamnet om de inte stämmer.
 
-**Minsta uppsättning för att våga flasha lamporna:** B1, B3, B5, R6, R7.
+**Minsta uppsättning för att våga flasha lamporna:** B1, B5, R6, R7.
 B2 krävs först om lampan ska stå på ett nät du inte äger; på ett hemmanät är det
-B3 och B4 som stänger den realistiska vägen in.
+B4 som stänger den realistiska vägen in. B3 lämnas medvetet öppen.
 
 ---
 
@@ -197,7 +197,7 @@ se B4.
 
 ### B3. Webbgränssnittet saknar autentisering och CSRF-skydd
 
-- [ ] Fixad
+- [x] Avgjort 2026-09-17 — **ingen inloggning, med flit**
 
 Rutterna i `src/portal.cpp:396-407` är helt öppna. Vem som helst på nätet kan:
 
@@ -208,9 +208,20 @@ Rutterna i `src/portal.cpp:396-407` är helt öppna. Vem som helst på nätet ka
 Det är dessutom vanliga formulär-POST:ar, så CORS stoppar inte en webbsida som
 någon på nätet råkar besöka från att nå `http://bjorkloven-led.local/settings`.
 
-**Fix:** HTTP Basic auth på de muterande rutterna (`server.authenticate()`) med
-ett lösenord i NVS, plus en CSRF-token i formulären. Statussidan kan gärna vara
-öppen.
+**Beslut:** webbgränssnittet förblir öppet. Lampan står på ett hemmanät, och ett
+lösenord är ännu en sak för den som packar upp lampan att sätta, glömma och
+behöva nollställa över USB.
+
+Det som gjorde B3 allvarligt är dessutom stängt: sedan B2 installerar enheten
+bara firmware signerad med den privata nyckeln, så `POST /settings` och
+`POST /update` kan inte längre leda till godtycklig firmware. Kvar är sådant som
+går att ångra: någon på nätet kan ändra inställningar, stänga av uppdateringar
+eller radera WiFi-uppgifterna. `/push` är dessutom stängd så länge
+felsökningsläget är av.
+
+Ska lampan stå på ett nät du inte litar på gäller det inte — lägg då till HTTP
+Basic auth (`server.authenticate()`) med lösenord i NVS och en CSRF-token i
+formulären.
 
 ### B4. OTA-lösenordet är hårdkodat i källkoden
 

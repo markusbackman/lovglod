@@ -554,10 +554,11 @@ gamla firmwaren litar bara på den gamla nyckeln.
 
 #### Vad detta inte täcker
 
-Webbgränssnittet saknar autentisering, så vem som helst på nätet kan peka om
-uppdateringskällan eller radera WiFi-uppgifterna — se B3 i
-`PRODUKTIONSKLAR.md`. Att de *inte* kan få något installerat är just
-signaturens förtjänst, men B3 bör ändå stängas.
+Webbgränssnittet har medvetet ingen inloggning — lampan är byggd för ett
+hemmanät. Vem som helst på nätet kan därför peka om uppdateringskällan, ändra
+inställningar eller radera WiFi-uppgifterna. Att de *inte* kan få något
+installerat är signaturens förtjänst. Ska lampan stå på ett nät du inte litar
+på, se B3 i `PRODUKTIONSKLAR.md`.
 
 Notera också vad borttagandet av push kostar: går en signerad uppdatering igenom
 och visar sig trasig finns ingen väg tillbaka över nätet. Enda återvägen är USB
