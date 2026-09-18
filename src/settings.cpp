@@ -11,13 +11,11 @@ void Settings::load() {
     wifiSsid        = prefs.getString("ssid", "");
     wifiPass        = prefs.getString("pass", "");
     otaSource       = prefs.getString("otasrc", OTA_DEFAULT_SOURCE);
-    otaToken        = prefs.getString("otatok", "");
     otaBeta         = prefs.getBool("otabeta", false);
     otaBadVersion   = prefs.getString("otabadv", "");
     otaPendingVersion = prefs.getString("otapend", "");
     otaBadCount     = prefs.getUChar("otabadc", 0);
     brightness      = prefs.getUChar("bright", LED_DEFAULT_BRIGHTNESS);
-    goalOnlyOurTeam = prefs.getBool("ouronly", GOAL_ONLY_OUR_TEAM);
     debugPush       = prefs.getBool("dbgpush", false);
     goalDelayS      = prefs.getUChar("goaldly", GOAL_DELAY_DEFAULT_S);
     victoryUntil    = prefs.getULong("victuntil", 0);
@@ -48,13 +46,11 @@ void Settings::save() {
     prefs.putString("ssid", wifiSsid);
     prefs.putString("pass", wifiPass);
     prefs.putString("otasrc", otaSource);
-    prefs.putString("otatok", otaToken);
     prefs.putBool("otabeta", otaBeta);
     prefs.putString("otabadv", otaBadVersion);
     prefs.putString("otapend", otaPendingVersion);
     prefs.putUChar("otabadc", otaBadCount);
     prefs.putUChar("bright", brightness);
-    prefs.putBool("ouronly", goalOnlyOurTeam);
     prefs.putBool("dbgpush", debugPush);
     prefs.putUChar("goaldly", goalDelayS);
     prefs.putULong("victuntil", victoryUntil);

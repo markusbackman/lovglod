@@ -171,9 +171,8 @@ Standardvärdet `markusbackman/lovglod` är rätt för alla lampor som ska
 följa det här projektet. Ange ett eget `owner/repo` för att följa en fork, eller
 en full URL till ett `firmware.json` på en egen webbserver.
 
-Fältet **GitHub-token** ska vara tomt — repot är publikt. Det behövs bara om
-du pekar lampan mot ett privat repo, se
-[Token — bara för privata repon](BYGGA.md#token--bara-för-privata-repon).
+Källan måste vara publik: lampan hämtar releaser anonymt, se
+[Källan måste vara publik](BYGGA.md#källan-måste-vara-publik).
 
 ### Betaprogrammet
 

@@ -14,11 +14,9 @@ struct Settings {
     uint16_t ledCount;
 
     String  otaSource;        // "owner/repo" eller manifest-URL. Tom = av.
-    String  otaToken;         // GitHub-PAT. Krävs bara för privata repon.
     bool    otaBeta;          // Betaprogrammet: tar även pre-releases, och kollar
                               // oftare (OTA_CHECK_BETA_MS). Av = bara stabila.
     uint8_t brightness;
-    bool    goalOnlyOurTeam;
     bool    debugPush;        // Ta emot matchläge på POST /push. Av = lampan
                               // hämtar bara från SHL och ignorerar nätet.
     uint8_t goalDelayS;       // TV-fördröjning i sekunder. 0 = tänd direkt.

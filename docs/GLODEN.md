@@ -193,9 +193,9 @@ fyrverkeri förlänger bara till 12 s från nu — annars hade ett snabbt 2-mål
 kastat tillbaka listen till stroboskopet och man hade tappat känslan av att det
 var *två* mål.
 
-Med `GOAL_ONLY_OUR_TEAM true` tänds fyrverkeriet bara på Björklövens mål; sätt
-`false` om du vill ha det på alla mål i matchen. Knappen **"Testa
-målfyrverkeriet"** på statussidan kör hela sekvensen när som helst.
+Fyrverkeriet tänds bara på Björklövens mål. Motståndarens mål syns i
+ställningen men rör aldrig listen — lampan hejar inte på fel lag. Knappen
+**"Testa målfyrverkeriet"** på statussidan kör hela sekvensen när som helst.
 
 ### `LED_UPDATING` — OTA-förlopp
 
@@ -247,7 +247,6 @@ Allt sitter i `include/config.h`:
 #define GOAL_DURATION_MS 12000
 #define GOAL_DELAY_DEFAULT_S 15        // tv-fördröjning, ändras på statussidan
 #define SPARKLE_MEAN_INTERVAL_MS 700   // högre = färre gnistor
-#define GOAL_ONLY_OUR_TEAM true        // false = fyra vid alla mål
 ```
 
 Vill du testa effekterna utan att vänta på en match: knappen **"Testa

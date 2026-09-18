@@ -370,17 +370,9 @@ void handleStatus() {
     p += F("'><label>Fördröjning på mål (sekunder — tv-sändningen ligger efter)</label>"
            "<input name=goaldly type=number min=0 max=" GOAL_DELAY_MAX_STR " value='");
     p += String(settings.goalDelayS);
-    p += F("'><label>Fyra endast vid Björklövens mål</label><select name=ouronly>");
-    p += settings.goalOnlyOurTeam
-             ? F("<option value=1 selected>Ja</option><option value=0>Nej</option>")
-             : F("<option value=1>Ja</option><option value=0 selected>Nej</option>");
-    p += F("</select><label>Uppdateringskälla (tom = av)</label>"
+    p += F("'><label>Uppdateringskälla (tom = av)</label>"
            "<input name=otasrc placeholder='markusbackman/lovglod' value='");
     p += htmlEscape(settings.otaSource);
-    p += F("'><label>GitHub-token (valfritt, bara för privata repon)</label>"
-           "<input name=otatok type=password autocomplete=off placeholder='");
-    p += settings.otaToken.length() ? F("•••••• sparad — lämna tomt för att behålla")
-                                    : F("github_pat_… (lämna tomt)");
     p += F("'><label>Uppdateringskanal</label><select name=otabeta>");
     p += settings.otaBeta
              ? F("<option value=0>Stabil</option>"
@@ -420,13 +412,6 @@ void handleSettings() {
         if (next != settings.otaSource) settings.clearOtaFailures();
         settings.otaSource = next;
     }
-    if (server.hasArg("otatok")) {
-        // Tomt fält betyder "rör inte" — annars skulle token raderas varje
-        // gång man justerar ljusstyrkan. Skriv "-" för att nollställa.
-        const String tok = server.arg("otatok");
-        if (tok == "-")            { settings.otaToken = ""; settings.clearOtaFailures(); }
-        else if (tok.length())     { settings.otaToken = tok; settings.clearOtaFailures(); }
-    }
     if (server.hasArg("otabeta")) {
         const bool next = server.arg("otabeta") == "1";
         // Kolla direkt i nya kanalen i stället för att vänta ut det gamla
@@ -435,7 +420,6 @@ void handleSettings() {
         if (next != settings.otaBeta) Updater::requestCheck();
         settings.otaBeta = next;
     }
-    if (server.hasArg("ouronly")) settings.goalOnlyOurTeam = server.arg("ouronly") == "1";
     if (server.hasArg("dbgpush")) {
         const bool next = server.arg("dbgpush") == "1";
         // Slår man av mitt i en pågående push ska lampan hämta från SHL igen
@@ -516,9 +500,6 @@ void handleDebug() {
     p += "<tr><td>OTA-URL</td><td>" +
          htmlEscape(Updater::resolveSourceUrl(settings.otaSource, settings.otaBeta)) + "</td></tr>";
     p += "<tr><td>OTA-status</td><td>" + htmlEscape(Updater::statusText()) + "</td></tr>";
-    p += String("<tr><td>OTA-token</td><td>") +
-         (settings.otaToken.length() ? "sparad (" + String(settings.otaToken.length()) +
-                                       " tecken)" : "ingen") + "</td></tr>";
     if (settings.otaBadCount)
         p += "<tr><td>Misslyckad version</td><td>" + htmlEscape(settings.otaBadVersion) +
              " (" + String(settings.otaBadCount) + " försök)</td></tr>";

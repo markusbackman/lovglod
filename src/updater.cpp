@@ -17,15 +17,6 @@ namespace {
 bool   gRequested = false;
 String gStatus    = "Ingen kontroll gjord än";
 
-// Sätts när GitHub avvisat den sparade token under pågående kontroll. GitHub
-// svarar 401 på en utgången token även mot ett publikt repo, i stället för att
-// behandla anropet som anonymt. Utan omförsök skulle en lampa med en gammal
-// token aldrig uppdatera sig igen — och kan inte heller lagas över nätet,
-// eftersom lagningen själv är en uppdatering.
-bool gTokenRejected = false;
-
-bool useToken() { return settings.otaToken.length() && !gTokenRejected; }
-
 void showProgress(unsigned int done, unsigned int total) {
     if (!total) return;
     Leds::setUpdateProgress((uint8_t)((uint64_t)done * 100 / total));
@@ -138,56 +129,13 @@ String resolveSourceUrl(const String &source, bool beta) {
     return s;
 }
 
-// På ett privat repo är browser_download_url oanvändbar — den kräver en
-// inloggad webbsession. Rätt väg är assets-API:t med Accept: octet-stream,
-// som svarar 302 till en signerad engångs-URL.
-//
-// Redirecten följs medvetet för hand. HTTPClient skickar med samma headers
-// vidare till målet, och den signerade URL:en bär redan sina egna
-// engångscredentials — att dessutom skicka vår PAT dit är onödig exponering.
-// Vi plockar ut Location och lämnar en ren URL till nedladdningen.
-static bool resolvePrivateAssetUrl(const String &source, uint32_t assetId, String &signedUrl) {
-    const String api = resolveSourceUrl(source, false);
-    const int    idx = api.indexOf("/releases");
-    if (idx < 0) return false;
-
-    const String url = api.substring(0, idx) + "/releases/assets/" + String(assetId);
-
-    WiFiClientSecure client;
-    configureTls(client);
-
-    HTTPClient http;
-    http.setTimeout(15000);
-    http.setConnectTimeout(10000);
-    http.setReuse(false);
-    http.setFollowRedirects(HTTPC_DISABLE_FOLLOW_REDIRECTS);
-
-    if (!http.begin(client, url)) return false;
-    http.addHeader("User-Agent", "LovGlod/" FW_VERSION);
-    http.addHeader("Accept", "application/octet-stream");
-    http.addHeader("Authorization", "Bearer " + settings.otaToken);
-
-    const char *want[] = {"Location"};
-    http.collectHeaders(want, 1);
-
-    const int code = http.GET();
-    if (code == HTTP_CODE_FOUND || code == HTTP_CODE_TEMPORARY_REDIRECT ||
-        code == HTTP_CODE_MOVED_PERMANENTLY) {
-        signedUrl = http.header("Location");
-    } else {
-        gStatus = "Kunde inte hämta assetens nedladdningslänk (HTTP " + String(code) + ")";
-    }
-    http.end();
-    return signedUrl.length() > 0;
-}
-
 // Strömmande GET som tolkar JSON genom ett filter. Filtret är inte kosmetiskt:
 // en GitHub-release med många assets är flera hundra kB och heapen tar slut
 // utan det.
 // Ett enskilt anrop med egen klient. code är HTTP-status, eller negativ om
 // anslutningen inte ens kom igång.
 static bool requestJson(const String &url, JsonDocument &doc, const JsonDocument &filter,
-                        bool sendToken, const char *accept, int &code) {
+                        const char *accept, int &code) {
     WiFiClientSecure client;
     configureTls(client);
 
@@ -203,12 +151,10 @@ static bool requestJson(const String &url, JsonDocument &doc, const JsonDocument
     // GitHub svarar 403 utan User-Agent.
     http.addHeader("User-Agent", "LovGlod/" FW_VERSION);
     http.addHeader("Accept", accept);
-    if (sendToken) http.addHeader("Authorization", "Bearer " + settings.otaToken);
 
     code = http.GET();
     if (code != HTTP_CODE_OK) {
-        gStatus = (code == 404) ? "Ingen release hittad (privat repo utan token?)"
-                : (code == 401) ? "GitHub: token avvisad (401)"
+        gStatus = (code == 404) ? "Ingen release hittad"
                 : (code == 403) ? "GitHub API: nekad eller för många anrop (403)"
                                 : "HTTP " + String(code) + " från uppdateringskällan";
         http.end();
@@ -224,23 +170,12 @@ static bool requestJson(const String &url, JsonDocument &doc, const JsonDocument
 }
 
 static bool getJson(const String &url, JsonDocument &doc, const JsonDocument &filter,
-                    bool withToken, const char *accept) {
+                    const char *accept) {
     if (WiFi.status() != WL_CONNECTED) { gStatus = "WiFi nere"; return false; }
 
-    // Privata repon kräver token. Publika fungerar utan.
-    const bool sendToken = withToken && useToken();
+    // Repot är publikt: alla anrop går anonymt.
     int code;
-    if (requestJson(url, doc, filter, sendToken, accept, code)) return true;
-
-    // Avvisad token: försök en gång till utan. Går det igenom är repot publikt
-    // och token överflödig, och resten av kontrollen körs anonymt.
-    if (code == 401 && sendToken) {
-        gTokenRejected = true;
-        Serial.println("[ota] token avvisad (401) — försöker utan");
-        doc.clear();
-        return requestJson(url, doc, filter, false, accept, code);
-    }
-    return false;
+    return requestJson(url, doc, filter, accept, code);
 }
 
 // Manifestet bär det som binären inte kan bära själv: summan och signaturen.
@@ -253,7 +188,7 @@ static bool fetchManifest(const String &url, ReleaseInfo &out) {
     filter["url"]     = true;
 
     JsonDocument doc;
-    if (!getJson(url, doc, filter, true, "application/json")) return false;
+    if (!getJson(url, doc, filter, "application/json")) return false;
 
     out.sha256Hex = doc["sha256"] | "";
     out.sigB64    = doc["sig"]    | "";
@@ -263,7 +198,6 @@ static bool fetchManifest(const String &url, ReleaseInfo &out) {
 
 bool queryLatest(const String &source, ReleaseInfo &out) {
     out = ReleaseInfo();
-    gTokenRejected = false;               // ny kontroll, ge token en ny chans
 
     const String url = resolveSourceUrl(source, settings.otaBeta);
     if (url.length() < 8) return false;
@@ -277,7 +211,6 @@ bool queryLatest(const String &source, ReleaseInfo &out) {
     JsonObject asset = relFilter["assets"].add<JsonObject>();
     asset["name"] = true;
     asset["browser_download_url"] = true;
-    asset["id"] = true;                              // behövs för privata repon
     relFilter["version"] = true;                     // eget manifest
     relFilter["url"]     = true;
     relFilter["sha256"]  = true;
@@ -291,11 +224,11 @@ bool queryLatest(const String &source, ReleaseInfo &out) {
     else                                filter.set(relFilter);
 
     JsonDocument doc;
-    if (!getJson(url, doc, filter, true, "application/vnd.github+json")) return false;
+    if (!getJson(url, doc, filter, "application/vnd.github+json")) return false;
 
-    // Betakanalen: listan är sorterad nyast först. Utkast syns bara med token,
-    // och ett utkast är per definition inte publicerat — hoppa över dem. Det är
-    // också vägen att dra tillbaka en trasig beta: gör den till utkast.
+    // Betakanalen: listan är sorterad nyast först. Ett utkast är per definition
+    // inte publicerat — hoppa över dem. Det är också vägen att dra tillbaka en
+    // trasig beta: gör den till utkast.
     JsonVariantConst rel = doc.as<JsonVariantConst>();
     if (doc.is<JsonArray>()) {
         rel = JsonVariantConst();
@@ -322,17 +255,11 @@ bool queryLatest(const String &source, ReleaseInfo &out) {
     // ── GitHub Releases: binär och manifest ligger som var sin asset ──
     out.version = normalizeVersion(rel["tag_name"].as<const char *>());
 
-    String   manifestUrl;
-    uint32_t manifestId = 0;
+    String manifestUrl;
     for (JsonVariantConst a : rel["assets"].as<JsonArrayConst>()) {
         const String name = a["name"] | "";
-        if (name == OTA_ASSET_NAME) {
-            out.binUrl     = a["browser_download_url"] | "";
-            out.binAssetId = a["id"] | 0UL;
-        } else if (name == OTA_MANIFEST_NAME) {
-            manifestUrl = a["browser_download_url"] | "";
-            manifestId  = a["id"] | 0UL;
-        }
+        if (name == OTA_ASSET_NAME)          out.binUrl  = a["browser_download_url"] | "";
+        else if (name == OTA_MANIFEST_NAME)  manifestUrl = a["browser_download_url"] | "";
     }
 
     if (!out.binUrl.length()) {
@@ -343,14 +270,6 @@ bool queryLatest(const String &source, ReleaseInfo &out) {
         gStatus = "Releasen " + out.version + " saknar " OTA_MANIFEST_NAME
                   " — utan manifest finns ingen signatur att kontrollera";
         return false;
-    }
-
-    // Privat repo: manifestet måste hämtas via den signerade asset-URL:en av
-    // samma skäl som binären.
-    if (useToken() && manifestId) {
-        String signedUrl;
-        if (!resolvePrivateAssetUrl(source, manifestId, signedUrl)) return false;
-        manifestUrl = signedUrl;
     }
 
     return fetchManifest(manifestUrl, out);
@@ -505,19 +424,8 @@ bool checkAndApply(const String &source) {
         return false;
     }
 
-    String binUrl = rel.binUrl;
-    if (useToken() && rel.binAssetId) {
-        String signedUrl;
-        if (!resolvePrivateAssetUrl(source, rel.binAssetId, signedUrl)) {
-            Serial.printf("[ota] %s\n", gStatus.c_str());
-            settings.noteOtaFailure(rel.version);
-            return false;
-        }
-        binUrl = signedUrl;
-        Serial.println("[ota] hämtar via signerad asset-URL (privat repo)");
-    } else {
-        Serial.printf("[ota] hämtar %s\n", binUrl.c_str());
-    }
+    const String binUrl = rel.binUrl;
+    Serial.printf("[ota] hämtar %s\n", binUrl.c_str());
 
     gStatus = "Installerar " + rel.version + "…";
     Leds::setUpdateProgress(0);

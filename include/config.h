@@ -256,10 +256,6 @@
 #define SHL_API_HOST    "www.shl.se"
 #define SHL_LIVE_HOST   "game-broadcaster.s8y.se"
 
-// true  = fyra bara när Björklöven gör mål
-// false = fyra vid alla mål i matchen
-#define GOAL_ONLY_OUR_TEAM true
-
 // ─────────────────────────────────────────────────────────────
 //  Pollningsintervall
 // ─────────────────────────────────────────────────────────────
@@ -277,7 +273,7 @@
 // Skrivs in i webbportalen. Två format stöds:
 //   "markusbackman/lovglod"     → GitHub Releases (rekommenderat)
 //   "https://.../firmware.json"        → eget manifest, valfri webbserver
-// Ett privat repo kräver dessutom en token, se docs/BYGGA.md.
+// Allt hämtas anonymt — källan måste vara publik.
 #define OTA_DEFAULT_SOURCE "markusbackman/lovglod"
 
 // Filnamnet på .bin-filen i releasen som ska installeras.

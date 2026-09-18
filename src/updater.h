@@ -20,7 +20,6 @@ String resolveSourceUrl(const String &source, bool beta);
 struct ReleaseInfo {
     String   version;
     String   binUrl;
-    uint32_t binAssetId = 0;   // GitHub-assetens id, behövs för privata repon
     String   sha256Hex;        // 64 hex-tecken över firmware.bin
     String   sigB64;           // signatur över samma binär, base64
     uint32_t size       = 0;   // 0 = manifestet uppgav ingen storlek

@@ -422,9 +422,8 @@ static void applyScore(const LiveScore &fresh) {
         Serial.printf("[MÅL] Björklöven! %d–%d%s\n", fresh.home, fresh.away,
                       delayMs ? "  (väntar på tv)" : "");
         Leds::triggerGoal(delayMs);
-    } else if (theirGoals > 0 && !settings.goalOnlyOurTeam) {
+    } else if (theirGoals > 0) {
         Serial.printf("[mål] motståndaren. %d–%d\n", fresh.home, fresh.away);
-        Leds::triggerGoal(delayMs);
     }
 }
 

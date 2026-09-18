@@ -234,17 +234,14 @@ Bilden täcker flashen från 0x0 upp till appens slut och fyller mellanrummen me
 listval och övriga inställningar**. Det är rätt för ett nytt kort; ska en lampa
 i drift bara byta version är `firmware.bin` på 0x10000 vägen.
 
-### Token — bara för privata repon
+### Källan måste vara publik
 
-Repot är publikt, så lamporna hämtar releaser utan inloggning och fältet
-**GitHub-token** på statussidan ska vara tomt.
-
-Pekar du lampan mot ett eget privat repo behövs en fine-grained token
-(Contents: **Read-only**, bara det repot). Enheten hämtar då releasen via
-`api.github.com/repos/OWNER/REPO/releases/assets/<id>` och följer redirecten
-till den signerade nedladdningslänken för hand, så att token inte skickas
-vidare. Token ligger i klartext i NVS och kan läsas ut av den som har lampan i
-handen. Tomt fält vid senare sparningar betyder "rör inte", och `-` raderar.
+Lamporna hämtar releaser anonymt — ingen token, ingen inloggning. Repot är
+publikt och ska förbli det. Pekar du en lampa mot ett privat repo svarar GitHub
+404 och lampan uppdaterar sig aldrig; det finns medvetet ingen väg runt det.
+En PAT i klartext i NVS kan läsas ut av den som har lampan i handen, och en
+lampa vars token gått ut kan inte lagas över nätet — lagningen är ju själv en
+uppdatering.
 
 ### Sätta upp
 
