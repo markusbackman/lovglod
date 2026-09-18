@@ -1,0 +1,16 @@
+{
+  "name": "lovglod-render",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Renderar LövGlöds produktbilder ur STL-filerna",
+  "scripts": {
+    "render": "node render.mjs",
+    "postinstall": "playwright install chromium"
+  },
+  "dependencies": {
+    "playwright": "^1.56.0",
+    "sharp": "^0.34.0",
+    "three": "^0.169.0"
+  }
+}

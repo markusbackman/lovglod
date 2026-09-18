@@ -1,0 +1,281 @@
+<!doctype html>
+<!-- Scenen som render.mjs fotograferar. Öppnas aldrig för hand: den hämtar
+     STL-filerna från /stl/ och ritar en enda bildruta, sedan sätts window.__done. -->
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>LövGlöd — renderscen</title>
+<style>html, body { margin: 0; background: transparent; } canvas { display: block; }</style>
+<script type="importmap">
+{"imports": {"three": "./node_modules/three/build/three.module.js",
+             "three/addons/": "./node_modules/three/examples/jsm/"}}
+</script>
+</head>
+<body>
+<script type="module">
+import * as THREE from 'three';
+import { STLLoader } from 'three/addons/loaders/STLLoader.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+const P    = new URLSearchParams(location.search);
+const view = P.get('view') || 'hero';
+const W    = +P.get('w') || 1400;
+const H    = +P.get('h') || 1400;
+const glow = P.get('glow') !== '0';          // lyser det gula bandet?
+const ex   = view === 'exploded' ? 1 : 0;    // sprängskiss: delarna glider isär
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(1);
+renderer.setSize(W, H);
+// Neutral tonemapping, inte ACES: ACES drar gulet mot beige och grönt mot grått.
+renderer.toneMapping = THREE.NeutralToneMapping;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+scene.environmentIntensity = 0.55;
+
+// Filamenten. Gulet lyser med emissive i stället för en ljuskälla inuti lövet:
+// en punktljuskälla ger en het fläck mitt i bandet, emissive lyser jämnt.
+const GREEN  = new THREE.MeshPhysicalMaterial({ color: 0x16503a, roughness: 0.55, clearcoat: 0.15 });
+const WHITE  = new THREE.MeshPhysicalMaterial({ color: 0xf1f0ea, roughness: 0.5 });
+const YELLOW = new THREE.MeshPhysicalMaterial({
+  color: 0xf8d12b, roughness: 0.35, emissive: 0xffb400,
+  emissiveIntensity: glow ? 1.25 : 0.05, transmission: glow ? 0 : 0.2,
+});
+
+// Måtten kommer från system.py i CAD-projektet. Ändras de där måste de ändras här.
+const PLATE_THICKNESS = 4.5;   // bottenplattan
+const BASE_HEIGHT     = 48;    // sockeln utan platta
+const TIE_HEIGHT      = 22;    // hur långt lövets svans går ner i sockeln
+const SIGN_THICKNESS  = 20;    // lövets djup
+const PANEL_RECESS    = 5;     // bakstyckets sits under lövets baksida
+const BASE_DEPTH      = 84;
+
+const M4 = (a) => new THREE.Matrix4().set(...a);
+
+// Lövet är modellerat med framsidan i z = 0 och byggt bakåt. Att bara rotera
+// det ställer det bakom y = 0 medan sockelns hål ligger kring y = 0, så halva
+// tjockleken framåt är det som centrerar de två (samma fälla som i
+// bjorkloven_shelf.md § Don't).
+function stand(dy = 0, dz = 0) {
+  return M4([1, 0, 0, 0,
+             0, 0, -1, SIGN_THICKNESS / 2 + dy,
+             0, 1, 0, PLATE_THICKNESS + BASE_HEIGHT - TIE_HEIGHT + dz,
+             0, 0, 0, 1]);
+}
+// Sockeln skrivs ut liggande på framsidan, så dess z är djupet.
+function plinth(dy = 0, dz = 0) {
+  return M4([1, 0, 0, 0,
+             0, 0, -1, BASE_DEPTH / 2 + dy,
+             0, 1, 0, PLATE_THICKNESS + dz,
+             0, 0, 0, 1]);
+}
+
+const parts = [
+  ['bjorkloven_sign',         GREEN,  stand(0, 70 * ex)],
+  ['bjorkloven_core',         GREEN,  stand(-60 * ex, 70 * ex)],
+  ['bjorkloven_window',       YELLOW, stand(40 * ex, 70 * ex)],
+  ['bjorkloven_letters',      WHITE,  stand(80 * ex, 70 * ex)],
+  ['bjorkloven_back',         GREEN,  stand(-120 * ex, 70 * ex)
+                                        .multiply(M4([1,0,0,0, 0,1,0,0, 0,0,1,SIGN_THICKNESS - PANEL_RECESS, 0,0,0,1]))],
+  ['bjorkloven_base',         GREEN,  plinth(0, 0)],
+  ['bjorkloven_base_letters', WHITE,  plinth(60 * ex, 0)],
+  // Plattan monteras upp-och-ner mot hyllan, därför vändningen kring y.
+  ['bjorkloven_plate',        GREEN,  M4([-1,0,0,0, 0,1,0,0, 0,0,-1,PLATE_THICKNESS - 40 * ex, 0,0,0,1])],
+];
+
+const loader = new STLLoader();
+const group = new THREE.Group();
+scene.add(group);
+const missing = [];
+let baseGeometry = null;
+await Promise.all(parts.map(([name, material, m]) =>
+  loader.loadAsync(`./stl/${name}.stl`).then((g) => {
+    g.applyMatrix4(m);
+    g.deleteAttribute('normal');   // STL-normalerna följer inte transformen
+    g.computeVertexNormals();
+    if (name === 'bjorkloven_base') baseGeometry = g;
+    const mesh = new THREE.Mesh(g, material);
+    mesh.castShadow = mesh.receiveShadow = true;
+    group.add(mesh);
+  }).catch(() => missing.push(name))));
+window.__missing = missing;
+
+// Letar rätt på USB-C-hålet i sockeln i stället för att skriva av måtten.
+// Bakväggens yttersta plan plockas ut; kanterna som bara hör till en triangel
+// är randen, och den bildar två slingor — sockelns kontur och hålet. Den
+// minsta är hålet. Flyttas eller ändras det i CAD:en följer uttaget med.
+function findHole(geom) {
+  const p = geom.attributes.position;
+  let ymin = Infinity;
+  for (let i = 0; i < p.count; i++) ymin = Math.min(ymin, p.getY(i));
+
+  const EPS = 0.02;
+  const key = (v) => `${Math.round(v[0] * 1e3)},${Math.round(v[2] * 1e3)}`;
+  const edges = new Map(), pos = new Map();
+  for (let t = 0; t + 2 < p.count; t += 3) {
+    const v = [0, 1, 2].map((k) => [p.getX(t + k), p.getY(t + k), p.getZ(t + k)]);
+    if (!v.every((q) => Math.abs(q[1] - ymin) < EPS)) continue;
+    for (let k = 0; k < 3; k++) {
+      const ka = key(v[k]), kb = key(v[(k + 1) % 3]);
+      if (ka === kb) continue;
+      pos.set(ka, v[k]); pos.set(kb, v[(k + 1) % 3]);
+      const e = ka < kb ? `${ka}|${kb}` : `${kb}|${ka}`;
+      edges.set(e, (edges.get(e) || 0) + 1);
+    }
+  }
+
+  const adj = new Map();
+  const link = (a, b) => { if (!adj.has(a)) adj.set(a, []); adj.get(a).push(b); };
+  for (const [e, n] of edges) {
+    if (n !== 1) continue;                       // bara randkanter
+    const [a, b] = e.split('|');
+    link(a, b); link(b, a);
+  }
+
+  let best = null;
+  const seen = new Set();
+  for (const start of adj.keys()) {
+    if (seen.has(start)) continue;
+    const comp = [], stack = [start];
+    seen.add(start);
+    while (stack.length) {
+      const k = stack.pop();
+      comp.push(pos.get(k));
+      for (const n of adj.get(k)) if (!seen.has(n)) { seen.add(n); stack.push(n); }
+    }
+    let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+    for (const q of comp) {
+      x0 = Math.min(x0, q[0]); x1 = Math.max(x1, q[0]);
+      z0 = Math.min(z0, q[2]); z1 = Math.max(z1, q[2]);
+    }
+    const span = Math.max(x1 - x0, z1 - z0);
+    if (!best || span < best.span) best = { comp, span };
+  }
+  if (!best || best.comp.length < 8) return null;
+
+  const n = best.comp.length;
+  let cx = 0, cz = 0;
+  for (const q of best.comp) { cx += q[0]; cz += q[2]; }
+  cx /= n; cz /= n;
+  let r = 0;
+  for (const q of best.comp) r = Math.max(r, Math.hypot(q[0] - cx, q[2] - cz));
+  return { x: cx, y: ymin, z: cz, r };
+}
+
+// USB-C-uttaget är ingen utskriven del utan en köpt panelkontakt, så det finns
+// ingen STL för den. Utan den blir bakvägen bara ett tomt hål. Måtten följer
+// MONTERA.md: M11 × 1,0 panelmontage i sockelns bakvägg, flänsen utåt.
+// Var hålet sitter mäts i sockeln, inte skrivs av — se findHole.
+// Sprängskissen visar bara de utskrivna delarna, så den hoppas över där.
+const hole = baseGeometry && findHole(baseGeometry);
+if (!ex && !hole && baseGeometry) missing.push('usb-c (hittade inget hål i sockeln)');
+
+if (!ex && hole) {
+  // Flänsen måste täcka hålet, så den växer med det. Öppningens mått är
+  // däremot USB-C-standardens och har inget med utskriften att göra.
+  const FLANGE_D    = hole.r * 2 + 2.9, FLANGE_T = 2;
+  const PORT_W      = 8.94, PORT_H = 3.16;     // USB-C-öppningens yttermått
+  const SHELL_WALL  = 0.32;
+  const PORT_DEPTH  = 6.6;
+  const TONGUE_W    = 6.7, TONGUE_H = 0.7;
+
+  // Matt svart hölje. Tungan hålls ett snäpp ljusare än hålrummet — annars
+  // blir öppningen en enda svart fläck och uttaget slutar läsas som ett uttag.
+  const SHELL = new THREE.MeshPhysicalMaterial({
+    color: 0x1a1a1a, metalness: 0.05, roughness: 0.9 });
+  const CAVITY = new THREE.MeshPhysicalMaterial({
+    color: 0x080808, metalness: 0, roughness: 0.95 });
+  const TONGUE = new THREE.MeshPhysicalMaterial({
+    color: 0x3c3f42, metalness: 0.1, roughness: 0.75 });
+
+  // Stadionformen som både öppningen och tungan har.
+  function stadium(w, h) {
+    const r = h / 2, s = new THREE.Shape();
+    s.moveTo(-w / 2 + r, -h / 2);
+    s.lineTo(w / 2 - r, -h / 2);
+    s.absarc(w / 2 - r, 0, r, -Math.PI / 2, Math.PI / 2, false);
+    s.lineTo(-w / 2 + r, h / 2);
+    s.absarc(-w / 2 + r, 0, r, Math.PI / 2, Math.PI * 1.5, false);
+    return s;
+  }
+  // Formerna ritas i xy och pressas längs z; ett kvarts varv kring x lägger
+  // z utåt i scenens -y, alltså rakt ut ur bakväggen.
+  function press(shape, depth) {
+    const g = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: false, curveSegments: 24 });
+    g.rotateX(Math.PI / 2);
+    return g;
+  }
+
+  const usb = new THREE.Group();
+  usb.position.set(hole.x, hole.y, hole.z);
+
+  // Flänsen: en bricka med öppningen urtagen.
+  const flange = stadium(FLANGE_D, FLANGE_D);
+  flange.holes.push(new THREE.Path(stadium(PORT_W, PORT_H).getPoints(24)));
+  const flangeMesh = new THREE.Mesh(press(flange, FLANGE_T), SHELL);
+  usb.add(flangeMesh);
+
+  // Hylsan innanför: samma öppning, med gods runt om, så det går att se in.
+  const sleeve = stadium(PORT_W + SHELL_WALL * 2, PORT_H + SHELL_WALL * 2);
+  sleeve.holes.push(new THREE.Path(stadium(PORT_W, PORT_H).getPoints(24)));
+  const sleeveMesh = new THREE.Mesh(press(sleeve, PORT_DEPTH), SHELL);
+  sleeveMesh.position.y = PORT_DEPTH - FLANGE_T;
+  usb.add(sleeveMesh);
+
+  // Botten i hylsan, och tungan som kontakten greppar om.
+  const back = new THREE.Mesh(press(stadium(PORT_W, PORT_H), 0.6), CAVITY);
+  back.position.y = PORT_DEPTH - FLANGE_T;
+  usb.add(back);
+
+  const tongue = new THREE.Mesh(press(stadium(TONGUE_W, TONGUE_H), PORT_DEPTH - 1.4), TONGUE);
+  tongue.position.y = PORT_DEPTH - FLANGE_T - 0.6;
+  usb.add(tongue);
+
+  usb.traverse((o) => { o.castShadow = o.receiveShadow = true; });
+  group.add(usb);
+}
+
+const key = new THREE.DirectionalLight(0xffffff, 2.2);
+key.position.set(250, 420, 520);
+key.castShadow = true;
+key.shadow.mapSize.set(2048, 2048);
+Object.assign(key.shadow.camera, { left: -300, right: 300, top: 300, bottom: -300, near: 1, far: 2000 });
+scene.add(key);
+const rim = new THREE.DirectionalLight(0xdfe9ff, 1.4);
+rim.position.set(-400, -300, 300);
+scene.add(rim);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x223322, 0.35));
+
+// Genomskinlig botten som bara tar emot skuggan, så bilderna kan läggas på
+// vilken bakgrund som helst.
+if (P.get('ground') !== '0') {
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(4000, 4000), new THREE.ShadowMaterial({ opacity: 0.35 }));
+  ground.position.z = ex ? -40 : 0;
+  ground.receiveShadow = true;
+  scene.add(ground);
+}
+
+const centre = new THREE.Box3().setFromObject(group).getCenter(new THREE.Vector3());
+const camera = new THREE.PerspectiveCamera(+P.get('fov') || 22, W / H, 1, 5000);
+camera.up.set(0, 0, 1);   // z är uppåt i den här scenen
+const DIRECTIONS = {
+  hero:     [0.75, 1.6, 0.45],
+  front:    [0, 1, 0.08],
+  exploded: [1.35, 1.2, 0.55],
+  back:     [-0.9, -1.4, 0.4],
+  side:     [1, 0.02, 0.1],
+};
+const dir = new THREE.Vector3(...(DIRECTIONS[view] || DIRECTIONS.hero)).normalize();
+camera.position.copy(centre).addScaledVector(dir, +P.get('dist') || 900);
+camera.lookAt(centre);
+
+renderer.render(scene, camera);
+window.__done = true;
+</script>
+</body>
+</html>

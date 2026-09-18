@@ -27,7 +27,7 @@ hardware/v2/
 | Fil | Färg | Vad det är |
 |---|---|---|
 | `bjorkloven_sign` | grön | Lövets skal: framsida, kant, öppen baksida |
-| `bjorkloven_core` | vit | Blocket inne i lövet som LED-listen sitter mot |
+| `bjorkloven_core` | grön | Blocket inne i lövet som LED-listen sitter mot |
 | `bjorkloven_window` | gul, genomskinlig | Linsen listen lyser igenom |
 | `bjorkloven_letters` | vit | BJÖRKLÖVEN / UMEÅ, i nivå med framsidan |
 | `bjorkloven_back` | grön | Löstagbart bakstycke, fyra skruvar |
@@ -56,18 +56,16 @@ these files as a single object with multiple parts"*. Flytta inget.
 | Del | Filament |
 |---|---|
 | sign | grön |
-| core | vit |
+| core | grön |
 | window | gul, genomskinlig |
 | letters | vit |
 
 Kontrollera att `bjorkloven_core` verkligen kom med. Utan den blir lövet ihåligt,
 utan säte för listen och utan kant för bakstycket att vila på.
 
-Den här plattan kostar i purge: den vita kärnan går från lager 11 till 75, och
-grönt och vitt växlar på vart och ett av dem — långt över hundra färgbyten.
-Räkna med tiotals gram purge, och lita på slicerns egen uppskattning. Slå på
-*flush into infill*; det ger lite i de tio första (solida) lagren men hjälper
-över kärnans höjd.
+Kärnan skrivs ut i samma gröna filament som skalet, så lagren över kärnans
+höjd är enfärgade och kostar ingenting i purge. Färgbytena som blir kvar
+ligger i det gula bandet och i texten. Lita på slicerns egen uppskattning.
 
 ### Platta 2 — bakstycket
 
@@ -135,13 +133,13 @@ mycket svårare om de byter plats.
 
 ### 1. Sätt LED-listen
 
-Spåret är glappet mellan lövets gröna kant och den vita kärnan, 6,78 mm på sitt
+Spåret är glappet mellan lövets gröna kant och kärnan, 6,78 mm på sitt
 smalaste och öppet bakåt. **Ställ listen på högkant**, stående på lövets
 framsida, med tejpsidan mot kärnans yttervägg — då lyser den åt sidan, tvärs
 över spåret, in i det gula bandet.
 
 Väggen är 488 mm lång, så 55 cm list räcker med lite att kapa. Den böjer aldrig
-snävare än 20 mm radie, vilket är hela anledningen till att den vita kärnan
+snävare än 20 mm radie, vilket är hela anledningen till att kärnan
 finns. Väggen saknar avsiktligt fas — den är listens säte.
 
 Har du skrivit ut limfixturen: häng den i spåret i sin kant så att dess vägg
@@ -159,7 +157,7 @@ långa nog att nå ner genom sockeln till facket.
 
 ### 3. Skruva på bakstycket
 
-Det vilar på toppen av den vita kärnan, som slutar 5 mm under lövets baksida för
+Det vilar på toppen av kärnan, som slutar 5 mm under lövets baksida för
 just det, och kantens insida styr det i sidled. Fyra M3 × 8; huvudena hamnar i
 nivå med lövet.
 
