@@ -114,7 +114,7 @@ jobs:
           fi
 
           # Verifiera att versionen faktiskt hamnade i binären.
-          if ! strings dist/firmware.bin | grep -q "BjorklovenLED/$V"; then
+          if ! strings dist/firmware.bin | grep -q "LovGlod/$V"; then
             echo "::error::FW_VERSION $V återfinns inte i binären"
             exit 1
           fi
