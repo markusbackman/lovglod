@@ -98,8 +98,6 @@ Fyra guider, i den ordning du troligen behöver dem:
 | 💡 | [**Ljusspråket**](docs/GLODEN.md) | Varje läge på listen i detalj, justera glöden och ställa in tv-fördröjningen |
 | 🛠️ | [**Bygga projektet**](docs/BYGGA.md) | PlatformIO, kopplingstest, mockserver för labbtest, releaser och signering, SHL-API:t |
 
-Kostnaden per lampa är räknad i [KALKYL.md](KALKYL.md).
-
 ---
 
 ## Licens
