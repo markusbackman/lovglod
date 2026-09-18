@@ -202,7 +202,9 @@ flasha manuellt, inte för enheterna.
     · injicerar FW_VERSION=1.1.0 via PLATFORMIO_BUILD_FLAGS
     · bygger, kontrollerar storlek mot partitionen
     · verifierar att versionen hamnade i binären
-    · publicerar firmware.bin + firmware.json som release
+    · slår ihop bootloader + partitionstabell + app till lovglod-full.bin
+    · publicerar firmware.bin, firmware.json, firmware.sig
+      och lovglod-full.bin (+ .sha256) som release
             │
             ▼
   ESP32, var 12:e timme (aldrig under match)
@@ -211,6 +213,26 @@ flasha manuellt, inte för enheterna.
     · progressen visas som stapel på LED-listen
     · omstart in i den nya firmwaren
 ```
+
+### Assets i en release
+
+| Asset | För vem |
+|---|---|
+| `firmware.bin` | Enheterna, över OTA. Bara appen, skrivs till 0x10000 |
+| `firmware.json` | Enheterna: version, url, sha256, signatur |
+| `firmware.sig` | Signaturen som egen fil, för den som vill verifiera för hand |
+| `lovglod-full.bin` | USB-flashning av ett nytt kort. Bootloader + partitionstabell + app, skrivs till 0x0 |
+| `lovglod-full.bin.sha256` | Kontrollsumma för bilden ovan |
+
+Den kompletta bilden byggs med `esptool merge_bin` i samma steg som signeringen
+och är till för [USB-vägen](INSTALLERA.md#flasha-över-usb). Enheterna hämtar
+den aldrig — de tar `firmware.bin` via manifestet, och det är den vägen som är
+signerad.
+
+Bilden täcker flashen från 0x0 upp till appens slut och fyller mellanrummen med
+0xFF — även NVS på 0x9000. Ett kort som flashas med den **tappar alltså WiFi,
+listval och övriga inställningar**. Det är rätt för ett nytt kort; ska en lampa
+i drift bara byta version är `firmware.bin` på 0x10000 vägen.
 
 ### Token — bara för privata repon
 

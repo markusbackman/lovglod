@@ -55,7 +55,9 @@ jobs:
           restore-keys: pio-${{ runner.os }}-
 
       - name: Installera PlatformIO
-        run: pip install --upgrade platformio
+        # esptool pinnas: v5 döpte om merge_bin till merge-bin och bytte
+        # standardvärden, så en oväntad major skulle knäcka bygget tyst.
+        run: pip install --upgrade platformio "esptool~=4.8"
 
       - name: Bygg firmware
         env:
@@ -132,6 +134,33 @@ jobs:
           }
           EOF
 
+          # Komplett flashbild för ett kort som aldrig kört LövGlöd. firmware.bin
+          # är bara appen; utan bootloader och partitionstabell (min_spiffs, två
+          # app-partitioner) går kortet inte att starta och OTA får ingen plats
+          # att skriva till. Den här bilden skrivs till offset 0 och behöver
+          # inget lokalt bygge.
+          #
+          # Bilden är till för USB. Enheterna hämtar aldrig den — de tar
+          # firmware.bin via manifestet, och det är den vägen som är signerad.
+          BOOT_APP0=$(find ~/.platformio/packages/framework-arduinoespressif32 \
+                        -name boot_app0.bin -print -quit)
+          if [ -z "$BOOT_APP0" ]; then
+            echo "::error::boot_app0.bin hittades inte i framework-paketet"
+            exit 1
+          fi
+          esptool.py --chip esp32 merge_bin -o dist/lovglod-full.bin \
+            --flash_mode dio --flash_freq 40m --flash_size 4MB \
+            0x1000  .pio/build/esp32dev/bootloader.bin \
+            0x8000  .pio/build/esp32dev/partitions.bin \
+            0xe000  "$BOOT_APP0" \
+            0x10000 dist/firmware.bin
+
+          # Kontrollsumman följer med som egen asset, så den går att verifiera
+          # med  shasum -a 256 -c lovglod-full.bin.sha256  efter nedladdning.
+          FULL_SIZE=$(stat -c%s dist/lovglod-full.bin)
+          ( cd dist && sha256sum lovglod-full.bin > lovglod-full.bin.sha256 )
+          FULL_SHA=$(cut -d' ' -f1 dist/lovglod-full.bin.sha256)
+
           echo "### Firmware $V" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "| | |" >> "$GITHUB_STEP_SUMMARY"
@@ -139,6 +168,7 @@ jobs:
           echo "| Storlek | $SIZE byte ($(( SIZE * 100 / LIMIT )) % av partitionen) |" >> "$GITHUB_STEP_SUMMARY"
           echo "| SHA-256 | \`$SHA\` |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Signatur | verifierad mot \`include/ota_pubkey.h\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Full flashbild | $FULL_SIZE byte, sha256 \`$FULL_SHA\` |" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Publicera release
         env:
@@ -154,10 +184,12 @@ jobs:
             *)   PRE=false ;;
           esac
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" dist/firmware.bin dist/firmware.json dist/firmware.sig --clobber
+            gh release upload "$TAG" dist/firmware.bin dist/firmware.json dist/firmware.sig \
+              dist/lovglod-full.bin dist/lovglod-full.bin.sha256 --clobber
             gh release edit "$TAG" --prerelease="$PRE"
           else
             gh release create "$TAG" dist/firmware.bin dist/firmware.json dist/firmware.sig \
+              dist/lovglod-full.bin dist/lovglod-full.bin.sha256 \
               --title "v$V" --generate-notes --prerelease="$PRE"
           fi
           echo "Kanal: $([ "$PRE" = true ] && echo beta || echo stabil)"

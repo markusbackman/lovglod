@@ -28,45 +28,46 @@ hämtat från GitHub, eller det du flashar över USB.
 
 ## Flasha över USB
 
-### 1. Hämta filerna
+### 1. Installera esptool
 
-Från [Releases](https://github.com/markusbackman/bjorkloven-led/releases):
-**`firmware.bin`** och **`firmware.json`** från den version du vill ha. Senaste
-stabila är den som är märkt *Latest*.
-
-Kontrollera gärna att nedladdningen är hel — summan ska vara lika med `sha256`
-i `firmware.json`:
+[esptool](https://docs.espressif.com/projects/esptool/) är Espressifs
+flashverktyg. Det behöver Python:
 
 ```bash
-shasum -a 256 firmware.bin
+pip install esptool
 ```
 
-`firmware.bin` är bara själva appen. Ett kort som aldrig kört LövGlöd behöver
-dessutom bootloader och partitionstabell (`min_spiffs`, två app-partitioner så
-att OTA fungerar). De publiceras inte i releasen än, så de kommer från ett
-lokalt bygge — ett `pio run` räcker, se [Bygga projektet](BYGGA.md#kom-igång):
+Koppla in kortet med en USB-kabel som för **data**, inte bara ström. Många
+laddkablar gör bara det senare, och då dyker ingen seriell port upp.
 
-| Fil | Var den finns |
+### 2. Hämta den kompletta flashbilden
+
+Från [Releases](https://github.com/markusbackman/bjorkloven-led/releases),
+den version du vill ha — senaste stabila är märkt *Latest*:
+
+| Fil | Vad det är |
 |---|---|
-| `bootloader.bin` | `.pio/build/esp32dev/bootloader.bin` |
-| `partitions.bin` | `.pio/build/esp32dev/partitions.bin` |
-| `boot_app0.bin` | `~/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin` |
+| **`lovglod-full.bin`** | Allt ett nytt kort behöver: bootloader, partitionstabell och appen, i en fil |
+| `lovglod-full.bin.sha256` | Kontrollsumma för filen ovan |
+| `firmware.bin` | Bara appen — för kort som redan kört LövGlöd, och det enheterna hämtar över OTA |
+| `firmware.json`, `firmware.sig` | Manifest och signatur, används av OTA |
 
-Har du ändå byggt är det enklast att flasha direkt med `pio run -t upload` —
-då är du klar med det här steget.
-
-### 2. Skriv till kortet
-
-Installera [esptool](https://docs.espressif.com/projects/esptool/) (`pip install
-esptool`) och koppla in kortet med en USB-kabel som för data, inte bara ström.
+Kontrollera nedladdningen innan du skriver den till ett kort:
 
 ```bash
-esptool.py --chip esp32 --baud 460800 write_flash -z \
-  0x1000  bootloader.bin \
-  0x8000  partitions.bin \
-  0xe000  boot_app0.bin \
-  0x10000 firmware.bin
+shasum -a 256 -c lovglod-full.bin.sha256      # macOS/Linux
 ```
+
+### 3. Skriv till kortet
+
+```bash
+esptool.py --chip esp32 --baud 460800 write_flash -z 0x0 lovglod-full.bin
+```
+
+Bilden skrivs från flashens början och **nollställer inställningarna** — WiFi,
+listval, ljusstyrka och uppdateringskanal. På ett nytt kort finns inget att
+förlora, men ska en lampa i drift bara byta version, ta [bara
+appen](#bara-appen) i stället.
 
 **Håll in BOOT-knappen** när esptool skriver `Connecting...` — kortet har
 trasig auto-reset och kommer annars inte in i nedladdningsläget. Släpp när
@@ -77,16 +78,30 @@ esptool hittar porten själv. Har du flera seriella enheter: lägg till
 (Windows).
 
 Tryck på EN/RESET när det är klart. Listen ska flöda in i gult och sedan pulsa
-grönt.
+grönt — då är kortet igång och väntar på att bli inställt.
+
+### Bara appen
+
+Har kortet redan kört LövGlöd sitter bootloadern och partitionstabellen redan
+där. Då räcker `firmware.bin`, som skrivs till appens offset:
+
+```bash
+esptool.py --chip esp32 --baud 460800 write_flash -z 0x10000 firmware.bin
+```
+
+Det är samma binär som enheterna hämtar över OTA, och den går att kontrollera
+mot `sha256` i `firmware.json`.
 
 ### Tillbaka till en tidigare version
 
-Samma kommando med en äldre `firmware.bin`. Det räcker att skriva
-`0x10000 firmware.bin` om kortet redan kört LövGlöd.
+Samma kommandon med en äldre release. `lovglod-full.bin` fungerar alltid;
+`firmware.bin` räcker om kortet redan kör LövGlöd.
 
-Inställningarna — WiFi, listval, ljusstyrka, uppdateringskanal — ligger i NVS
-och överlever flashningen. Vill du börja från noll: kör `esptool.py erase_flash`
-först. Då måste listvalet göras om i portalen.
+`firmware.bin` rör inte inställningarna: WiFi, listval, ljusstyrka och
+uppdateringskanal ligger i NVS och står kvar. `lovglod-full.bin` skriver över
+NVS och lampan vaknar i setup-portalen, som ett nytt kort.
+
+Vill du tömma allt oavsett väg: kör `esptool.py erase_flash` först.
 
 Observera att en lampa på stabila kanalen installerar senaste stabila release
 vid nästa kontroll, även om du nyss flashat en äldre. Ska den stå kvar på en
