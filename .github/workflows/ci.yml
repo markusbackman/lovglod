@@ -2,7 +2,7 @@ name: Bygg
 
 # Kompilerar varje push och PR så att trasig kod aldrig når en tagg.
 # Artefakten här är för dig att flasha manuellt — enheter kan inte hämta den,
-# GitHub kräver inloggning för artifact-nedladdning (se README).
+# GitHub kräver inloggning för artifact-nedladdning (se docs/BYGGA.md).
 on:
   push:
     branches: [main]

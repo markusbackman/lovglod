@@ -13,4 +13,4 @@ Svaret avgör versionstaggen, och taggen avgör vilka lampor som får firmwaren
 - Pre-release → `vX.Y.Z-rcN` — publiceras som pre-release, når bara lampor
   med Uppdateringskanal: Beta.
 
-Tagga och pusha bara när användaren ber om det. Se README §5 "Betaprogrammet".
+Tagga och pusha bara när användaren ber om det. Se docs/BYGGA.md, "Betaprogrammet".

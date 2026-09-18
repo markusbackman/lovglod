@@ -1,4 +1,6 @@
-# LövGlöd V2 — skriva ut och montera skylten
+# Montera — skriva ut och bygga lampan
+
+[← Tillbaka till README](../README.md)
 
 Den fysiska lampan: Björklövens löv, 220 mm högt, stående i en sockel. Lövet är
 en 2 mm grön framsida där klubbmärkets gula band är ingjutet som ett
@@ -107,7 +109,7 @@ i första millimetern, så färgbytena är få.
 |---|---|---|
 | Insexskruv M3 × 8 (ISO 4762) | **tio st**, självgängande i utskrivna 2,5 mm-hål | 4 bakstycke, 4 bottenplatta, 2 lövets spets |
 | USB-C-uttag för panelmontering | gänga M11 × 1,0, 16,5 mm bakom flänsen, 20 V/3 A, fyra 24 AWG-ledare, med mutter och dammskydd | sockelns bakvägg |
-| Adresserbar LED-list, 5 V | **8 mm bred**, ~55 cm, kapad vid en lödpunkt. WS2812B eller APA102 (se [README §2](../README.md#2-hårdvara)) | spåret bakom det gula bandet |
+| Adresserbar LED-list, 5 V | **8 mm bred**, ~55 cm, kapad vid en lödpunkt. WS2812B eller APA102 (se [Koppling i detalj](#6-koppling-i-detalj)) | spåret bakom det gula bandet |
 | ESP32 DevKit | högst 57,5 × 30,5 × 15 mm | facket under sockelns golv |
 | 330–470 Ω-motstånd | bara för WS2812B | på datatråden |
 | 1000 µF / 6,3 V+ kondensator | | över 5 V och GND vid listens början |
@@ -196,7 +198,7 @@ Allt ström kommer genom USB-C-uttaget. Uttagets **röda** ledare är +5 V och
    USB-C röd   ────────────────────► ESP32 5V (VIN)
 ```
 
-Datatrådarna, samma pinnar som i [README §2](../README.md#koppling):
+Datatrådarna, samma pinnar som i [Koppling i detalj](#koppling):
 
 ```
    WS2812B:  ESP32 GPIO13 ──[390Ω]──► DIN
@@ -219,7 +221,7 @@ Motstånd och kondensator får plats i facket bredvid kortet; krympslang om dem.
 ### 8. Kortet i, bottenplattan på
 
 Kortet åker ner i facket med **USB-änden bakåt** och landar med trådarna bredvid
-sig, inte under. Flasha det gärna över USB innan (README §3) — efter det här
+sig, inte under. Flasha det gärna över USB innan ([Installera firmwaren](INSTALLERA.md)) — efter det här
 steget kommer du bara åt det genom att skruva loss plattan.
 
 Skruva sedan på bottenplattan underifrån, **försänkningarna nedåt mot hyllan**,
@@ -227,7 +229,7 @@ så att de fyra M3-huvudena hamnar i nivå och sockeln står plant. "LövGlöd /
 är graverat i den sidan.
 
 Klart. Koppla in laddaren i uttaget på baksidan och fortsätt med
-[första start](../README.md#4-första-start--captive-portal).
+[första start](INSTALLERA.md#första-start--setup-portalen).
 
 ---
 
@@ -241,3 +243,88 @@ Klart. Koppla in laddaren i uttaget på baksidan och fortsätt med
 | Texten på sockeln/lövet är grön | Delarna laddades som separata objekt, eller fel filament tilldelat |
 | Listen mörk men ESP32 lever | Kopplad till listens utgångsände, eller data/klocka skiftade (APA102) |
 | Bakstycket blev skevt i hörnen | Skrevs ut utan brim |
+
+---
+
+## 6. Koppling i detalj
+
+Referens för kopplingen — gäller både lövlampan ovan och en egen konstruktion
+med annan list eller längd.
+
+| Del | Anmärkning |
+|---|---|
+| ESP32 DevKit v1 (ESP32-WROOM-32) | Vilken klon som helst duger |
+| LED-list, 5 V | **WS2812B** (NeoPixel) eller **APA102** (DotStar), 8–150 LEDs |
+| 5 V-matning, minst 3 A | Lövlampan matas via USB-C. Startar ESP32:n om vid målfyrverkeriet räcker matningen inte — sänk `LED_MAX_MILLIAMPS` |
+| Motstånd 330–470 Ω | I serie på datalinjen — bara WS2812B |
+| Kondensator 1000 µF / 6,3 V+ | Över 5 V och GND vid listens början |
+
+Samma firmware driver båda listorna. Vilken som sitter på, och hur många
+dioder den har, väljs i setup-portalen (se [Installera firmwaren](INSTALLERA.md#första-start--setup-portalen)) och sparas i NVS — det
+överlever omstart och OTA, och går att ändra i efterhand på statussidan.
+
+### Koppling
+
+Matningen är densamma för båda listorna:
+
+```
+   5V PSU ──┬──────────────► LED 5V
+            │
+          1000µF
+            │
+   PSU GND ─┴──┬───────────► LED GND
+               │
+        ESP32 GND
+```
+
+**WS2812B** — en datatråd:
+
+```
+   ESP32 GPIO13 ──[390Ω]────► LED DIN
+```
+
+**APA102 / DotStar** — data och klocka:
+
+```
+   ESP32 GPIO23 ────────────► LED DI   (data)
+   ESP32 GPIO18 ────────────► LED CI   (klocka)
+```
+
+APA102-listen har fyra färgade trådar. Den vanligaste färgkoden för rött,
+vitt, grönt och blått är:
+
+| Tråd | Listens märkning | Kopplas till |
+|---|---|---|
+| **Röd** | 5V (VCC) | Nätaggregatets +5 V |
+| **Vit** | GND | Nätaggregatets GND **och** en GND-pinne på ESP32 |
+| **Grön** | DI (data in) | ESP32 **GPIO23** |
+| **Blå** | CI (klocka in) | ESP32 **GPIO18** |
+
+```
+   Röd   ──── PSU +5V
+   Vit   ──┬─ PSU GND
+           └─ ESP32 GND
+   Grön  ──── ESP32 GPIO23
+   Blå   ──── ESP32 GPIO18
+```
+
+> **Kontrollera mot listen innan du slår på strömmen.** Färgerna är ingen
+> standard och varierar mellan tillverkare. Det som gäller är texten på
+> kopparblecken där trådarna är lödda — `5V`, `CI`, `DI`, `GND` — och att
+> pilarna på listen pekar *bort* från trådarna (det är ingångsänden). Byts 5V
+> och GND kan listen gå sönder direkt. Byts bara data och klocka tar inget
+> skada, men listen förblir mörk eller visar skräp: byt då grön och blå.
+
+**Viktigt:**
+- ESP32 och listen måste dela GND, annars blir datasignalen skräp.
+- Koppla till listens *ingång* — DIN, respektive DI/CI. Utgångsänden heter DO/CO.
+- Mata *inte* 60 LEDs genom ESP32:ns 5V-pinne — dra 5 V direkt från nätaggregatet.
+- ESP32:ns 3,3 V-signal räcker oftast till båda listorna. Vid glitch: sätt in en
+  nivåomvandlare (74AHCT125) — för APA102 på både DI och CI — eller mata listen
+  med 4,5 V istället för 5 V.
+- Innan en list är vald drivs båda utgångarna samtidigt, så portalens gröna
+  puls syns vilken list som än är inkopplad.
+- Firmware håller listen under `LED_MAX_MILLIAMPS` (3000 mA) via
+  `FastLED.setMaxPowerInVoltsAndMilliamps()`. Justera det i `include/config.h`
+  efter din matning. ESP32:n drar sitt ovanpå, och en svag matning ger
+  brownout-omstarter vid målfyrverkeriet långt under taket.
