@@ -2,7 +2,7 @@
 <html lang="sv">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=1440">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Skriv ut själv – LövGlöd</title>
 <link rel="icon" href="assets/logo-icon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -30,6 +30,117 @@
     .chip:hover { background: #1c5f45; color: #ffffff; }
   </style>
 <style>html { scroll-behavior: smooth; } section[id], [id] { scroll-margin-top: 64px; }</style>
+<style>/* Responsiv överbyggnad. Sidorna är formgivna för 1440 px och all layout
+   ligger i style-attribut, så det här lagret skriver över de fasta måtten
+   med !important. Ordning: flytande typografi, sedan surfplatta, sedan mobil. */
+
+img, svg { max-width: 100%; height: auto; }
+pre { overflow-x: auto; }
+p, ul, ol, dl, table { max-width: 100%; }
+
+/* Roten och mittspalten */
+body > div[style*="min-width: 1440px"] { min-width: 0 !important; }
+div[style*="width: 1280px"]:not([style*="height"]) {
+  width: 100% !important; max-width: 1280px !important;
+  padding-left: 24px; padding-right: 24px; box-sizing: border-box;
+}
+dl[style*="width: 1280px"], ul[style*="width: 1280px"], ol[style*="width: 1280px"] {
+  width: 100% !important; max-width: 1280px !important;
+  padding-left: 24px !important; padding-right: 24px !important; box-sizing: border-box;
+}
+
+/* Filmrutan: 16:9 i stället för fasta 1280 × 720 */
+[style*="width: 1280px"][style*="height: 720px"] {
+  width: 100% !important; height: auto !important; aspect-ratio: 16 / 9;
+}
+[style*="height: 226px"] { height: auto !important; aspect-ratio: 16 / 9; }
+[style*="height: 640px"] { height: auto !important; max-height: 70%; }
+
+/* Flytande rubriker */
+[style*="font-size: 200px"] { font-size: clamp(56px, 14vw, 200px) !important; }
+[style*="font-size: 132px"] { font-size: clamp(44px, 9.5vw, 132px) !important; }
+[style*="font-size: 96px"] { font-size: clamp(40px, 7vw, 96px) !important; }
+[style*="font-size: 84px"] { font-size: clamp(38px, 6vw, 84px) !important; }
+[style*="font-size: 76px"] { font-size: clamp(36px, 5.5vw, 76px) !important; }
+[style*="font-size: 64px"] { font-size: clamp(34px, 4.6vw, 64px) !important; }
+[style*="font-size: 56px"] { font-size: clamp(32px, 4vw, 56px) !important; }
+[style*="font-size: 52px"] { font-size: clamp(30px, 3.7vw, 52px) !important; }
+[style*="font-size: 44px"] { font-size: clamp(28px, 3.2vw, 44px) !important; }
+[style*="font-size: 36px"] { font-size: clamp(26px, 2.6vw, 36px) !important; }
+[style*="font-size: 34px"] { font-size: clamp(24px, 2.4vw, 34px) !important; }
+[style*="font-size: 32px"] { font-size: clamp(24px, 2.3vw, 32px) !important; }
+[style*="font-size: 26px"] { font-size: clamp(18px, 1.9vw, 26px) !important; }
+
+/* ---------- Surfplatta ---------- */
+@media (max-width: 1100px) {
+  section[style*="padding: 120px 0"] { padding-top: 80px !important; padding-bottom: 80px !important; }
+  section[style*="padding: 104px 0"] { padding-top: 72px !important; padding-bottom: 72px !important; }
+
+  /* Tvåspaltiga uppslag med en fast bildspalt blir en spalt */
+  [style*="grid-template-columns: 640px"],
+  [style*="grid-template-columns: 680px"],
+  [style*="grid-template-columns: 520px"],
+  [style*="grid-template-columns: minmax(0, 1fr) 520px"],
+  [style*="grid-template-columns: minmax(0, 1fr) 380px"] {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 40px !important;
+  }
+  [style*="grid-template-columns: repeat(4"] { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  [style*="grid-template-columns: repeat(5"],
+  [style*="grid-template-columns: repeat(6"] { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+
+  /* Bilder som satts i fast bredd centreras i sin spalt */
+  img[style*="width: 640px"], img[style*="width: 600px"], img[style*="width: 520px"],
+  img[style*="width: 420px"], img[style*="width: 380px"] { margin-inline: auto; }
+}
+
+/* ---------- Mobil ---------- */
+@media (max-width: 780px) {
+  div[style*="width: 1280px"]:not([style*="height"]),
+  dl[style*="width: 1280px"], ul[style*="width: 1280px"], ol[style*="width: 1280px"] {
+    padding-left: 20px !important; padding-right: 20px !important;
+  }
+  section[style*="padding: 120px 0"] { padding-top: 56px !important; padding-bottom: 56px !important; }
+  section[style*="padding: 104px 0"] { padding-top: 56px !important; padding-bottom: 56px !important; }
+
+  /* Menyn: logotyp och knapp, länkarna ryms inte */
+  header nav { display: none !important; }
+  header div[style*="gap: 40px"] { gap: 16px !important; }
+
+  /* Allt rutnät blir en spalt */
+  [style*="grid-template-columns: repeat("],
+  [style*="grid-template-columns: minmax(0, 1fr) minmax(0, 1fr)"] { grid-template-columns: minmax(0, 1fr) !important; }
+  [style*="grid-template-columns: minmax(0, 1fr) auto"] { grid-template-columns: minmax(0, 1fr) !important; }
+  [style*="grid-template-columns: 240px"],
+  [style*="grid-template-columns: 160px"] { grid-template-columns: minmax(0, 1fr) !important; row-gap: 0 !important; }
+  /* Specifikationen: etikett över värde, en linje per rad */
+  dt[style*="border-bottom"] { border-bottom: 0 !important; padding-bottom: 0 !important; }
+  dd[style*="border-bottom"] { padding-top: 4px !important; }
+
+  /* Dellistan: nummer och färgprick på en rad, texten under */
+  [style*="grid-template-columns: 40px 20px minmax(0, 1fr) auto"] {
+    grid-template-columns: 30px 18px minmax(0, 1fr) !important;
+    column-gap: 10px !important; row-gap: 4px !important; align-items: center !important;
+  }
+  [style*="grid-template-columns: 40px 20px minmax(0, 1fr) auto"] > span:last-child {
+    grid-column: 1 / -1 !important; padding-bottom: 2px;
+  }
+
+  /* Rader som låg sida vid sida får radbrytas */
+  div[style*="display: flex"][style*="justify-content: space-between"]:not([style*="flex-direction: column"]) { flex-wrap: wrap !important; }
+  footer div[style*="display: flex"]:not([style*="flex-direction: column"]) { flex-wrap: wrap !important; row-gap: 20px !important; }
+  [style*="margin-left: auto"] { margin-left: 0 !important; }
+
+  /* Knappar tar hela bredden så de går att träffa */
+  a[style*="min-height: 64px"], a[style*="min-height: 68px"], a[style*="min-height: 60px"] {
+    width: 100%; justify-content: center;
+  }
+  div[style*="display: flex"][style*="gap: 16px"]:not([style*="flex-direction: column"]) { flex-wrap: wrap !important; }
+  div[style*="display: flex"][style*="gap: 16px"]:not([style*="flex-direction: column"]) > a[class*="btn"] { flex: 1 1 100%; }
+
+  /* Filmrutans spelknapp och etikett */
+  [style*="width: 112px"][style*="height: 112px"] { width: 72px !important; height: 72px !important; }
+}</style>
 </head>
 <body>
 <div style="width: 100%; min-width: 1440px; display: flex; flex-direction: column; background: #071912;">
