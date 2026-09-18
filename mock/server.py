@@ -631,7 +631,7 @@ poll(); setInterval(poll, 1000);
 # ─────────────────────────────────────────────────────────────────────────────
 class Handler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
-    server_version = "BjorklovenMock/1.0"
+    server_version = "LovGlodMock/1.0"
 
     # Tyst standardlogg — vi har en egen i webbgränssnittet.
     def log_message(self, fmt, *args):

@@ -5,7 +5,7 @@
 #include "updater.h"
 #include "netcheck.h"
 #include "leds.h"
-#include "crest_svg.h"
+#include "logo_svg.h"
 #include <WiFi.h>
 #include <WebServer.h>
 #include <DNSServer.h>
@@ -60,8 +60,7 @@ body{margin:0;background:var(--bg);color:#000;font:16px/1.5 var(--body)}
 .in{max-width:560px;margin:0 auto;padding:0 16px}
 .bar{position:sticky;top:0;z-index:2;background:var(--g8);color:#fff}
 .bar .in{display:flex;align-items:center;gap:10px;height:50px}
-.bar img{width:34px;height:34px;display:block}
-.bar b{font:700 24px/1 var(--disp);letter-spacing:.02em;text-transform:uppercase}
+.bar img{height:26px;width:auto;display:block}
 .bar small{margin-left:auto;font-size:12px;font-weight:600;letter-spacing:.1em;
  text-transform:uppercase;color:rgba(255,255,255,.7)}
 .hero{background:var(--g7);color:#fff;padding:28px 0 32px}
@@ -138,12 +137,12 @@ String head(const char *title, const char *eyebrow, const String &heading,
     String h = F("<!doctype html><html lang=sv><head><meta charset=utf-8>"
                  "<meta name=viewport content='width=device-width,initial-scale=1'>"
                  "<meta name=theme-color content='#0C2A1F'>"
-                 "<link rel=icon href=/crest.svg><title>");
+                 "<link rel=icon href=/icon.svg><title>");
     h += title;
     h += F("</title><style>");
     h += FPSTR(PAGE_CSS);
     h += F("</style></head><body><header class=bar><div class=in>"
-           "<img src=/crest.svg alt='IF Björklöven'><b>LövGlöd</b><small>");
+           "<img src=/logo.svg alt='LövGlöd'><small>");
     h += gApMode ? F("Setup") : F("Admin");
     h += F("</small></div></header><section class=hero><div class=in><p class=eye>");
     h += eyebrow;
@@ -157,9 +156,14 @@ String head(const char *title, const char *eyebrow, const String &heading,
 
 const char PAGE_END[] PROGMEM = "</main></body></html>";
 
-void handleCrest() {
+void handleLogo() {
     server.sendHeader("Cache-Control", "public, max-age=604800");
-    server.send_P(200, "image/svg+xml", CREST_SVG);
+    server.send_P(200, "image/svg+xml", LOGO_SVG);
+}
+
+void handleIcon() {
+    server.sendHeader("Cache-Control", "public, max-age=604800");
+    server.send_P(200, "image/svg+xml", LOGO_ICON_SVG);
 }
 
 // Nätverksscan cachas — en scan tar ~2 s och blockerar webbservern.
@@ -611,7 +615,8 @@ void registerRoutes() {
     gRoutesRegistered = true;
 
     server.on("/", HTTP_GET, handleRoot);
-    server.on("/crest.svg", HTTP_GET, handleCrest);
+    server.on("/logo.svg", HTTP_GET, handleLogo);
+    server.on("/icon.svg", HTTP_GET, handleIcon);
 
     for (const char *probe : {"/hotspot-detect.html",       // iOS/macOS
                               "/library/test/success.html",

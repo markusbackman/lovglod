@@ -163,7 +163,7 @@ static bool resolvePrivateAssetUrl(const String &source, uint32_t assetId, Strin
     http.setFollowRedirects(HTTPC_DISABLE_FOLLOW_REDIRECTS);
 
     if (!http.begin(client, url)) return false;
-    http.addHeader("User-Agent", "BjorklovenLED/" FW_VERSION);
+    http.addHeader("User-Agent", "LovGlod/" FW_VERSION);
     http.addHeader("Accept", "application/octet-stream");
     http.addHeader("Authorization", "Bearer " + settings.otaToken);
 
@@ -201,7 +201,7 @@ static bool requestJson(const String &url, JsonDocument &doc, const JsonDocument
     if (!http.begin(client, url)) { gStatus = "Kunde inte nå uppdateringskällan"; return false; }
 
     // GitHub svarar 403 utan User-Agent.
-    http.addHeader("User-Agent", "BjorklovenLED/" FW_VERSION);
+    http.addHeader("User-Agent", "LovGlod/" FW_VERSION);
     http.addHeader("Accept", accept);
     if (sendToken) http.addHeader("Authorization", "Bearer " + settings.otaToken);
 
@@ -373,7 +373,7 @@ static bool downloadAndInstall(const String &url, const ReleaseInfo &rel) {
     http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
 
     if (!http.begin(client, url)) { gStatus = "Kunde inte nå firmware-filen"; return false; }
-    http.addHeader("User-Agent", "BjorklovenLED/" FW_VERSION);
+    http.addHeader("User-Agent", "LovGlod/" FW_VERSION);
 
     const int code = http.GET();
     if (code != HTTP_CODE_OK) {

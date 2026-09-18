@@ -42,7 +42,7 @@ bool apiGet(const String &path, String &body, size_t maxBytes = 24000) {
     if (!http.begin(secure, url)) { gLastError = "http.begin misslyckades"; return false; }
 
     // shl.se svarar med 403 på tomma/okända user agents.
-    http.addHeader("User-Agent", "Mozilla/5.0 (compatible; BjorklovenLED/" FW_VERSION ")");
+    http.addHeader("User-Agent", "Mozilla/5.0 (compatible; LovGlod/" FW_VERSION ")");
     http.addHeader("Accept", "application/json");
 
     const int code = http.GET();
@@ -166,7 +166,7 @@ bool sseConnect() {
     req += "Host: " SHL_LIVE_HOST "\r\n";
     req += "Accept: text/event-stream\r\n"
            "Cache-Control: no-cache\r\n"
-           "User-Agent: BjorklovenLED/" FW_VERSION "\r\n"
+           "User-Agent: LovGlod/" FW_VERSION "\r\n"
            "Connection: keep-alive\r\n\r\n";
     gSse.print(req);
 
