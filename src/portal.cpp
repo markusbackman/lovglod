@@ -371,7 +371,7 @@ void handleStatus() {
              ? F("<option value=1 selected>Ja</option><option value=0>Nej</option>")
              : F("<option value=1>Ja</option><option value=0 selected>Nej</option>");
     p += F("</select><label>Uppdateringskälla (tom = av)</label>"
-           "<input name=otasrc placeholder='markusbackman/bjorkloven-led' value='");
+           "<input name=otasrc placeholder='markusbackman/lovglod' value='");
     p += htmlEscape(settings.otaSource);
     p += F("'><label>GitHub-token (valfritt, bara för privata repon)</label>"
            "<input name=otatok type=password autocomplete=off placeholder='");

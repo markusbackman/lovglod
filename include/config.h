@@ -10,7 +10,7 @@
 #ifndef FW_VERSION
 #define FW_VERSION      "1.0.0-dev"
 #endif
-#define DEVICE_HOSTNAME "bjorkloven-led"
+#define DEVICE_HOSTNAME "lovglod"
 
 // ─────────────────────────────────────────────────────────────
 //  LED-hårdvara
@@ -275,10 +275,10 @@
 //  OTA-källa
 // ─────────────────────────────────────────────────────────────
 // Skrivs in i webbportalen. Två format stöds:
-//   "markusbackman/bjorkloven-led"     → GitHub Releases (rekommenderat)
+//   "markusbackman/lovglod"     → GitHub Releases (rekommenderat)
 //   "https://.../firmware.json"        → eget manifest, valfri webbserver
 // Ett privat repo kräver dessutom en token, se docs/BYGGA.md.
-#define OTA_DEFAULT_SOURCE "markusbackman/bjorkloven-led"
+#define OTA_DEFAULT_SOURCE "markusbackman/lovglod"
 
 // Filnamnet på .bin-filen i releasen som ska installeras.
 #define OTA_ASSET_NAME  "firmware.bin"

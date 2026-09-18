@@ -248,10 +248,10 @@ handen. Tomt fält vid senare sparningar betyder "rör inte", och `-` raderar.
 
 ### Sätta upp
 
-1. Repot ligger på `markusbackman/bjorkloven-led`. Workflowsen är aktiva och
+1. Repot ligger på `markusbackman/lovglod`. Workflowsen är aktiva och
    releaser publiceras där.
 2. Öppna lampans statussida och fyll i **Uppdateringskälla**:
-   `markusbackman/bjorkloven-led` (standardvärdet).
+   `markusbackman/lovglod` (standardvärdet).
    Kortformen `owner/repo` expanderas automatiskt till Releases-API:t. Vill du
    hosta själv går det lika bra att ange en full URL till ett `firmware.json`.
 3. Släpp en version:
@@ -426,7 +426,7 @@ Därför är parsningen medvetet tolerant: `findScorePair()` i `src/shl.cpp` sö
 rekursivt efter alla vanliga varianter (`homeScore`/`awayScore`,
 `homeGoals`/`awayGoals`, `homeTeam.score`/`awayTeam.score`, …).
 
-**Detta bör verifieras i september.** Öppna `http://bjorkloven-led.local/debug`
+**Detta bör verifieras i september.** Öppna `http://lovglod.local/debug`
 under en match — där visas den senaste råa SSE-ramen. Stämmer inte fältnamnen
 räcker det att lägga till dem i `findScorePair()`.
 

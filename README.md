@@ -74,7 +74,7 @@ Varje läge, och varför det ser ut som det gör, finns i
 ```
   SHL:s API ──► ESP32 ──► LED-list bakom det gula bandet
   (schema,       │
-   SSE live)     ├──► statussida på http://bjorkloven-led.local
+   SSE live)     ├──► statussida på http://lovglod.local
                  │
   GitHub ────────┘    signerad firmware, kollas var 12:e timme
   Releases

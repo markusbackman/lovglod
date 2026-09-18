@@ -42,7 +42,7 @@ laddkablar gör bara det senare, och då dyker ingen seriell port upp.
 
 ### 2. Hämta den kompletta flashbilden
 
-Från [Releases](https://github.com/markusbackman/bjorkloven-led/releases),
+Från [Releases](https://github.com/markusbackman/lovglod/releases),
 den version du vill ha — senaste stabila är märkt *Latest*:
 
 | Fil | Vad det är |
@@ -146,7 +146,7 @@ praktiskt om det bara var routern som startade om.
 
 ### Statussidan
 
-När lampan är online nås den på `http://bjorkloven-led.local` eller
+När lampan är online nås den på `http://lovglod.local` eller
 enhetens IP. Där finns nästa match, senaste resultat, ljusstyrka, en knapp som testar
 målfyrverkeriet, och "Glöm WiFi".
 
@@ -167,7 +167,7 @@ fungerar beskrivs i [Signerad firmware](BYGGA.md#signerad-firmware).
 
 ### Uppdateringskälla
 
-Standardvärdet `markusbackman/bjorkloven-led` är rätt för alla lampor som ska
+Standardvärdet `markusbackman/lovglod` är rätt för alla lampor som ska
 följa det här projektet. Ange ett eget `owner/repo` för att följa en fork, eller
 en full URL till ett `firmware.json` på en egen webbserver.
 
