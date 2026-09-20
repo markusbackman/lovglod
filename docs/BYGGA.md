@@ -144,8 +144,8 @@ ingen SSE-ström.
 | **Starta nu** | Lägger nedsläppet en minut bakåt → fönstret öppnas direkt |
 | Mål Björklöven / motståndaren | Målfyrverkeriet |
 | **Spela upp match** | Servern matar ut mål automatiskt tills matchen är slut |
-| Vi vann igår / förlorade igår | Gnistorna ovanpå glöden |
-| **Avsluta match** | Skriver ställningen som gårdagens resultat och flyttar fram nästa match |
+| Vi vann senast / förlorade senast | Gnistorna ovanpå glöden, fram till nästa nedsläpp |
+| **Avsluta match** | Skriver ställningen som senaste resultat och flyttar fram nästa match |
 
 Kolumnen *Vad lampan ser* visar om matchfönstret borde vara öppet och när läget
 senast levererades. Längst ner loggas händelserna, inklusive när push slutar nå
@@ -163,7 +163,9 @@ fram.
 ```
 
 `live` styr matchfönstret, `score` jämförs mot förra pushen och tänder
-målfyrverkeriet vid ökning, och `last.won` tänder gnistorna. Första pushen efter
+målfyrverkeriet vid ökning, och `last.won` tänder gnistorna. Under push äger
+mockservern gnistorna helt: firmwaren räknar inte ut något eget fönster utan
+gör exakt vad `last.won` säger, så `false` släcker dem även mellan matcher. Första pushen efter
 ett lägesbyte kalibrerar bara — annars hade en ny ställning sett ut som ett mål.
 
 Endpointen har ingen autentisering, precis som resten av portalen. Den hör
@@ -406,8 +408,9 @@ Reverse-engineerad från shl.se:s frontend och verifierad mot skarpa svar
 | Hela seriespelet | `GET https://www.shl.se/api/sports-v2/game-schedule?seriesUuid=qQ9-bb0bzEWUk&seasonUuid=ndcf81nlb3&gameTypeUuid=qQ9-af37Ti40B` |
 
 `played-games` ger `homeTeamInfo.status` = `WIN` / `LOSE` — det är den som styr
-gnistorna. Firmware jämför matchens datum mot gårdagens *lokala* datum i
-Stockholm, inte 24 timmar bakåt.
+gnistorna. En vinst glittrar från slutsignalen fram till nästa nedsläpp enligt
+`upcoming-games`; saknas nästa match släcker taket `SPARKLE_MAX_GAME_AGE_S`
+glittret efter fjorton dygn.
 
 Svaren är ~5,5 kB vardera, vilket är varför enheten klarar att parsa dem direkt
 utan mellanserver. Kräver `User-Agent`-header — shl.se svarar 403 utan.

@@ -180,9 +180,16 @@
 // är det här värdet det första som börjar slå om mot rött.
 #define LIVE_YELLOW_G   165
 
-// Gnistor (när laget vann igår)
+// Gnistor (när laget vann sin senaste match)
 #define SPARKLE_MEAN_INTERVAL_MS 700  // ungefär en gnista var 0,7 s
 #define SPARKLE_DECAY            14   // högre = kortare gnista
+
+// Hur länge en vinst får glittra utan att det finns en nästa match att sluta
+// vid. Normalt slocknar gnistorna när nästa matchfönster öppnar, men i
+// sommaruppehållet finns ingen sådan match: played-games svarar med säsongens
+// sista match hur länge som helst. Fjorton dygn täcker landslagsuppehållen —
+// det längsta glappet mitt i en säsong — utan att vinsten i mars lyser i juli.
+#define SPARKLE_MAX_GAME_AGE_S (14UL * 24 * 60 * 60)
 
 // Kall vit topp — kallare än gulen, och det är temperaturskillnaden som gör
 // att det läses som ett glitter och inte bara som en ljus fläck.

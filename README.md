@@ -29,7 +29,7 @@ betyder att något står i vägen.
 | Läge | Ljus |
 |---|---|
 | **Glöd** | Vardag. Ett långsamt gult andetag på sju sekunder, med organisk variation längs listen. |
-| **Vann igår** | Vita gnistor ovanpå glöden, fram till midnatt. |
+| **Vann senast** | Vita gnistor ovanpå glöden, från vinsten fram till nästa match. |
 | **Match pågår** | Glöden drar åt bärnsten och andas dubbelt så fort. |
 | **MÅL** | Tolv sekunder stroboskop och kometer. |
 | **Uppdaterar** | En gul stapel som fylls med nedladdningen. |

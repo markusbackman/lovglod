@@ -14,7 +14,7 @@ avslutas med hur du skruvar på beteendet och ställer in tv-fördröjningen.
 | [Ansluter](#led_connecting--jagande-gult) | Gul punkt som jagar runt | Kopplar upp mot WiFi |
 | [Arbetar](#led_working--förloppsstapel-vid-uppstart) | Gul stapel som står still | Nätverkstest och första hämtningen |
 | [Standby](#led_standby--den-långsamma-glöden) | Långsamt gult andetag, ~7 s | Vardag — här står lampan nästan jämt |
-| [Vann igår](#gnistor--vi-vann-igår-ovanpå-glöden) | Vita gnistor ovanpå glöden | Björklöven vann i går |
+| [Vann senast](#gnistor--vi-vann-senast-ovanpå-glöden) | Vita gnistor ovanpå glöden | Björklöven vann sin senaste match — lyser till nästa nedsläpp |
 | [Match pågår](#led_live--match-pågår) | Bärnsten, dubbelt så snabbt andetag | Matchfönstret är öppet |
 | [MÅL](#led_goal--målfyrverkeriet) | 12 s stroboskop och kometer | Mål — 15 s fördröjt så tv:n hinner ikapp |
 | [Uppdaterar](#led_updating--ota-förlopp) | Gul stapel som fylls | Ny firmware laddas ner |
@@ -136,7 +136,7 @@ tillbringar mest tid mappas många bildrutor i rad till samma utnivå. Utan
 dithern står listen still på samma nivå och byter sedan ett helt steg — det är
 precis det man ser som ryck.
 
-### Gnistor — "vi vann igår" (ovanpå glöden)
+### Gnistor — "vi vann senast" (ovanpå glöden)
 
 Inget eget läge utan ett lager som läggs ovanpå standby och live. Ungefär var
 0,7:e sekund tänds en slumpad LED i kall vit (`SPARKLE_R`/`_G`/`_B`) och tonar
@@ -149,17 +149,29 @@ så ljus som ytan under den, alltså nästan osynlig, medan samma gnista i
 vändningen var tiofalt ljusare. Glittret tonade in och ut i takt med andetaget.
 Adderat mättar det mot vitt oavsett var i cykeln det landar.
 
-Tänds när `played-games` säger `WIN` på en match som spelades **i går enligt
-lokalt datum i Stockholm** — inte "senaste 24 timmarna". Släcks vid nästa
-midnattskontroll. Skruva med `SPARKLE_MEAN_INTERVAL_MS` (högre = färre) och
-`SPARKLE_DECAY` (högre = kortare).
+Tänds när `played-games` säger `WIN` på den senast spelade matchen, och lyser
+**ända fram till nästa match** — inte bara dagen efter. Vinsten hör ihop med
+matchen som kommer, inte med kalenderdygnet: spelar laget på lördag och nästa
+gång på onsdag glittrar listen hela veckan emellan. Släcks när matchfönstret
+för nästa match öppnar (nedsläpp minus `LIVE_WINDOW_PRE_MS`) — från den stunden
+är listen den matchens, och att glittra i uppvärmningen vore att fira fel match.
+Efter den matchen tänds gnistorna igen bara om den också blev en vinst.
+
+Finns ingen nästa match i schemat — sommaruppehåll, eller ett schema som inte
+gick att hämta — tar `SPARKLE_MAX_GAME_AGE_S` (14 dygn) vid, så att säsongens
+sista vinst inte ligger och glittrar i juli. Fjorton dygn täcker
+landslagsuppehållen, det längsta glappet mitt i en säsong.
+
+Skruva med `SPARKLE_MEAN_INTERVAL_MS` (högre = färre) och `SPARKLE_DECAY`
+(högre = kortare).
 
 ### `LED_LIVE` — match pågår
 
 Samma glöd som standby, men piggare: andetaget dubbelt så snabbt (~3,3 s),
 botten upplyft så listen aldrig går ner i mörkret, och nyansen dragen åt
-bärnsten (`LIVE_YELLOW_G 165`). Den väntar. Gnistorna från gårdagens vinst
-ligger kvar även här.
+bärnsten (`LIVE_YELLOW_G 165`). Den väntar. Gnistorna är redan släckta när
+läget slår om — de slutar vid nästa nedsläpp — men lagret ritas även här, så
+att en push som säger att vinsten står kvar syns också under match.
 
 Det är **färgen** som bär skillnaden mot standby, inte styrkan. `GLOW_LIVE_LIFT`
 sattes när andetaget toppade på 44 och betydde då drygt en tredjedel mer ljus;
@@ -247,6 +259,7 @@ Allt sitter i `include/config.h`:
 #define GOAL_DURATION_MS 12000
 #define GOAL_DELAY_DEFAULT_S 15        // tv-fördröjning, ändras på statussidan
 #define SPARKLE_MEAN_INTERVAL_MS 700   // högre = färre gnistor
+#define SPARKLE_MAX_GAME_AGE_S (14UL*24*60*60)  // tak när nästa match saknas
 ```
 
 Vill du testa effekterna utan att vänta på en match: knappen **"Testa

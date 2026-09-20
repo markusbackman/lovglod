@@ -343,7 +343,7 @@ void handleStatus() {
                                 : String("INTE synkad — matchläge, mål och "
                                          "seger är avstängda"),
                             status.timeSynced);
-    row("Vann igår",        status.wonYesterday ? "Ja — gnistor på" : "Nej");
+    row("Gnistor",          status.sparkles ? "På — vinsten lyser till nästa match" : "Av");
     row("Live-ström",       status.sseLive ? "Ansluten" : "Av");
     row("LED-list",         String(Leds::stripName(settings.ledStrip)) + ", " +
                             String(settings.ledCount) + " dioder");
@@ -557,7 +557,7 @@ void handlePush() {
     const JsonObjectConst la = doc["last"].as<JsonObjectConst>();
     if (!la.isNull()) {
         p.hasLast      = true;
-        p.wonYesterday = la["won"] | false;
+        p.wonLast      = la["won"] | false;
         p.lastResult   = la["text"].as<const char *>() ? la["text"].as<const char *>() : "";
     }
 

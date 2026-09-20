@@ -37,8 +37,9 @@ const char *stripName(LedStrip strip);
 void setMode(LedMode m);
 LedMode mode();
 
-// Gnistor läggs ovanpå glöden när laget vann dagen innan. Segerläget glittrar
-// alltid, oavsett den här flaggan — det vet redan att laget vann.
+// Gnistor läggs ovanpå glöden när laget vann sin senaste match; main.cpp
+// håller dem tända fram till nästa nedsläpp. Segerläget glittrar alltid,
+// oavsett den här flaggan — det vet redan att laget vann.
 void setSparkles(bool on);
 bool sparkles();
 

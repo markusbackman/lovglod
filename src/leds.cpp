@@ -103,7 +103,8 @@ void drawGlow(uint8_t minVal, uint8_t maxVal, uint8_t bpm, uint8_t green = YELLO
 
 // ── Gnistor ─────────────────────────────────────────────────────────────────
 // `force` tänder gnistorna oavsett gSparkles. Segerläget vill alltid glittra —
-// det vet redan att laget vann, medan gSparkles står för gårdagens resultat.
+// det vet redan att laget vann, medan gSparkles står för vinsten som ligger
+// kvar fram till nästa match.
 void updateSparkles(bool force = false) {
     // Förfluten tid och inte en tidsstämpel framåt: gnistorna kan ha stått av i
     // månader, och en så gammal deadline ser ut att ligga i framtiden så fort

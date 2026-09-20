@@ -2,7 +2,7 @@
 //  LövGlöd
 //
 //  Standby        långsam gul glöd
-//  Vann igår      några glittrande gnistor ovanpå glöden
+//  Vann senast    några glittrande gnistor ovanpå glöden, till nästa match
 //  Mål            snabb gul eldgivning i 12 sekunder
 //  Inget WiFi     eget nät + captive portal som frågar efter SSID/lösenord
 //  Uppdatering    signerad self-update från GitHub Releases, annars USB
@@ -52,7 +52,6 @@ static uint32_t  gNextLivePoll      = 0;
 static uint32_t  gNextOtaCheck      = 0;
 static uint32_t  gPortalSince       = 0;
 static uint32_t  gConnectStarted    = 0;
-static uint32_t  gNextMidnightCheck = 0;
 static uint32_t  gNextTimeRetry     = 0;
 
 // Kör vi en firmware som ännu inte kvitterat sig frisk? Se serviceOtaValidation().
@@ -91,7 +90,7 @@ static const DemoItem kDemo[] = {
     {"ansluter (gult jagande ljus)",  LED_CONNECTING,   false},
     {"uppstartsförlopp (stapel)",     LED_WORKING,      false},
     {"standby-glöd",                  LED_STANDBY,      false},
-    {"standby + gnistor (vann igår)", LED_STANDBY,      true },
+    {"standby + gnistor (vann sist)", LED_STANDBY,      true },
     {"live, match pågår",             LED_LIVE,         false},
     {"OTA-uppdatering (stapel)",      LED_UPDATING,     false},
     {"fel, ingen data (rött)",        LED_ERROR,        false},
@@ -178,17 +177,53 @@ static void maybeArmVictory(const LastResult &lr) {
                   lr.summary.c_str(), VICTORY_DURATION_MS / 3600000UL);
 }
 
+// ── Gnistor ─────────────────────────────────────────────────────────────────
+// Gnistorna hör ihop med matchen som kommer, inte med kalenderdygnet: de tänds
+// när laget vunnit och lyser ända fram till nästa nedsläpp. Vinsten står kvar
+// så länge den är det senaste som hänt — sedan tar nästa match över listen, och
+// är den en förlust kommer gnistorna inte tillbaka.
+static bool   gWonLast     = false;   // senast spelade matchen var en vinst
+static time_t gLastGameUtc = 0;       // ...och dess nedsläpp
+
+static bool winStillGlows() {
+    if (!gWonLast || !gTimeSynced) return false;
+    const time_t now = time(nullptr);
+
+    // Nästa match har tagit vid. Vi släcker redan när matchfönstret öppnar:
+    // därifrån är listen matchens, och att glittra i uppvärmningen vore att
+    // fira fel match.
+    if (gNext.valid && now >= gNext.startUtc - (time_t)(LIVE_WINDOW_PRE_MS / 1000))
+        return false;
+
+    // Ingen nästa match i schemat — sommaruppehåll, eller ett schema som inte
+    // gick att hämta. Då är taket det enda som stänger av glittret.
+    return now - gLastGameUtc <= (time_t)SPARKLE_MAX_GAME_AGE_S;
+}
+
+// Kallas både efter hämtningar och varje varv i loopen: det som släcker
+// gnistorna är oftast att klockan passerat nästa nedsläpp, inte att ny data
+// kommit in.
+static void serviceSparkles() {
+    const bool on = winStillGlows();
+    if (on != Leds::sparkles())
+        Serial.printf("[gnistor] %s\n",
+                      on ? "på — vinsten lyser till nästa match" : "av");
+    Leds::setSparkles(on);
+    status.sparkles = on;
+}
+
 // Hämtar senaste resultatet och hanterar båda sakerna det styr: gnistorna
-// (gårdagens vinst) och segerläget (dagens).
+// (vinsten som står kvar) och segerläget (de närmaste timmarna efter en vinst).
 static bool refreshLastResult() {
     LastResult lr;
     if (!Shl::fetchLastResult(lr)) {
         Serial.printf("[shl] resultat misslyckades: %s\n", Shl::lastError().c_str());
         return false;
     }
-    Leds::setSparkles(lr.wonYesterday);
-    status.wonYesterday = lr.wonYesterday;
-    status.lastResult   = lr.summary;
+    gWonLast     = lr.won;
+    gLastGameUtc = lr.startUtc;
+    status.lastResult = lr.summary;
+    serviceSparkles();
     maybeArmVictory(lr);
     return true;
 }
@@ -294,7 +329,7 @@ static void syncTime() {
     configTzTime(TZ_STOCKHOLM, NTP_SERVER_1, NTP_SERVER_2);
 
     // Vänta max 10 s på att klockan blir rimlig — allt annat (matchfönster,
-    // "vann igår") bygger på korrekt tid.
+    // gnistor, segerläge) bygger på korrekt tid.
     const uint32_t deadline = millis() + 10000;
     while (!clockIsSane() && millis() < deadline) {
         Leds::render();
@@ -335,8 +370,8 @@ static void serviceTimeSync() {
 
     markTimeSynced();
 
-    // Det vi hämtade utan klocka är räknat på fel datum: "vann igår" jämförde
-    // mot 1970, och maybeArmVictory() hoppade över allt. Hämta om.
+    // Det vi hämtade utan klocka är räknat mot 1970: winStillGlows() och
+    // maybeArmVictory() gav båda upp direkt. Hämta om.
     gFetchNow = true;
     Serial.println("[tid] hämtar om matchdata som räknades utan klocka");
 }
@@ -447,7 +482,8 @@ static void serviceLive() {
             // Ett mål som fortfarande väntar på tv-fördröjningen när fönstret
             // stänger hör inte hemma i nästa match.
             Leds::clearPendingGoals();
-            // Kolla resultatet strax efter matchen så gnistorna stämmer till imorgon.
+            // Kolla resultatet strax efter matchen: både gnistorna och nästa
+            // match ska vara rätt så fort slutsignalen gått.
             gNextScheduleFetch = millis() + 60000;
         }
     }
@@ -516,9 +552,11 @@ static void applyPush(const PushState &p) {
     }
 
     if (p.hasLast) {
-        status.wonYesterday = p.wonYesterday;
-        status.lastResult   = p.lastResult;
-        Leds::setSparkles(p.wonYesterday);
+        // Mockservern äger gnistorna medan pushen lever — den bestämmer själv
+        // om vinsten fortfarande står kvar.
+        status.sparkles   = p.wonLast;
+        status.lastResult = p.lastResult;
+        Leds::setSparkles(p.wonLast);
     }
 
     if (gInLiveWindow != p.live) {
@@ -806,22 +844,14 @@ void loop() {
                 gFirstFetchPending = false;
             }
 
-            // Strax efter midnatt: uppdatera "vann igår" utan att vänta 6 h.
-            if ((int32_t)(millis() - gNextMidnightCheck) >= 0) {
-                gNextMidnightCheck = millis() + 15UL * 60 * 1000;
-                if (gTimeSynced) {
-                    struct tm lt;
-                    const time_t now = time(nullptr);
-                    localtime_r(&now, &lt);
-                    if (lt.tm_hour == 0 && lt.tm_min < 20) gFetchNow = true;
-                }
-            }
-
             if (pushActive()) {
                 // Allt kommer via POST /push — ingen SSE, ingen pollning.
             } else {
                 if (status.pushMode) endPushMode();
                 serviceLive();
+                // Efter serviceLive(): har matchfönstret precis öppnat ska
+                // gnistorna vara borta i samma varv som listen blir matchens.
+                serviceSparkles();
             }
 
             {

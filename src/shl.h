@@ -21,8 +21,7 @@ struct LiveScore {
 // main.cpp är bara en timer på fyra timmar efter nedsläpp.
 struct LastResult {
     bool   valid        = false;
-    bool   won          = false;   // Björklöven vann
-    bool   wonYesterday = false;   // ...och matchen spelades i går (gnistorna)
+    bool   won          = false;   // Björklöven vann (gnistorna, se main.cpp)
     time_t startUtc     = 0;       // nedsläpp, används som matchens identitet
     String summary;
 };

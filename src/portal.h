@@ -7,7 +7,7 @@ struct StatusInfo {
     String nextGame    = "—";
     String lastResult  = "—";
     String liveScore   = "—";
-    bool   wonYesterday = false;
+    bool   sparkles     = false;   // gnistorna på: vinsten lyser till nästa match
     bool   sseLive      = false;
     bool   timeSynced   = false;   // utan klocka är matchläge och seger tyst av
     bool   otaOnTrial   = false;   // nyss installerad, inte kvitterad än
@@ -31,7 +31,8 @@ struct PushState {
     int    home         = -1;
     int    away         = -1;
     bool   hasLast      = false;
-    bool   wonYesterday = false;
+    bool   wonLast      = false;   // vann senaste matchen → gnistor
+
     String lastResult;
 };
 

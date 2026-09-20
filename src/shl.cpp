@@ -264,14 +264,15 @@ bool fetchLastResult(LastResult &out) {
     const char *status = us["status"] | "";
     const bool  won    = strcasecmp(status, "WIN") == 0;
 
-    // "Igår" enligt lokal kalender i Stockholm, inte 24 h bakåt.
+    // Bara till sammanfattningen: "igår" enligt lokal kalender i Stockholm,
+    // inte 24 h bakåt. Gnistorna räknas inte på datum längre — de lyser från
+    // vinsten fram till nästa match, se winStillGlows() i main.cpp.
     const time_t now = time(nullptr);
     const long   yesterdayKey = localDateKey(now - 86400L);
     const bool   wasYesterday = localDateKey(start) == yesterdayKey;
 
     out.valid        = true;
     out.won          = won;
-    out.wonYesterday = won && wasYesterday;
     out.startUtc     = start;
 
     out.summary = String(home["code"].as<const char *>()) + " " +

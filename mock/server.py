@@ -97,7 +97,8 @@ class Mock:
         self.last_at_home = False
         self.last_us = 4
         self.last_them = 2
-        self.last_days_ago = 1                    # 1 = igår → gnistor ska tändas
+        self.last_days_ago = 1                    # bara till texten; gnistorna
+                                                  # styrs av vinst + nästa match
 
         self.us = 0                               # ställning i pågående match
         self.them = 0
@@ -132,6 +133,11 @@ class Mock:
         return ((self.last_us, self.last_them) if self.last_at_home
                 else (self.last_them, self.last_us))
 
+    # Gnistorna lyser från en vinst fram till nästa match — samma villkor som
+    # firmwaren, som släcker så fort matchfönstret öppnar.
+    def sparkles_expected(self) -> bool:
+        return self.last_us > self.last_them and not self.window_open()
+
     def window_open(self) -> bool:
         now = time.time()
         return self.start - self.WINDOW_PRE <= now <= self.start + self.WINDOW_POST
@@ -165,7 +171,7 @@ class Mock:
             "lastThem": self.last_them,
             "lastDaysAgo": self.last_days_ago,
             "lastWon": self.last_us > self.last_them,
-            "sparklesExpected": self.last_us > self.last_them and self.last_days_ago == 1,
+            "sparklesExpected": self.sparkles_expected(),
             "simRunning": self.sim is not None,
             "sim": self.sim or {},
             "lampHost": self.lamp_host,
@@ -229,11 +235,12 @@ class Mock:
         elif action == "quick_last":
             self.last_us, self.last_them = (4, 2) if a.get("won") else (1, 3)
             self.last_days_ago = 1
-            self.note("igår: " + ("vinst" if a.get("won") else "förlust"), False)
+            self.note("senast: " + ("vinst" if a.get("won") else "förlust"), False)
 
         elif action == "finish_match":
-            # Matchen är slut: skriv in den som gårdagens resultat och lägg
-            # nästa match två dagar fram. Då ska lampan tända gnistor vid vinst.
+            # Matchen är slut: skriv in den som senaste resultat och lägg nästa
+            # match två dagar fram. Då ska lampan tända gnistor vid vinst — och
+            # hålla dem tända ända tills det nya matchfönstret öppnar.
             self.last_opponent = self.opponent
             self.last_at_home = self.at_home
             self.last_us, self.last_them = self.us, self.them
@@ -241,7 +248,7 @@ class Mock:
             self.us = self.them = 0
             self.bump()
             self.start = time.time() + 2 * 24 * 3600
-            self.note("match avslutad → skriven som gårdagens resultat", False)
+            self.note("match avslutad → skriven som senaste resultat", False)
 
         elif action == "sim_start":
             self.start_sim(a)
@@ -283,9 +290,9 @@ class Mock:
             "live": self.window_open(),
             "score": {"home": hs, "away": as_},
             "last": {
-                # Gnistorna ska bara lysa dagen efter en vinst — samma villkor
-                # som firmwaren själv använder mot riktiga SHL.
-                "won": won and self.last_days_ago == 1,
+                # Gnistorna lyser från vinsten till nästa nedsläpp — samma
+                # villkor som firmwaren själv använder mot riktiga SHL.
+                "won": self.sparkles_expected(),
                 "text": f"{lhome} {lhs}-{las} {laway}  ({'vinst' if won else 'förlust'})",
             },
         }
@@ -503,8 +510,8 @@ då trycks matchläget härifrån in i lampan istället för att den hämtar fr�
   <div class=card>
     <h2>Senaste match (styr gnistorna)</h2>
     <div class=btns>
-      <button onclick="act('quick_last',{won:true})">Vi vann igår</button>
-      <button class=ghost onclick="act('quick_last',{won:false})">Vi förlorade igår</button>
+      <button onclick="act('quick_last',{won:true})">Vi vann senast</button>
+      <button class=ghost onclick="act('quick_last',{won:false})">Vi förlorade senast</button>
     </div>
     <label>Motståndare / plan</label>
     <div class=row>
@@ -541,7 +548,7 @@ då trycks matchläget härifrån in i lampan istället för att den hämtar fr�
       <tr><td>Nedsläpp</td><td id=sStart>—</td></tr>
       <tr><td>Matchfönster</td><td id=sWindow>—</td></tr>
       <tr><td>Senast levererad</td><td id=sSeen>—</td></tr>
-      <tr><td>Gårdagens resultat</td><td id=sLast>—</td></tr>
+      <tr><td>Senaste resultat</td><td id=sLast>—</td></tr>
       <tr><td>Gnistor</td><td id=sSpark>—</td></tr>
       <tr><td>Simulering</td><td id=sSim>—</td></tr>
     </table>
@@ -603,7 +610,8 @@ function render(s){
       '  (' + (s.lastWon ? 'vinst' : 'förlust') + ', ' +
       (s.lastDaysAgo === 0 ? 'idag' : s.lastDaysAgo === 1 ? 'igår' : s.lastDaysAgo + ' dagar sedan') + ')';
   $('sSpark').innerHTML = s.sparklesExpected
-      ? '<span class="pill warn">ska lysa</span>' : '<span class="pill">av</span>';
+      ? '<span class="pill warn">ska lysa — till nästa nedsläpp</span>'
+      : '<span class="pill">av</span>';
   fill('lamp', s.lampHost);
   $('sPush').innerHTML = !s.pushOn ? '<span class="pill">av</span>'
       : s.pushOk ? '<span class="pill on">levererar — senast ' +
