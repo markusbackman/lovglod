@@ -23,6 +23,25 @@
     .btn-white:hover { background: #ffffff; color: #000000; }
     .navlink { color: #ffffff; }
     .navlink:hover { color: #f8d12b; }
+    .film { display: block; width: 100%; height: 100%; object-fit: cover; background: #04100c; }
+    /* Textskylt över filmen: vad lampan gör just nu. Uppe till vänster så den
+       inte krockar med spelarens kontroller längst ner. */
+    .cue { position: absolute; inset: 0 auto auto 0; max-width: 72%; padding: clamp(14px, 2.4vw, 32px) clamp(16px, 2.8vw, 40px) clamp(28px, 4vw, 56px);
+           background: linear-gradient(160deg, rgba(4,16,12,0.78) 0%, rgba(4,16,12,0.45) 55%, rgba(4,16,12,0) 100%);
+           color: #ffffff; pointer-events: none; opacity: 0; transition: opacity .4s ease; }
+    .cue.on { opacity: 1; }
+    .cue-title { display: flex; align-items: center; gap: 12px; font-family: Antonio, sans-serif; font-weight: 700; font-size: clamp(24px, 3.4vw, 48px); line-height: 1; text-transform: uppercase; }
+    .cue-title::before { content: ""; width: 6px; align-self: stretch; background: var(--cue, #f8d12b); box-shadow: 0 0 14px var(--cue, #f8d12b); }
+    .cue-sub { margin-top: 8px; font-size: clamp(14px, 1.4vw, 19px); line-height: 1.35; color: rgba(255,255,255,0.88); }
+    .cue-steps { display: flex; gap: 4px; margin-top: 14px; }
+    .cue-steps span { width: clamp(18px, 2.6vw, 36px); height: 3px; background: rgba(255,255,255,0.28); transition: background .4s ease; }
+    .cue-steps span.done { background: rgba(255,255,255,0.6); }
+    .cue-steps span.now { background: var(--cue, #f8d12b); }
+    .cue.small { max-width: 90%; padding: 12px 16px 24px; }
+    .cue.small .cue-title { font-size: 22px; gap: 10px; }
+    .cue.small .cue-title::before { width: 4px; }
+    .cue.small .cue-sub { font-size: 13px; margin-top: 4px; }
+    @media (prefers-reduced-motion: reduce) { .cue, .cue-steps span { transition: none; } }
   </style>
 <style>html { scroll-behavior: smooth; } section[id], [id] { scroll-margin-top: 64px; }</style>
 <style>/* Responsiv överbyggnad. Sidorna är formgivna för 1440 px och all layout
@@ -133,8 +152,6 @@ dl[style*="width: 1280px"], ul[style*="width: 1280px"], ol[style*="width: 1280px
   div[style*="display: flex"][style*="gap: 16px"]:not([style*="flex-direction: column"]) { flex-wrap: wrap !important; }
   div[style*="display: flex"][style*="gap: 16px"]:not([style*="flex-direction: column"]) > a[class*="btn"] { flex: 1 1 100%; }
 
-  /* Filmrutans spelknapp och etikett */
-  [style*="width: 112px"][style*="height: 112px"] { width: 72px !important; height: 72px !important; }
 }</style>
 </head>
 <body>
@@ -196,20 +213,13 @@ dl[style*="width: 1280px"], ul[style*="width: 1280px"], ol[style*="width: 1280px
       </div>
 
       <div style="position: relative; width: 1280px; height: 720px; background: #04100c; display: flex; align-items: center; justify-content: center; overflow: hidden;">
-        <img src="assets/front.webp" alt="" style="position: absolute; height: 640px; width: auto; opacity: 0.35;">
-        <div style="position: relative; display: flex; flex-direction: column; align-items: center; gap: 20px;">
-          <button type="button" aria-label="Spela film" style="width: 112px; height: 112px; border-radius: 50%; border: 2px solid #ffffff; background: rgba(0,0,0,0.5); color: #ffffff; display: flex; align-items: center; justify-content: center; cursor: pointer;">
-            <svg width="40" height="40" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5l12 7-12 7z" fill="currentColor"/></svg>
-          </button>
-          <p style="font-size: 16px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; background: #f8d12b; color: #000000; padding: 6px 12px;">[Huvudfilm: lövet tänds, glöd till mål · 16:9]</p>
-        </div>
+        <video class="film" data-cues='[[0, "Glöd", "Vardag. Ett långsamt gult andetag.", "#ffe000"], [14, "Match pågår", "Pucken släpps. Bärnsten, och andetaget går dubbelt så fort.", "#ffa500"], [24, "MÅL", "Stroboskop först …", "#f8d12b"], [26.5, "MÅL", "… sedan kometer ut från mitten. Tolv sekunder.", "#f8d12b"], [36, "Match pågår", "Tillbaka i bärnsten. Lampan väntar på nästa.", "#ffa500"], [42, "Vann senast", "Efter en vinst: vita gnistor ovanpå glöden, ända till nästa match.", "#ffffff"]]' src="assets/film-huvud.mp4" poster="assets/film-huvud.webp" controls playsinline preload="metadata" aria-label="LövGlöd genom en match: gul glöd, bärnsten när pucken släpps, målfyrverkeri och gnistor efter en vinst"></video>
       </div>
 
       <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px;">
         <figure style="margin: 0; display: flex; flex-direction: column;">
-          <div style="height: 226px; background: #04100c; display: flex; align-items: center; justify-content: center; gap: 12px; color: #ffffff;">
-            <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M10 8l6 4-6 4z" fill="currentColor"/></svg>
-            <span style="font-size: 13px; font-weight: 700; color: #f1d458;">[KLIPP · LOOP]</span>
+          <div style="height: 226px; background: #04100c; display: flex; overflow: hidden;">
+            <video class="film" src="assets/film-glod.mp4" poster="assets/film-glod.webp" autoplay muted loop playsinline preload="auto" aria-label="Glöden: ett långsamt gult andetag"></video>
           </div>
           <figcaption style="background: #ffffff; color: #000000; border-left: 6px solid #124734; padding: 16px 20px; display: flex; flex-direction: column; gap: 4px;">
             <span style="font-family: Antonio, sans-serif; font-weight: 700; font-size: 26px;">Glöden</span>
@@ -217,9 +227,8 @@ dl[style*="width: 1280px"], ul[style*="width: 1280px"], ol[style*="width: 1280px
           </figcaption>
         </figure>
         <figure style="margin: 0; display: flex; flex-direction: column;">
-          <div style="height: 226px; background: #04100c; display: flex; align-items: center; justify-content: center; gap: 12px; color: #ffffff;">
-            <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M10 8l6 4-6 4z" fill="currentColor"/></svg>
-            <span style="font-size: 13px; font-weight: 700; color: #f1d458;">[KLIPP · LOOP]</span>
+          <div style="height: 226px; background: #04100c; display: flex; overflow: hidden;">
+            <video class="film" src="assets/film-match.mp4" poster="assets/film-match.webp" autoplay muted loop playsinline preload="auto" aria-label="Match pågår: bärnstensglöd som andas dubbelt så fort"></video>
           </div>
           <figcaption style="background: #ffffff; color: #000000; border-left: 6px solid #124734; padding: 16px 20px; display: flex; flex-direction: column; gap: 4px;">
             <span style="font-family: Antonio, sans-serif; font-weight: 700; font-size: 26px;">Match pågår</span>
@@ -227,13 +236,12 @@ dl[style*="width: 1280px"], ul[style*="width: 1280px"], ol[style*="width: 1280px
           </figcaption>
         </figure>
         <figure style="margin: 0; display: flex; flex-direction: column;">
-          <div style="height: 226px; background: #04100c; display: flex; align-items: center; justify-content: center; gap: 12px; color: #ffffff;">
-            <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M10 8l6 4-6 4z" fill="currentColor"/></svg>
-            <span style="font-size: 13px; font-weight: 700; color: #f1d458;">[KLIPP · LJUD PÅ]</span>
+          <div style="height: 226px; background: #04100c; position: relative; display: flex; overflow: hidden;">
+            <video class="film" data-cue-size="small" data-cues='[[0, "Match pågår", "Bärnsten.", "#ffa500"], [1, "MÅL", "Stroboskop först …", "#f8d12b"], [3.5, "MÅL", "… sedan kometer. Tolv sekunder.", "#f8d12b"], [13, "Match pågår", "Tillbaka i bärnsten.", "#ffa500"]]' src="assets/film-mal.mp4" poster="assets/film-mal.webp" controls playsinline preload="metadata" aria-label="Målfyrverkeriet: stroboskop och kometer i tolv sekunder. Innehåller blinkande ljus."></video>
           </div>
           <figcaption style="background: #ffffff; color: #000000; border-left: 6px solid #124734; padding: 16px 20px; display: flex; flex-direction: column; gap: 4px;">
             <span style="font-family: Antonio, sans-serif; font-weight: 700; font-size: 26px;">MÅL</span>
-            <span style="font-size: 15px; color: #484848;">Tolv sekunder stroboskop och kometer, 15 s fördröjt så tv:n hinner ikapp.</span>
+            <span style="font-size: 15px; color: #484848;">Tolv sekunder stroboskop och kometer, 15 s fördröjt så tv:n hinner ikapp. Innehåller blinkande ljus.</span>
           </figcaption>
         </figure>
       </div>
@@ -370,5 +378,51 @@ dl[style*="width: 1280px"], ul[style*="width: 1280px"], ol[style*="width: 1280px
     </div>
   </footer>
 </div>
+<script>
+  // Textskylten över filmerna. Tiderna i data-cues är sekunder in i filmen och
+  // kommer från tools/film.py — filmen börjar på manusets T0. Kapitel med
+  // samma rubrik räknas som ett steg i raden, bara undertexten byts.
+  document.querySelectorAll('video[data-cues]').forEach(video => {
+    const cues = JSON.parse(video.dataset.cues);
+    const stepOf = []; let n = -1;
+    cues.forEach((c, i) => { if (i === 0 || cues[i - 1][1] !== c[1]) n++; stepOf.push(n); });
+
+    const box = document.createElement('div');
+    box.className = 'cue' + (video.dataset.cueSize === 'small' ? ' small' : '');
+    box.setAttribute('role', 'status');
+    box.innerHTML = '<div class="cue-title"></div><p class="cue-sub"></p>' +
+      (video.dataset.cueSize === 'small' ? '' :
+       '<div class="cue-steps" aria-hidden="true">' + '<span></span>'.repeat(n + 1) + '</div>');
+    video.after(box);
+    const title = box.querySelector('.cue-title'), sub = box.querySelector('.cue-sub');
+    const steps = box.querySelectorAll('.cue-steps span');
+
+    let shown = -1;
+    const update = () => {
+      const t = video.currentTime;
+      let i = 0;
+      while (i + 1 < cues.length && t >= cues[i + 1][0]) i++;
+      if (i !== shown) {
+        shown = i;
+        title.textContent = cues[i][1];
+        sub.textContent = cues[i][2];
+        box.style.setProperty('--cue', cues[i][3]);
+        steps.forEach((s, k) => { s.className = k < stepOf[i] ? 'done' : k === stepOf[i] ? 'now' : ''; });
+      }
+    };
+    const tick = () => { update(); if (!video.paused && !video.ended) requestAnimationFrame(tick); };
+
+    video.addEventListener('play', () => { box.classList.add('on'); tick(); });
+    video.addEventListener('seeked', update);
+    video.addEventListener('ended', () => box.classList.remove('on'));
+  });
+  // Looparna autospelar tyst. Den som bett systemet minska rörelse får
+  // stillbilden och kan starta själv.
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    document.querySelectorAll('video[autoplay]').forEach(v => {
+      v.removeAttribute('autoplay'); v.pause(); v.controls = true;
+    });
+  }
+</script>
 </body>
 </html>
