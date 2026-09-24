@@ -44,6 +44,16 @@ struct Settings {
     // brownoutar var tionde minut såg likadan ut som en som gjort det en gång.
     // abnormalBoots nollas vid strömpåslag, så den räknar omstarter i följd sedan
     // lampan senast kopplades in — tillsammans med upptiden ger det frekvensen.
+    // Matchen som pågår. En match som startat finns varken i upcoming-games
+    // eller played-games, så en omstart mitt i matchen tappade den helt och
+    // lampan stod i standby resten av kvällen. Sparas när matchfönstret öppnar.
+    String   liveUuid;
+    uint32_t liveStart;       // UTC epoch, 0 = ingen
+    String   liveHome;
+    String   liveAway;
+    int8_t   liveScoreHome;   // högsta ställning vi sett, -1 = ingen
+    int8_t   liveScoreAway;
+
     uint32_t bootCount;       // alla starter, sedan lampan först flashades
     uint32_t abnormalBoots;   // onormala omstarter sedan senaste strömpåslag
 
@@ -51,6 +61,9 @@ struct Settings {
     void noteBoot(bool poweredOn, bool abnormal);
     void save();
     void clearWifi();
+    void noteLiveGame(const String &uuid, uint32_t startUtc,
+                      const String &home, const String &away);
+    void noteLiveScore(int home, int away);
     void noteVictory(uint32_t gameStartUtc, uint32_t untilUtc);
     void clearVictory();
     void noteOtaFailure(const String &version);

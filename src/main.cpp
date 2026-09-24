@@ -23,6 +23,7 @@
 #include "shl.h"
 #include "updater.h"
 #include "netcheck.h"
+#include "trace.h"
 
 // Skjuter upp OTA-kvittensen. Arduino-kärnan kvitterar annars redan i
 // initArduino() (cores/esp32/esp32-hal-misc.c), alltså innan setup() ens körts,
@@ -377,6 +378,23 @@ static void serviceTimeSync() {
 }
 
 // ── Datahämtning ────────────────────────────────────────────────────────────
+// Matchen vi senast öppnade fönstret för, om vi fortfarande är inne i det.
+static bool rememberedLiveGame(NextGame &out) {
+    if (!settings.liveUuid.length() || !settings.liveStart || !gTimeSynced) return false;
+    const time_t now   = time(nullptr);
+    const time_t start = (time_t)settings.liveStart;
+    if (now < start - (time_t)(LIVE_WINDOW_PRE_MS / 1000) ||
+        now > start + (time_t)(LIVE_WINDOW_POST_MS / 1000)) return false;
+    out = NextGame();
+    out.valid    = true;
+    out.uuid     = settings.liveUuid;
+    out.startUtc = start;
+    out.homeCode = settings.liveHome;
+    out.awayCode = settings.liveAway;
+    out.homeIsUs = out.homeCode == SHL_TEAM_CODE;
+    return true;
+}
+
 static void refreshSchedule(bool showProgress) {
     gFetchNow = false;
     if (showProgress) showWorkStep(0, 2);
@@ -386,7 +404,17 @@ static void refreshSchedule(bool showProgress) {
     if (showProgress) showWorkStep(1, 2);
 
     NextGame n;
-    const bool nextOk = Shl::fetchNextGame(n);
+    bool nextOk = Shl::fetchNextGame(n);
+
+    // En pågående match har försvunnit ur upcoming-games. Har vi en sparad
+    // match vars fönster fortfarande är öppet går den före.
+    NextGame live;
+    if (rememberedLiveGame(live) && (!nextOk || n.uuid != live.uuid)) {
+        Serial.printf("[shl] återupptar pågående match %s (%s – %s)\n",
+                      live.uuid.c_str(), live.homeCode.c_str(), live.awayCode.c_str());
+        n = live;
+        nextOk = true;
+    }
     if (nextOk) {
         // Ny match? Nollställ ställningen så att gamla mål inte trigger igen.
         if (n.uuid != gNext.uuid) gScore = LiveScore();
@@ -429,21 +457,43 @@ static bool insideLiveWindow() {
 }
 
 // Jämför ny ställning mot den gamla och fyrar av vid mål.
-static void applyScore(const LiveScore &fresh) {
+static void applyScore(const LiveScore &fresh, const char *src = "push") {
+    TRACE("[score] %s: %d–%d (förra %s%d–%d)\n", src, fresh.home, fresh.away,
+          gScore.valid ? "" : "okalibrerad ", gScore.home, gScore.away);
     if (!fresh.valid || fresh.home < 0 || fresh.away < 0) return;
 
     status.liveScore = gNext.homeCode + " " + String(fresh.home) + " – " +
                        String(fresh.away) + " " + gNext.awayCode;
 
     if (!gScore.valid) {          // första avläsningen: bara kalibrera
+        TRACE("[score] kalibrerad på %d–%d, inget mål\n", fresh.home, fresh.away);
         gScore = fresh;
+        // Efter en omstart mitt i matchen: ställningen vi redan firat går före
+        // en äldre från en server som släpar. Annars tänds samma mål igen.
+        if (settings.liveUuid == gNext.uuid && settings.liveScoreHome >= 0) {
+            gScore.home = max(gScore.home, (int)settings.liveScoreHome);
+            gScore.away = max(gScore.away, (int)settings.liveScoreAway);
+            TRACE("[score] sparad ställning %d–%d → kalibrerad på %d–%d\n",
+                  settings.liveScoreHome, settings.liveScoreAway, gScore.home, gScore.away);
+        }
+        settings.noteLiveScore(gScore.home, gScore.away);
         return;
     }
 
     const int dHome = fresh.home - gScore.home;
     const int dAway = fresh.away - gScore.away;
-    gScore = fresh;
+    // Ställningen får inte backa. SHL:s servrar ligger olika långt efter, och
+    // efter ett serverbyte kan en äldre ställning komma. Sänktes gScore då,
+    // tändes samma mål en gång till när servern kom ikapp. Priset: ett bortdömt
+    // mål som sedan görs om igen missas.
+    gScore.home = max(gScore.home, fresh.home);
+    gScore.away = max(gScore.away, fresh.away);
+    status.liveScore = gNext.homeCode + " " + String(gScore.home) + " – " +
+                       String(gScore.away) + " " + gNext.awayCode;
+    if (settings.liveUuid == gNext.uuid) settings.noteLiveScore(gScore.home, gScore.away);
 
+    if (dHome < 0 || dAway < 0)
+        TRACE("[score] STÄLLNINGEN GICK NER (dH=%d dA=%d) — bortdömt mål?\n", dHome, dAway);
     if (dHome <= 0 && dAway <= 0) return;   // rättelse eller oförändrat
 
     const int ourGoals   = gNext.homeIsUs ? dHome : dAway;
@@ -453,6 +503,8 @@ static void applyScore(const LiveScore &fresh) {
     // för alla i rummet innan det syns på skärmen.
     const uint32_t delayMs = (uint32_t)settings.goalDelayS * 1000;
 
+    TRACE("[score] dH=%d dA=%d, vi är %s → våra %d, deras %d\n", dHome, dAway,
+          gNext.homeIsUs ? "hemma" : "borta", ourGoals, theirGoals);
     if (ourGoals > 0) {
         Serial.printf("[MÅL] Björklöven! %d–%d%s\n", fresh.home, fresh.away,
                       delayMs ? "  (väntar på tv)" : "");
@@ -469,7 +521,9 @@ static void serviceLive() {
         gInLiveWindow = inWindow;
         if (inWindow) {
             Serial.println("[live] matchfönster öppet — kopplar upp mot live-strömmen");
-            Shl::sseStart(gNext.uuid);
+            settings.noteLiveGame(gNext.uuid, (uint32_t)gNext.startUtc,
+                                  gNext.homeCode, gNext.awayCode);
+            Shl::sseStart(gNext.uuid, gNext.startUtc);
             gNextLivePoll   = millis();
             // Tidsstämpeln kan vara månader gammal efter sommaruppehållet, och
             // då ser den ut att ligga i framtiden. Se gFetchNow.
@@ -491,7 +545,7 @@ static void serviceLive() {
     if (!inWindow) return;
 
     LiveScore fresh;
-    if (Shl::ssePump(fresh)) applyScore(fresh);
+    if (Shl::ssePump(fresh)) applyScore(fresh, "sse");
 
     // Reservpollning ifall SSE-strömmen är tyst eller formatet ändrats. Inte
     // medan målfyrverkeriet brinner: hämtningen blockerar loop() i upp till 20 s
@@ -500,7 +554,7 @@ static void serviceLive() {
     if (Leds::mode() != LED_GOAL && (int32_t)(millis() - gNextLivePoll) >= 0) {
         gNextLivePoll = millis() + POLL_LIVE_FALLBACK_MS;
         LiveScore polled;
-        if (Shl::pollLiveScore(gNext.uuid, polled)) applyScore(polled);
+        if (Shl::pollLiveScore(gNext.uuid, polled)) applyScore(polled, "poll");
     }
 
     status.sseLive = Shl::sseConnected();
@@ -513,7 +567,10 @@ static void serviceLive() {
         time(nullptr) >= gNext.startUtc + (time_t)(VICTORY_POLL_AFTER_MS / 1000) &&
         (int32_t)(millis() - gNextResultPoll) >= 0) {
         gNextResultPoll = millis() + VICTORY_POLL_MS;
+        TRACE("[seger] frågar played-games\n");
         refreshLastResult();
+        TRACE("[seger] senaste: %s, segerläge %s\n", status.lastResult.c_str(),
+              victoryActive() ? "PÅ" : "av");
     }
 }
 
@@ -761,6 +818,14 @@ void setup() {
     Serial.printf("[boot] föregående omstart: %s\n", status.resetReason.c_str());
 
     settings.load();
+#ifdef LIVE_SEED_UUID
+    // Bara diagnostikbygget: lampan flashades mitt i en match, innan den hunnit
+    // spara matchen själv.
+    if (!settings.liveUuid.length())
+        settings.noteLiveGame(LIVE_SEED_UUID, LIVE_SEED_START, LIVE_SEED_HOME, LIVE_SEED_AWAY);
+    if (settings.liveUuid == LIVE_SEED_UUID && settings.liveScoreHome < 0)
+        settings.noteLiveScore(LIVE_SEED_SCORE_HOME, LIVE_SEED_SCORE_AWAY);
+#endif
     settings.noteBoot(esp_reset_reason() == ESP_RST_POWERON, status.resetAbnormal);
     Serial.printf("[boot] start nr %lu, %lu onormala omstarter sedan strömpåslag\n",
                   (unsigned long)settings.bootCount, (unsigned long)settings.abnormalBoots);
@@ -778,7 +843,39 @@ void setup() {
     else                    enterPortal(false);
 }
 
+#ifdef LIVE_TRACE
+static const char *modeName(LedMode m) {
+    static const char *n[] = {"BOOT", "PORTAL", "PORTAL_RETRY", "CONNECTING", "WORKING",
+                              "STANDBY", "LIVE", "GOAL", "VICTORY", "UPDATING", "ERROR"};
+    return m < sizeof(n) / sizeof(n[0]) ? n[m] : "?";
+}
+
+// Lägesbyten på listen och en statusrad var 30:e sekund.
+static void traceTick() {
+    static LedMode  lastMode = LED_BOOT;
+    static uint32_t nextLine = 0;
+    if (Leds::mode() != lastMode) {
+        Serial.printf("[led] %s → %s\n", modeName(lastMode), modeName(Leds::mode()));
+        lastMode = Leds::mode();
+    }
+    if ((int32_t)(millis() - nextLine) < 0) return;
+    nextLine = millis() + 30000;
+    const time_t now = time(nullptr);
+    Serial.printf("[stat] %s  läge=%s fönster=%d sse=%d ramar=%lu återansl=%lu hb=%lu tyst=%lus  "
+                  "ställn=%s  kö=%u  heap=%u/%u kB  wifi=%d dBm\n",
+                  gTimeSynced ? formatLocal(now, "%H:%M:%S").c_str() : "--:--:--",
+                  modeName(Leds::mode()), gInLiveWindow, Shl::sseConnected(),
+                  (unsigned long)Shl::sseFrames(), (unsigned long)Shl::sseReconnects(),
+                  (unsigned long)Shl::sseComments(), Shl::sseSilentMs() / 1000,
+                  status.liveScore.c_str(), Leds::pendingGoals(),
+                  ESP.getFreeHeap() / 1024, ESP.getMinFreeHeap() / 1024, WiFi.RSSI());
+}
+#endif
+
 void loop() {
+#ifdef LIVE_TRACE
+    traceTick();
+#endif
     Leds::render();
     Portal::loop();
     serviceOtaValidation();
@@ -856,7 +953,12 @@ void loop() {
 
             {
                 const bool manual = Updater::checkRequested();
+#ifdef LIVE_TRACE
+                // Diagnostikbygget får inte ersätta sig självt med senaste release.
+                const bool due    = false;
+#else
                 const bool due    = (int32_t)(millis() - gNextOtaCheck) >= 0;
+#endif
 
                 if (gOtaOnTrial && (manual || due)) {
                     // esp_ota_set_boot_partition() vägrar ändå så länge

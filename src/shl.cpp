@@ -1,5 +1,6 @@
 #include "shl.h"
 #include "config.h"
+#include "trace.h"
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
@@ -45,7 +46,9 @@ bool apiGet(const String &path, String &body, size_t maxBytes = 24000) {
     http.addHeader("User-Agent", "Mozilla/5.0 (compatible; LovGlod/" FW_VERSION ")");
     http.addHeader("Accept", "application/json");
 
+    const uint32_t t0 = millis();
     const int code = http.GET();
+    TRACE("[api] GET %s → %d på %lu ms\n", path.c_str(), code, millis() - t0);
     if (code != HTTP_CODE_OK) {
         gLastError = "HTTP " + String(code) + " " + path;
         http.end();
@@ -54,6 +57,7 @@ bool apiGet(const String &path, String &body, size_t maxBytes = 24000) {
 
     body = http.getString();
     http.end();
+    TRACE("[api]   %u byte, totalt %lu ms\n", body.length(), millis() - t0);
 
     if (body.length() > maxBytes) body.remove(maxBytes);
     return true;
@@ -141,24 +145,51 @@ bool findScorePair(JsonVariantConst v, int &home, int &away, uint8_t depth = 0) 
 
 // ── SSE-klient ──────────────────────────────────────────────────────────────
 // Live-strömmen går över TLS mot game-broadcaster.s8y.se.
+//
+// Servern svarar HTTP/1.1 med Transfer-Encoding: chunked. Chunk-ramarna måste
+// packas upp innan SSE-raderna tolkas: skickar servern en händelse i flera
+// skrivningar hamnar storleksraden annars mitt i JSON:en och ramen går förlorad.
 WiFiClientSecure gSse;
 bool     gSseActive   = false;
 bool     gSseHeaders  = false;    // true när HTTP-headers är avklarade
+bool     gSseStatusOk = false;    // statusraden var 200
+bool     gSseChunked  = false;
+uint16_t gSseHeaderLines = 0;
 String   gSseGameUuid;
+time_t   gSseGameStart = 0;
+uint32_t gSseConnectedAt = 0;
+bool     gSseGood      = false;   // servern har skickat något annat än "unknown"
+uint8_t  gSseLagStrikes = 0;      // händelser i följd som kommit för sent
+time_t   gSseNewestUpd = 0;       // nyaste updatedTime på den här anslutningen
 String   gSseLine;
 String   gSseData;
+String   gSseEvent;
 uint32_t gSseLastRx   = 0;
 uint32_t gSseRetryAt  = 0;
+
+enum class ChunkState : uint8_t { Size, Data, Trailer };
+ChunkState gChunkState = ChunkState::Size;
+String     gChunkHdr;
+uint32_t   gChunkLeft  = 0;
+
+uint32_t gSseFrames     = 0;
+uint32_t gSseReconnects = 0;
+uint32_t gSseComments   = 0;
+
+constexpr size_t SSE_MAX = 8192;
 
 bool sseConnect() {
     gSse.stop();
     configureTls(gSse);
 
+    const uint32_t t0 = millis();
     if (!gSse.connect(SHL_LIVE_HOST, 443)) {
         gLastError = "SSE: kunde inte ansluta till " SHL_LIVE_HOST ":443";
+        TRACE("[sse] anslutning MISSLYCKADES efter %lu ms\n", millis() - t0);
         gSseRetryAt = millis() + 15000;
         return false;
     }
+    TRACE("[sse] ansluten på %lu ms, uuid=%s\n", millis() - t0, gSseGameUuid.c_str());
 
     String req = "GET /live/game";
     if (gSseGameUuid.length()) req += "?gameUuid=" + gSseGameUuid;
@@ -170,11 +201,119 @@ bool sseConnect() {
            "Connection: keep-alive\r\n\r\n";
     gSse.print(req);
 
-    gSseHeaders = false;
-    gSseLine    = "";
-    gSseData    = "";
-    gSseLastRx  = millis();
+    gSseHeaders  = false;
+    gSseStatusOk = false;
+    gSseChunked  = false;
+    gSseHeaderLines = 0;
+    gChunkState  = ChunkState::Size;
+    gChunkHdr    = "";
+    gChunkLeft   = 0;
+    gSseLine     = "";
+    gSseData     = "";
+    gSseEvent    = "";
+    gSseLastRx   = millis();
+    gSseConnectedAt = millis();
+    gSseGood     = false;
+    gSseLagStrikes = 0;
+    gSseNewestUpd  = 0;
     return true;
+}
+
+// En header-rad. Första raden är statusraden.
+void sseHeaderLine(const String &line, bool first) {
+    TRACE("[sse] < %s\n", line.c_str());
+    if (first) {
+        gSseStatusOk = line.startsWith("HTTP/1.1 200") || line.startsWith("HTTP/1.0 200");
+        if (!gSseStatusOk) gLastError = "SSE: " + line;
+        return;
+    }
+    String l = line;
+    l.toLowerCase();
+    if (l.startsWith("transfer-encoding:") && l.indexOf("chunked") >= 0) gSseChunked = true;
+}
+
+// Tolkar en komplett SSE-händelse. Sant om den bar en ställning.
+bool sseDispatch(LiveScore &out) {
+    gSseFrames++;
+    gLastRaw = gSseData.substring(0, 900);
+    if (gSseData.indexOf("\"liveState\":\"unknown\"") < 0) gSseGood = true;
+
+    TRACE("[sse] ram #%lu event=%s len=%u: %.200s%s\n", (unsigned long)gSseFrames,
+          gSseEvent.length() ? gSseEvent.c_str() : "-", gSseData.length(), gSseData.c_str(),
+          gSseData.length() > 200 ? " …" : "");
+
+    bool got = false;
+    JsonDocument doc;
+    const DeserializationError err = deserializeJson(doc, gSseData);
+    if (err) {
+        TRACE("[sse] JSON-FEL: %s\n", err.c_str());
+    } else {
+        // Eftersläpning: updatedTime (UTC) på nya händelser mot klockan. En
+        // frisk server ligger på ~20 s; de som hängt sig glider iväg i minuter
+        // och skickar samma händelser om och om igen.
+        //
+        // Bara händelser som är nyare än allt servern skickat förut räknas.
+        // Även friska servrar skickar om gamla händelser — målvaktsbytet från
+        // före nedsläpp kom tillbaka 52 minuter senare — och de säger inget om
+        // hur långt efter servern ligger. Den första händelsen på anslutningen
+        // sätter bara referensen, av samma skäl.
+        const char *upd = doc["liveEvent"]["updatedTime"] | (const char *)nullptr;
+        const time_t now = time(nullptr);
+        const time_t ut  = upd ? parseIso8601Utc(upd) : 0;
+        if (ut && now > 1700000000 && ut > gSseNewestUpd) {
+            const bool first = gSseNewestUpd == 0;
+            gSseNewestUpd = ut;
+            const long lag = (long)(now - ut);
+            if (!first) {
+                if (lag > 90) gSseLagStrikes++; else gSseLagStrikes = 0;
+            }
+            TRACE("[sse] ny händelse, eftersläpning %ld s%s\n", lag,
+                  first ? " (referens)" : lag > 90 ? " — FÖR SENT" : "");
+        }
+
+        int h = -1, a = -1;
+        if (findScorePair(doc.as<JsonVariantConst>(), h, a)) {
+            out.valid = true; out.home = h; out.away = a;
+            got = true;
+            TRACE("[sse] ställning i ramen: %d–%d\n", h, a);
+        } else {
+            TRACE("[sse] ingen ställning i ramen\n");
+        }
+    }
+    gSseData  = "";
+    gSseEvent = "";
+    return got;
+}
+
+// Ett uppackat byte ur kroppen. Sant när en ställning lästs in.
+bool sseBodyByte(char c, LiveScore &out) {
+    if (c == '\r') return false;
+    if (c != '\n') {
+        if (gSseLine.length() < SSE_MAX) gSseLine += c;
+        else if (gSseLine.length() == SSE_MAX) { TRACE("[sse] rad KAPAD vid %u byte\n", SSE_MAX); gSseLine += c; }
+        return false;
+    }
+
+    bool got = false;
+    if (gSseLine.length() == 0) {
+        // Tom rad = händelsen är komplett
+        if (gSseData.length()) got = sseDispatch(out);
+    } else if (gSseLine.startsWith("data:")) {
+        String chunk = gSseLine.substring(5);
+        if (chunk.startsWith(" ")) chunk.remove(0, 1);
+        if (gSseData.length() + chunk.length() <= SSE_MAX) gSseData += chunk;
+        else TRACE("[sse] data KAPAD, ram över %u byte\n", SSE_MAX);
+    } else if (gSseLine.startsWith("event:")) {
+        gSseEvent = gSseLine.substring(6);
+        gSseEvent.trim();
+    } else if (gSseLine[0] == ':') {
+        gSseComments++;
+        TRACE("[sse] kommentar/heartbeat: %.60s\n", gSseLine.c_str());
+    } else if (!gSseLine.startsWith("id:") && !gSseLine.startsWith("retry:")) {
+        TRACE("[sse] okänd rad: %.120s\n", gSseLine.c_str());
+    }
+    gSseLine = "";
+    return got;
 }
 
 }  // namespace
@@ -285,11 +424,15 @@ bool fetchLastResult(LastResult &out) {
 bool pollLiveScore(const String &gameUuid, LiveScore &out) {
     String body;
     if (!apiGet("/api/sports-v2/today-games", body)) return false;
-    if (body.length() < 5) return false;                  // tom kropp utanför matchdag
+    if (body.length() < 5) {                              // tom kropp utanför matchdag
+        TRACE("[poll] today-games tom (%u byte)\n", body.length());
+        return false;
+    }
 
     JsonDocument doc;
-    if (deserializeJson(doc, body)) {
+    if (const DeserializationError err = deserializeJson(doc, body)) {
         gLastError = "JSON today-games";
+        TRACE("[poll] JSON-FEL: %s (%u byte, kapad?)\n", err.c_str(), body.length());
         return false;
     }
 
@@ -297,7 +440,10 @@ bool pollLiveScore(const String &gameUuid, LiveScore &out) {
     JsonVariantConst root = doc.as<JsonVariantConst>();
     JsonArrayConst   arr  = root.is<JsonArrayConst>() ? root.as<JsonArrayConst>()
                                                       : root["games"].as<JsonArrayConst>();
-    if (arr.isNull()) return false;
+    if (arr.isNull()) {
+        TRACE("[poll] hittar ingen matchlista i today-games: %.200s\n", body.c_str());
+        return false;
+    }
 
     for (JsonVariantConst g : arr) {
         const char *u = g["uuid"] | "";
@@ -305,15 +451,20 @@ bool pollLiveScore(const String &gameUuid, LiveScore &out) {
         int h = -1, a = -1;
         if (findScorePair(g, h, a)) {
             out.valid = true; out.home = h; out.away = a;
+            TRACE("[poll] ställning %d–%d\n", h, a);
             return true;
         }
+        TRACE("[poll] matchen finns men ingen ställning hittad\n");
+        return false;
     }
+    TRACE("[poll] %s saknas bland %u matcher\n", gameUuid.c_str(), arr.size());
     return false;
 }
 
-void sseStart(const String &gameUuid) {
+void sseStart(const String &gameUuid, time_t startUtc) {
     if (gSseActive && gSseGameUuid == gameUuid) return;
     gSseGameUuid = gameUuid;
+    gSseGameStart = startUtc;
     gSseActive   = true;
     // Inte 0: en nollad tidsstämpel ser ut att ligga i framtiden efter 24,9
     // dygns upptid, och då återansluter strömmen aldrig.
@@ -332,9 +483,36 @@ bool sseConnected() { return gSseActive && gSse.connected(); }
 bool ssePump(LiveScore &out) {
     if (!gSseActive) return false;
 
-    // Återanslut vid tappad ström eller 90 s tystnad (servern skickar heartbeats).
-    if (!gSse.connected() || (millis() - gSseLastRx > 90000)) {
+    // Byt server. Bakom game-broadcaster.s8y.se står flera, och alla är inte
+    // friska: ungefär var tredje anslutning har hamnat på en som bara svarar
+    // "unknown" hela matchen, och andra har legat minuter efter. Lampan ser
+    // ansluten ut i båda fallen men missar målen.
+    if (gSse.connected() && gSseHeaders) {
+        const time_t now = time(nullptr);
+        const bool   started = gSseGameStart && now > 1700000000 && now > gSseGameStart;
+        const char  *why = nullptr;
+        if (started && !gSseGood && millis() - gSseConnectedAt > 45000)
+            why = "bara unknown efter nedsläpp";
+        else if (gSseLagStrikes >= 2)
+            why = "servern släpar";
+        if (why) {
+            TRACE("[sse] BYTER SERVER: %s\n", why);
+            gSseReconnects++;
+            gSseRetryAt = millis() + 15000;
+            sseConnect();
+            return false;
+        }
+    }
+
+    // Återanslut vid tappad ström eller 180 s tystnad. SHL:s flöde har stått
+    // helt still i 100 s mitt i en period, och varje onödig återanslutning är
+    // ett nytt lotteri om vilken server man hamnar på.
+    if (!gSse.connected() || (millis() - gSseLastRx > 180000)) {
         if ((int32_t)(millis() - gSseRetryAt) < 0) return false;
+        TRACE("[sse] ÅTERANSLUTER (%s, tyst i %lu s, %lu ramar hittills)\n",
+              gSse.connected() ? "tystnad" : "tappad", (millis() - gSseLastRx) / 1000,
+              (unsigned long)gSseFrames);
+        gSseReconnects++;
         gSseRetryAt = millis() + 15000;
         if (!sseConnect()) return false;
     }
@@ -347,47 +525,56 @@ bool ssePump(LiveScore &out) {
         const char c = (char)gSse.read();
         gSseLastRx = millis();
 
-        if (c == '\r') continue;
-        if (c != '\n') {
-            if (gSseLine.length() < 4096) gSseLine += c;
-            continue;
-        }
-
-        // Komplett rad
         if (!gSseHeaders) {
-            if (gSseLine.length() == 0) gSseHeaders = true;   // tom rad = slut på headers
+            if (c == '\r') continue;
+            if (c != '\n') { if (gSseLine.length() < 512) gSseLine += c; continue; }
+            if (gSseLine.length() == 0) {           // tom rad = slut på headers
+                gSseHeaders = true;
+                TRACE("[sse] headers klara: status %s, %s\n", gSseStatusOk ? "200" : "FEL",
+                      gSseChunked ? "chunked" : "ej chunked");
+                if (!gSseStatusOk) { gSse.stop(); gSseRetryAt = millis() + 15000; return false; }
+            } else {
+                sseHeaderLine(gSseLine, gSseHeaderLines++ == 0);
+            }
             gSseLine = "";
             continue;
         }
 
-        if (gSseLine.length() == 0) {
-            // Tom rad = händelsen är komplett
-            if (gSseData.length()) {
-                gLastRaw = gSseData.substring(0, 900);
-
-                JsonDocument doc;
-                if (!deserializeJson(doc, gSseData)) {
-                    int h = -1, a = -1;
-                    if (findScorePair(doc.as<JsonVariantConst>(), h, a)) {
-                        out.valid = true; out.home = h; out.away = a;
-                        got = true;
+        if (!gSseChunked) {
+            got = sseBodyByte(c, out);
+        } else switch (gChunkState) {
+            case ChunkState::Size:
+                if (c == '\n') {
+                    gChunkLeft = strtoul(gChunkHdr.c_str(), nullptr, 16);   // stannar vid \r eller ;
+                    gChunkHdr  = "";
+                    if (gChunkLeft == 0) {
+                        TRACE("[sse] servern avslutade strömmen (0-chunk)\n");
+                        gSse.stop();
+                        return got;
                     }
+                    gChunkState = ChunkState::Data;
+                } else if (gChunkHdr.length() < 16) {
+                    gChunkHdr += c;
                 }
-                gSseData = "";
-            }
-        } else if (gSseLine.startsWith("data:")) {
-            String chunk = gSseLine.substring(5);
-            if (chunk.startsWith(" ")) chunk.remove(0, 1);
-            if (gSseData.length() < 8192) gSseData += chunk;
+                break;
+            case ChunkState::Data:
+                got = sseBodyByte(c, out);
+                if (--gChunkLeft == 0) gChunkState = ChunkState::Trailer;
+                break;
+            case ChunkState::Trailer:                  // \r\n efter varje chunk
+                if (c == '\n') gChunkState = ChunkState::Size;
+                break;
         }
-        // ":"-rader är kommentarer/heartbeats, "event:"/"id:" ignoreras.
-
-        gSseLine = "";
         if (got) break;
     }
 
     return got;
 }
+
+uint32_t sseFrames()     { return gSseFrames; }
+uint32_t sseReconnects() { return gSseReconnects; }
+uint32_t sseComments()   { return gSseComments; }
+uint32_t sseSilentMs()   { return gSseActive ? millis() - gSseLastRx : 0; }
 
 String apiBaseUrl()  { return API_BASE; }
 String liveBaseUrl() { return LIVE_BASE; }

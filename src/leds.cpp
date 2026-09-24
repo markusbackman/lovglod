@@ -1,5 +1,6 @@
 #include <FastLED.h>
 #include "leds.h"
+#include "trace.h"
 #include "config.h"
 
 namespace {
@@ -450,6 +451,7 @@ void render() {
     while (gPendingCount && (int32_t)(now - gPendingAt[0]) >= 0) {
         for (uint8_t i = 1; i < gPendingCount; i++) gPendingAt[i - 1] = gPendingAt[i];
         gPendingCount--;
+        TRACE("[led] köat mål tänds nu (%u kvar i kön)\n", gPendingCount);
         triggerGoal();
     }
 

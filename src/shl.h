@@ -39,7 +39,7 @@ bool fetchLastResult(LastResult &out);
 bool pollLiveScore(const String &gameUuid, LiveScore &out);
 
 // ── Live-ström (Server-Sent Events mot game-broadcaster.s8y.se) ────────────
-void sseStart(const String &gameUuid);
+void sseStart(const String &gameUuid, time_t startUtc);
 void sseStop();
 bool sseConnected();
 
@@ -56,5 +56,11 @@ String liveBaseUrl();
 // fältformatet kan verifieras när säsongen väl drar igång.
 const String &lastRawFrame();
 const String &lastError();
+
+// Räknare för diagnostikloggen.
+uint32_t sseFrames();
+uint32_t sseReconnects();
+uint32_t sseComments();
+uint32_t sseSilentMs();
 
 }  // namespace Shl

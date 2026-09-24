@@ -22,6 +22,12 @@ void Settings::load() {
     victoryGame     = prefs.getULong("victgame", 0);
     ledStrip        = (LedStrip)prefs.getUChar("ledstrip", LED_STRIP_UNSET);
     ledCount        = prefs.getUShort("ledcount", LED_COUNT_DEFAULT);
+    liveUuid        = prefs.getString("liveuuid", "");
+    liveStart       = prefs.getULong("livestart", 0);
+    liveHome        = prefs.getString("livehome", "");
+    liveAway        = prefs.getString("liveaway", "");
+    liveScoreHome   = prefs.getChar("livesh", -1);
+    liveScoreAway   = prefs.getChar("livesa", -1);
     bootCount       = prefs.getULong("boots", 0);
     abnormalBoots   = prefs.getULong("badboots", 0);
 
@@ -70,6 +76,32 @@ void Settings::noteBoot(bool poweredOn, bool abnormal) {
     prefs.begin(NS, /*readOnly=*/false);
     prefs.putULong("boots", bootCount);
     prefs.putULong("badboots", abnormalBoots);
+    prefs.end();
+}
+
+// Egen skrivning, som noteBoot(): matchen sparas mitt i drift och ska inte
+// dra med sig resten av inställningarna.
+void Settings::noteLiveGame(const String &uuid, uint32_t startUtc,
+                            const String &home, const String &away) {
+    if (uuid == liveUuid && startUtc == liveStart) return;
+    liveUuid = uuid; liveStart = startUtc; liveHome = home; liveAway = away;
+    liveScoreHome = liveScoreAway = -1;
+    prefs.begin(NS, /*readOnly=*/false);
+    prefs.putChar("livesh", -1);
+    prefs.putChar("livesa", -1);
+    prefs.putString("liveuuid", liveUuid);
+    prefs.putULong("livestart", liveStart);
+    prefs.putString("livehome", liveHome);
+    prefs.putString("liveaway", liveAway);
+    prefs.end();
+}
+
+void Settings::noteLiveScore(int home, int away) {
+    if (home == liveScoreHome && away == liveScoreAway) return;
+    liveScoreHome = home; liveScoreAway = away;
+    prefs.begin(NS, /*readOnly=*/false);
+    prefs.putChar("livesh", liveScoreHome);
+    prefs.putChar("livesa", liveScoreAway);
     prefs.end();
 }
 
