@@ -488,43 +488,34 @@ bool fetchLastResult(LastResult &out) {
 }
 
 bool pollLiveScore(const String &gameUuid, LiveScore &out) {
+    // Klubbsajtens game-overview. today-games, som stod här förut, svarade 200
+    // med noll byte hela matchdagen — reservvägen fanns bara på pappret.
     String body;
-    if (!apiGet("/api/sports-v2/today-games", body)) return false;
-    if (body.length() < 5) {                              // tom kropp utanför matchdag
-        TRACE("[poll] today-games tom (%u byte)\n", body.length());
-        return false;
-    }
+    if (!httpGet(CLUB_BASE, "/api/gameday/game-overview/" + gameUuid, body, 4000)) return false;
 
     JsonDocument doc;
     if (const DeserializationError err = deserializeJson(doc, body)) {
-        gLastError = "JSON today-games";
-        TRACE("[poll] JSON-FEL: %s (%u byte, kapad?)\n", err.c_str(), body.length());
+        gLastError = "JSON game-overview";
+        TRACE("[poll] JSON-FEL: %s (%u byte)\n", err.c_str(), body.length());
         return false;
     }
 
-    // Hitta vår match i trädet och läs ut ställningen därifrån.
-    JsonVariantConst root = doc.as<JsonVariantConst>();
-    JsonArrayConst   arr  = root.is<JsonArrayConst>() ? root.as<JsonArrayConst>()
-                                                      : root["games"].as<JsonArrayConst>();
-    if (arr.isNull()) {
-        TRACE("[poll] hittar ingen matchlista i today-games: %.200s\n", body.c_str());
+    // Svaret är matchen själv, ibland inlindad i "gameOverview".
+    JsonVariantConst g = doc["gameOverview"].as<JsonVariantConst>();
+    if (g.isNull()) g = doc.as<JsonVariantConst>();
+    if (gameUuid != (g["gameUuid"] | "")) {
+        TRACE("[poll] fel match i svaret: %.80s\n", body.c_str());
         return false;
     }
 
-    for (JsonVariantConst g : arr) {
-        const char *u = g["uuid"] | "";
-        if (gameUuid != u) continue;
-        int h = -1, a = -1;
-        if (findScorePair(g, h, a)) {
-            out.valid = true; out.home = h; out.away = a;
-            TRACE("[poll] ställning %d–%d\n", h, a);
-            return true;
-        }
-        TRACE("[poll] matchen finns men ingen ställning hittad\n");
+    int h = -1, a = -1;
+    if (!findScorePair(g, h, a)) {
+        TRACE("[poll] ingen ställning i game-overview: %.120s\n", body.c_str());
         return false;
     }
-    TRACE("[poll] %s saknas bland %u matcher\n", gameUuid.c_str(), arr.size());
-    return false;
+    out.valid = true; out.home = h; out.away = a;
+    TRACE("[poll] ställning %d–%d (%s)\n", h, a, g["state"] | "?");
+    return true;
 }
 
 void sseStart(const String &gameUuid, time_t startUtc) {
