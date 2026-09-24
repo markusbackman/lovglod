@@ -35,6 +35,11 @@ bool fetchNextGame(NextGame &out);
 // Senast spelade matchen. Returnerar false vid nätverks-/parsfel.
 bool fetchLastResult(LastResult &out);
 
+// Matchen som pågår just nu, från klubbsajten. En match som startat finns
+// varken i upcoming-games eller played-games, så det här är enda vägen för en
+// lampa som startar mitt i en match. Returnerar false när ingen match pågår.
+bool fetchOngoingGame(NextGame &out);
+
 // Reservväg under pågående match om SSE-strömmen inte ger något.
 bool pollLiveScore(const String &gameUuid, LiveScore &out);
 

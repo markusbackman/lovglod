@@ -263,6 +263,12 @@
 #define SHL_API_HOST    "www.shl.se"
 #define SHL_LIVE_HOST   "game-broadcaster.s8y.se"
 
+// Klubbsajten ligger på samma plattform som shl.se men har en matchlista som
+// tar med matchen som pågår just nu — den finns varken i upcoming-games eller
+// played-games. Enda vägen för en lampa som startar mitt i en match utan att
+// veta om den. Svaret är ~6 kB och listar bara Björklövens matcher.
+#define SHL_CLUB_HOST   "www.bjorkloven.com"
+
 // ─────────────────────────────────────────────────────────────
 //  Pollningsintervall
 // ─────────────────────────────────────────────────────────────

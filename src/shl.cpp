@@ -25,10 +25,11 @@ void configureTls(WiFiClientSecure &c) {
 // med POST /push mot lampans egen webbserver — se PUSH_LEASE_MS i config.h —
 // så det finns ingen andra datakälla att peka om hämtningen mot.
 constexpr const char *API_BASE  = "https://" SHL_API_HOST;
+constexpr const char *CLUB_BASE = "https://" SHL_CLUB_HOST;
 constexpr const char *LIVE_BASE = "https://" SHL_LIVE_HOST;
 
 // ── GET mot SHL ─────────────────────────────────────────────────────────────
-bool apiGet(const String &path, String &body, size_t maxBytes = 24000) {
+bool httpGet(const char *base, const String &path, String &body, size_t maxBytes = 24000) {
     if (WiFi.status() != WL_CONNECTED) { gLastError = "WiFi nere"; return false; }
 
     WiFiClientSecure secure;
@@ -39,7 +40,7 @@ bool apiGet(const String &path, String &body, size_t maxBytes = 24000) {
     http.setConnectTimeout(8000);
     http.setReuse(false);
 
-    const String url = String(API_BASE) + path;
+    const String url = String(base) + path;
     if (!http.begin(secure, url)) { gLastError = "http.begin misslyckades"; return false; }
 
     // shl.se svarar med 403 på tomma/okända user agents.
@@ -61,6 +62,17 @@ bool apiGet(const String &path, String &body, size_t maxBytes = 24000) {
 
     if (body.length() > maxBytes) body.remove(maxBytes);
     return true;
+}
+
+bool apiGet(const String &path, String &body, size_t maxBytes = 24000) {
+    return httpGet(API_BASE, path, body, maxBytes);
+}
+
+// Klubbsajten skriver ut lagkoden med sajtens eget påhäng: "IFB Herr".
+String plainCode(const char *code) {
+    String c = code ? code : "";
+    const int space = c.indexOf(' ');
+    return space > 0 ? c.substring(0, space) : c;
 }
 
 // ── Datum/tid ───────────────────────────────────────────────────────────────
@@ -360,6 +372,60 @@ bool fetchNextGame(NextGame &out) {
     }
 
     gLastError = "Alla kommande matcher passerade";
+    return false;
+}
+
+// Matchen som pågår just nu, hämtad från klubbsajten. Används när lampan
+// startar mitt i en match: då har den ingenting sparat, och SHL:s egna listor
+// har tappat matchen — upcoming-games släpper den vid nedsläpp och
+// played-games tar upp den först när den är slut.
+bool fetchOngoingGame(NextGame &out) {
+    const time_t now = time(nullptr);
+    if (now < 1700000000) { gLastError = "Klockan inte synkad"; return false; }
+
+    String body;
+    if (!httpGet(CLUB_BASE, "/api/gameday/gameheader", body, 16000)) return false;
+
+    // Svaret är ett objekt med ett datum per nyckel och en matchlista i varje.
+    JsonDocument filter;
+    JsonObject g = filter["*"][0].to<JsonObject>();
+    g["uuid"] = true;
+    g["startDateTime"] = true;
+    g["seriesCode"] = true;
+    g["played"] = true;
+    g["homeTeam"]["code"] = true;
+    g["awayTeam"]["code"] = true;
+
+    JsonDocument doc;
+    const DeserializationError err =
+        deserializeJson(doc, body, DeserializationOption::Filter(filter));
+    if (err) { gLastError = String("JSON gameheader: ") + err.c_str(); return false; }
+
+    for (JsonPairConst day : doc.as<JsonObjectConst>()) {
+        for (JsonVariantConst gv : day.value().as<JsonArrayConst>()) {
+            // Bara A-laget. Listan har U20 och damlaget också.
+            if (strcmp(gv["seriesCode"] | "", "SHL") != 0) continue;
+            if (gv["played"] | false) continue;
+
+            const time_t start = parseIso8601Utc(gv["startDateTime"]);
+            if (!start) continue;
+            if (now < start - (time_t)(LIVE_WINDOW_PRE_MS / 1000)) continue;
+            if (now > start + (time_t)(LIVE_WINDOW_POST_MS / 1000)) continue;
+
+            out = NextGame();
+            out.valid    = true;
+            out.uuid     = gv["uuid"].as<const char *>();
+            out.homeCode = plainCode(gv["homeTeam"]["code"]);
+            out.awayCode = plainCode(gv["awayTeam"]["code"]);
+            out.startUtc = start;
+            out.homeIsUs = out.homeCode == SHL_TEAM_CODE;
+            TRACE("[shl] pågående match %s (%s – %s)\n", out.uuid.c_str(),
+                  out.homeCode.c_str(), out.awayCode.c_str());
+            return true;
+        }
+    }
+
+    gLastError = "Ingen match i matchfönstret";
     return false;
 }
 

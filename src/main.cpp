@@ -378,13 +378,19 @@ static void serviceTimeSync() {
 }
 
 // ── Datahämtning ────────────────────────────────────────────────────────────
+// Ligger nedsläppet så att matchfönstret är öppet nu?
+static bool insideWindowOf(time_t startUtc) {
+    if (!startUtc || !gTimeSynced) return false;
+    const time_t now = time(nullptr);
+    return now >= startUtc - (time_t)(LIVE_WINDOW_PRE_MS / 1000) &&
+           now <= startUtc + (time_t)(LIVE_WINDOW_POST_MS / 1000);
+}
+
 // Matchen vi senast öppnade fönstret för, om vi fortfarande är inne i det.
 static bool rememberedLiveGame(NextGame &out) {
-    if (!settings.liveUuid.length() || !settings.liveStart || !gTimeSynced) return false;
-    const time_t now   = time(nullptr);
+    if (!settings.liveUuid.length() || !settings.liveStart) return false;
     const time_t start = (time_t)settings.liveStart;
-    if (now < start - (time_t)(LIVE_WINDOW_PRE_MS / 1000) ||
-        now > start + (time_t)(LIVE_WINDOW_POST_MS / 1000)) return false;
+    if (!insideWindowOf(start)) return false;
     out = NextGame();
     out.valid    = true;
     out.uuid     = settings.liveUuid;
@@ -414,6 +420,16 @@ static void refreshSchedule(bool showProgress) {
                       live.uuid.c_str(), live.homeCode.c_str(), live.awayCode.c_str());
         n = live;
         nextOk = true;
+    } else if (!nextOk || !insideWindowOf(n.startUtc)) {
+        // Inget sparat och inget i schemat som är i fönstret. Startade lampan
+        // mitt i matchen — nyinflashad, efter en OTA eller efter strömavbrott —
+        // är klubbsajtens matchlista enda stället matchen syns.
+        if (Shl::fetchOngoingGame(live)) {
+            Serial.printf("[shl] pågående match hittad %s (%s – %s)\n",
+                          live.uuid.c_str(), live.homeCode.c_str(), live.awayCode.c_str());
+            n = live;
+            nextOk = true;
+        }
     }
     if (nextOk) {
         // Ny match? Nollställ ställningen så att gamla mål inte trigger igen.
@@ -450,10 +466,7 @@ static void refreshSchedule(bool showProgress) {
 
 // Sant när vi befinner oss i matchfönstret för nästa match.
 static bool insideLiveWindow() {
-    if (!gNext.valid || !gTimeSynced) return false;
-    const time_t now = time(nullptr);
-    return now >= gNext.startUtc - (time_t)(LIVE_WINDOW_PRE_MS / 1000) &&
-           now <= gNext.startUtc + (time_t)(LIVE_WINDOW_POST_MS / 1000);
+    return gNext.valid && insideWindowOf(gNext.startUtc);
 }
 
 // Jämför ny ställning mot den gamla och fyrar av vid mål.
