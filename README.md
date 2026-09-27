@@ -12,8 +12,11 @@ behöver aldrig röra den.
 
 - **Följer varje match.** Spelschema och mål direkt från SHL:s publika API.
   Inga appar, inga konton, ingen mellanserver.
-- **Tolv sekunders mål.** Stroboskop och kometer ut från lövets mitt, fördröjt
-  så att tv-sändningen hinner ikapp och ingen i rummet får målet avslöjat.
+- **Lever med matchen.** Hjärtslag när det står lika i slutminuterna, timglas
+  i pausen, dragkamp i övertiden och segerdans vid vinst.
+- **Mål som växer med matchen.** Stroboskop och kometer ut från lövets mitt, upp
+  till 22 sekunder för det avgörande målet. Fördröjt så att tv-sändningen hinner
+  ikapp och ingen i rummet får målet avslöjat.
 - **Sköter sig själv.** Koppla in med USB-C, ställ in med mobilen. Uppdaterar
   sig över WiFi med signerad firmware.
 - **Öppen hela vägen.** Modellerna, byggbeskrivningen och koden ligger här.
@@ -31,7 +34,12 @@ betyder att något står i vägen.
 | **Glöd** | Vardag. Ett långsamt gult andetag på sju sekunder, med organisk variation längs listen. |
 | **Vann senast** | Vita gnistor ovanpå glöden, från vinsten fram till nästa match. |
 | **Match pågår** | Glöden drar åt bärnsten och andas dubbelt så fort. |
-| **MÅL** | Tolv sekunder stroboskop och kometer. |
+| **Slutspurt** | Tajt i slutet av tredje: hjärtslag vid lika, guldregn när Löven leder, anfallsvågor i underläge. |
+| **Paus** | Ett timglas som rinner ut mot mitten av listen. |
+| **Övertid** | Dragkamp mellan guld och blåvitt. Skotten flyttar gränsen. |
+| **MÅL** | Stroboskop och kometer, från 11 sekunder tidigt i matchen till 22 för det avgörande. |
+| **Motståndarmål** | Listen suckar: faller ihop och hämtar sig. |
+| **Segerdans** | Guld och grönt jagar ut från mitten när slutsignalen går och Löven vunnit. |
 | **Uppdaterar** | En gul stapel som fylls med nedladdningen. |
 | **Setup** | Grön puls — anslut med mobilen. |
 | **Ingen data** | Svagt rött andetag — SHL svarar inte. |
@@ -65,7 +73,7 @@ Varje läge, och varför det ser ut som det gör, finns i
 | Ström | USB-C i sockelns baksida, 5 V / 3 A |
 | Matchdata | SHL:s publika API, live via SSE |
 | Uppdateringar | Automatiska över WiFi, RSA-signerade, med stabil- och betakanal |
-| Inställningar | Statussida i webbläsaren: ljusstyrka, tv-fördröjning, testa målet |
+| Inställningar | Statussida i webbläsaren: ljusstyrka, tv-fördröjning, testa målet och matchljuset |
 
 ---
 
@@ -81,9 +89,10 @@ Varje läge, och varför det ser ut som det gör, finns i
 ```
 
 Lampan håller koll på nästa match. När matchfönstret öppnas kopplar den upp mot
-SHL:s live-ström och pollar dessutom dagens matcher som skyddsnät. Ett mål
-läggs i kö, väntar ut din tv-fördröjning och tänder fyrverkeriet. Dagen efter en
-vinst glittrar glöden.
+SHL:s live-ström och pollar dessutom dagens matcher som skyddsnät. Under
+matchen läser den ställning, speltid, pauser och skott, och listen blir mer
+intensiv ju tajtare och senare det är. Ett mål läggs i kö, väntar ut din
+tv-fördröjning och tänder fyrverkeriet. Dagen efter en vinst glittrar glöden.
 
 ---
 
