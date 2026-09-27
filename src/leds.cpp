@@ -42,6 +42,10 @@ bool      gSighPending   = false;
 bool      gLocked     = false;      // demoläge: app-logiken får inte byta läge
 LedMode   gLockedMode = LED_STANDBY;
 
+bool      gDark       = false;      // lampläget vill ha listen släckt
+bool      gShowSetup  = true;       // uppstart och anslutning syns ändå
+float     gFade       = 1.0f;       // 0 = släckt, 1 = full, glider mot målet
+
 // Lägesbyte förbi låset. Används internt av demoläget och av målfyrverkeriet,
 // som ska få tända även när ett läge står låst.
 inline void forceMode(LedMode m) {
@@ -646,6 +650,12 @@ uint32_t pendingGoalInMs() {
 
 void clearPendingGoals() { gPendingCount = 0; gSighPending = false; }
 
+void setDark(bool dark, bool instant) {
+    gDark = dark;
+    if (instant) gFade = dark ? 0.0f : 1.0f;
+}
+void setShowSetup(bool on)   { gShowSetup = on; }
+
 void setBrightness(uint8_t b) { FastLED.setBrightness(b); }
 
 void setUpdateProgress(uint8_t percent) {
@@ -732,7 +742,16 @@ void render() {
         gMode == LED_STANDBY)
         applySigh();
 
-    FastLED.show();
+    // Lampläget skalar bara det som skickas ut — leds[] lämnas orört, flera
+    // effekter bygger vidare på förra bildrutan.
+    const bool setup = gMode == LED_PORTAL || gMode == LED_PORTAL_RETRY ||
+                       (gShowSetup && (gMode == LED_BOOT || gMode == LED_CONNECTING ||
+                                       gMode == LED_WORKING));
+    const float target = gDark && !gLocked && !setup ? 0.0f : 1.0f;
+    const float step   = dt * 1000.0f / LAMP_FADE_MS;
+    gFade = target > gFade ? std::min(target, gFade + step) : std::max(target, gFade - step);
+
+    FastLED.show(scale8(FastLED.getBrightness(), (uint8_t)(gFade * 255)));
 }
 
 }  // namespace Leds

@@ -95,6 +95,18 @@ void lockMode(LedMode m);
 void unlockMode();
 bool locked();
 
+// Lampläget (Av / Bara match): tonar ner listen till svart över LAMP_FADE_MS,
+// och upp igen. Effekterna fortsätter ritas under, så listen tänds mitt i det
+// som pågår i stället för att börja om. Undantag som alltid syns: demoläget
+// (någon tryckte på en knapp) och portalen (lampan behöver en människa).
+// instant hoppar över toningen — vid start, innan första bildrutan.
+void setDark(bool dark, bool instant = false);
+
+// Uppstart, anslutning och förloppsstapeln syns trots setDark() så länge det
+// här är på. main.cpp slår av det efter första hämtningen — en omstart eller
+// ett WiFi-tapp mitt i natten ska inte tända en släckt lampa.
+void setShowSetup(bool on);
+
 void setBrightness(uint8_t b);
 void setUpdateProgress(uint8_t percent);
 

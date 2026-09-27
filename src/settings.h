@@ -2,6 +2,13 @@
 #include <Arduino.h>
 #include "leds.h"
 
+// När listen får lysa. Värdet sparas i NVS — numrera aldrig om, lägg bara till.
+enum LampMode : uint8_t {
+    LAMP_ALWAYS = 0,   // som förut: glöd dygnet runt
+    LAMP_MATCH  = 1,   // släckt, tänds matchLeadMin före nedsläpp, släcks vid slutsignal
+    LAMP_OFF    = 2,   // helt släckt
+};
+
 // Persistent konfiguration i NVS. Överlever omstart och OTA-uppdatering.
 struct Settings {
     String  wifiSsid;
@@ -20,6 +27,8 @@ struct Settings {
     bool    debugPush;        // Ta emot matchläge på POST /push. Av = lampan
                               // hämtar bara från SHL och ignorerar nätet.
     uint8_t goalDelayS;       // TV-fördröjning i sekunder. 0 = tänd direkt.
+    LampMode lampMode;
+    uint8_t matchLeadMin;     // LAMP_MATCH: minuter före nedsläpp som listen tänds
 
     // Backoff: räknare för en version som inte går att installera.
     String  otaBadVersion;

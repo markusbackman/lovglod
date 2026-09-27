@@ -18,6 +18,8 @@ void Settings::load() {
     brightness      = prefs.getUChar("bright", LED_DEFAULT_BRIGHTNESS);
     debugPush       = prefs.getBool("dbgpush", false);
     goalDelayS      = prefs.getUChar("goaldly", GOAL_DELAY_DEFAULT_S);
+    lampMode        = (LampMode)prefs.getUChar("lampmode", LAMP_ALWAYS);
+    matchLeadMin    = prefs.getUChar("leadmin", MATCH_LEAD_DEFAULT_MIN);
     victoryUntil    = prefs.getULong("victuntil", 0);
     victoryGame     = prefs.getULong("victgame", 0);
     ledStrip        = (LedStrip)prefs.getUChar("ledstrip", LED_STRIP_UNSET);
@@ -39,6 +41,8 @@ void Settings::load() {
 
     if (goalDelayS > GOAL_DELAY_MAX_S) goalDelayS = GOAL_DELAY_MAX_S;
     if (ledStrip > LED_STRIP_APA102)   ledStrip = LED_STRIP_UNSET;
+    if (lampMode > LAMP_OFF)           lampMode = LAMP_ALWAYS;
+    if (!matchLeadMin)                 matchLeadMin = MATCH_LEAD_DEFAULT_MIN;
     ledCount = constrain(ledCount, LED_COUNT_MIN, LED_COUNT_MAX);
 
     if (legacy) {
@@ -59,6 +63,8 @@ void Settings::save() {
     prefs.putUChar("bright", brightness);
     prefs.putBool("dbgpush", debugPush);
     prefs.putUChar("goaldly", goalDelayS);
+    prefs.putUChar("lampmode", lampMode);
+    prefs.putUChar("leadmin", matchLeadMin);
     prefs.putULong("victuntil", victoryUntil);
     prefs.putULong("victgame", victoryGame);
     prefs.putUChar("ledstrip", ledStrip);

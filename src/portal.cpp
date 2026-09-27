@@ -324,6 +324,15 @@ void handleStatus() {
     row("Läge",             status.state, true);
     if (status.demo.length())
         row("Demoläge",     status.demo + "  — avsluta på /ljus", true);
+    {
+        String lamp = settings.lampMode == LAMP_OFF   ? String("Av")
+                    : settings.lampMode == LAMP_MATCH ? "Bara match — tänds " +
+                                                        String(settings.matchLeadMin) +
+                                                        " min före nedsläpp"
+                                                      : String("Alltid på");
+        if (status.dark) lamp += "  · släckt nu";
+        row("Lampa", lamp, !status.dark);
+    }
     row("Datakälla",        status.pushMode ? String("push från mockservern")
                                           : String("shl.se  (skarp)"),
                             status.pushMode);
@@ -368,7 +377,18 @@ void handleStatus() {
 
     p += F("</table></div>"
            "<h2>Inställningar</h2><div class=card><form method=POST action=/settings>"
-           "<label>Ljusstyrka (5–255)</label><input name=bright type=number min=5 max=255 value='");
+           "<label>Lampa</label><select name=lampmode>");
+    const auto opt = [&](const char *v, bool sel, const char *text) {
+        p += String("<option value=") + v + (sel ? " selected>" : ">") + text + "</option>";
+    };
+    opt("0", settings.lampMode == LAMP_ALWAYS, "Alltid på — glöder dygnet runt");
+    opt("1", settings.lampMode == LAMP_MATCH,  "Bara match — släckt mellan matcherna");
+    opt("2", settings.lampMode == LAMP_OFF,    "Av — helt släckt");
+    p += F("</select><label>Bara match: tänd före nedsläpp</label><select name=leadmin>");
+    opt("15", settings.matchLeadMin != 30, "15 minuter");
+    opt("30", settings.matchLeadMin == 30, "30 minuter");
+    p += F("</select><label>Ljusstyrka (5–255)</label>"
+           "<input name=bright type=number min=5 max=255 value='");
     p += String(settings.brightness);
     p += F("'><label>Fördröjning på mål (sekunder — tv-sändningen ligger efter)</label>"
            "<input name=goaldly type=number min=0 max=" GOAL_DELAY_MAX_STR " value='");
@@ -431,6 +451,12 @@ void handleSettings() {
         if (!next && settings.debugPush) gRefresh = true;
         settings.debugPush = next;
     }
+    if (server.hasArg("lampmode")) {
+        const long m = server.arg("lampmode").toInt();
+        if (m >= LAMP_ALWAYS && m <= LAMP_OFF) settings.lampMode = (LampMode)m;
+    }
+    if (server.hasArg("leadmin"))
+        settings.matchLeadMin = server.arg("leadmin").toInt() == 30 ? 30 : 15;
     if (server.hasArg("goaldly"))
         settings.goalDelayS =
             (uint8_t)constrain(server.arg("goaldly").toInt(), 0, GOAL_DELAY_MAX_S);

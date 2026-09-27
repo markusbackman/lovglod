@@ -417,6 +417,13 @@
 #define LIVE_WINDOW_PRE_MS  (15UL * 60 * 1000)     // öppna 15 min före nedsläpp
 #define LIVE_WINDOW_POST_MS (4UL * 60 * 60 * 1000) // stäng 4 h efter start
 
+// Lampläget "Bara match": listen är släckt och tänds så här många minuter före
+// nedsläpp. Släcks igen vid slutsignalen, eller när matchfönstret stänger om
+// slutsignalen aldrig syns. Val i formuläret — se handleSettings().
+#define MATCH_LEAD_DEFAULT_MIN 15
+// Hur länge listen tonar när den släcks eller tänds av lampläget.
+#define LAMP_FADE_MS           2000
+
 // ─────────────────────────────────────────────────────────────
 //  Testserver (mock)
 // ─────────────────────────────────────────────────────────────

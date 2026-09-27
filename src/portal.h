@@ -14,6 +14,7 @@ struct StatusInfo {
     String resetReason  = "okänd";  // varför enheten startade om sist
     bool   resetAbnormal = false;   // ...och om det var något att bry sig om
     bool   pushMode     = false;   // matchläget matas in via POST /push
+    bool   dark         = false;   // lampläget håller listen släckt just nu
     String demo;                   // demoläget som visas, tomt = av
 };
 

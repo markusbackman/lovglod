@@ -377,6 +377,33 @@ Ovanpå allt detta ligger en global ljusstyrka (`LED_DEFAULT_BRIGHTNESS 160`,
 hela bilden för att hålla sig under taket — effekten ser likadan ut, bara
 svagare, så sätt taket efter ditt nätaggregat och inte tvärtom.
 
+### Lampläge — alltid, bara match eller av
+
+Fältet **Lampa** på statussidan bestämmer när listen får lysa:
+
+| Val | Effekt |
+|---|---|
+| Alltid på | Standard. Allt ovan, dygnet runt |
+| Bara match | Släckt mellan matcherna. Tänds 15 eller 30 min före nedsläpp och släcks vid slutsignalen |
+| Av | Helt släckt |
+
+Listen tonar ut och in över två sekunder (`LAMP_FADE_MS`). Bakom mörkret går
+lampan som vanligt — den hämtar schema, följer live-strömmen och håller reda på
+segrar — så att den är i fas i samma stund läget ändras.
+
+- **Bara match** släcker när slutsignalen syns, med tv-fördröjningen som allt
+  annat. Ett mål eller en segerdans som redan brinner får brinna klart, men
+  segerläget efteråt och gnistorna fram till nästa match syns inte. Kommer
+  slutsignalen aldrig fram släcks listen när matchfönstret stänger, 4 h efter
+  nedsläpp.
+- Med 30 minuter lyser vardagsglöden den första kvarten; matchljuset tar över
+  när matchfönstret öppnar, 15 min före nedsläpp.
+- Portalen syns alltid — utan den går lampan inte att ställa in. Demoläget på
+  `/ljus` syns också, men inte testknappen för målet.
+- Uppstartsflödet syns när lampan kopplas in eller startat om efter ett fel,
+  fram till första hämtningen. Startar den om av sig själv — efter en
+  OTA-uppdatering — eller tappar WiFi, förblir den mörk.
+
 ---
 
 ## Justera beteendet

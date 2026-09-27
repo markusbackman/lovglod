@@ -73,7 +73,7 @@ Varje läge, och varför det ser ut som det gör, finns i
 | Ström | USB-C i sockelns baksida, 5 V / 3 A |
 | Matchdata | SHL:s publika API, live via SSE |
 | Uppdateringar | Automatiska över WiFi, RSA-signerade, med stabil- och betakanal |
-| Inställningar | Statussida i webbläsaren: ljusstyrka, tv-fördröjning, testa målet och matchljuset |
+| Inställningar | Statussida i webbläsaren: ljusstyrka, tv-fördröjning, alltid på / bara match / av, testa målet och matchljuset |
 
 ---
 

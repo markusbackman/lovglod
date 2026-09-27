@@ -148,7 +148,9 @@ praktiskt om det bara var routern som startade om.
 
 När lampan är online nås den på `http://lovglod.local` eller
 enhetens IP. Där finns nästa match, senaste resultat, ljusstyrka, en knapp som testar
-målfyrverkeriet, och "Glöm WiFi". Under **Testa matchljuset** (`/ljus`) kan du
+målfyrverkeriet, och "Glöm WiFi". Under **Lampa** väljer du om den ska glöda
+dygnet runt, bara tändas kring matcherna eller vara helt släckt — se
+[Lampläge](GLODEN.md#lampläge--alltid-bara-match-eller-av). Under **Testa matchljuset** (`/ljus`) kan du
 visa varje matchläge — slutspurterna, paus, övertid, segerdans, mål och suck —
 utan att vänta på en match.
 

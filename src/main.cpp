@@ -696,6 +696,26 @@ static void maybeReplayDance() {
     Leds::dance();
 }
 
+// ── Lampläge ────────────────────────────────────────────────────────────────
+// Ska listen lysa just nu? Allt annat — hämtningar, live-strömmen, segerläget —
+// går som vanligt oavsett, så att lampan är i fas den dag läget ändras.
+//
+// "Bara match" tänds matchLeadMin före nedsläpp och släcks vid slutsignalen,
+// med tv-fördröjning som allt annat. Ett mål eller en segerdans som redan
+// brinner får brinna klart. Syns slutsignalen aldrig stänger matchfönstret.
+static bool lampAwake() {
+    if (settings.lampMode == LAMP_ALWAYS) return true;
+    if (settings.lampMode == LAMP_OFF)    return false;
+
+    const LedMode m = Leds::mode();
+    if (m == LED_GOAL || m == LED_DANCE || Leds::pendingGoals()) return true;
+    if (gInLiveWindow) return shownState(Shl::liveInfo()) != GameState::Decided;
+
+    if (!gNext.valid || !gTimeSynced) return false;
+    const time_t now = time(nullptr);
+    return now >= gNext.startUtc - (time_t)settings.matchLeadMin * 60 && now < gNext.startUtc;
+}
+
 static const char *moodStateText(LedMode m) {
     switch (m) {
         case LED_INTERMISSION: return "Paus";
@@ -1126,6 +1146,11 @@ void setup() {
     status.otaOnTrial = gOtaOnTrial;
     Leds::begin(settings.ledStrip, settings.ledCount);
     Leds::setBrightness(settings.brightness);
+    // En släckt lampa startar släckt. Uppstartsflödet syns ändå när någon
+    // kopplat in den — men inte när den startar om av sig själv (OTA mitt i
+    // natten), då ska den förbli mörk.
+    Leds::setDark(settings.lampMode != LAMP_ALWAYS, /*instant=*/true);
+    Leds::setShowSetup(esp_reset_reason() != ESP_RST_SW);
     Leds::setMode(LED_BOOT);
 
     // Kort uppstartsflöde så man ser att listen lever
@@ -1233,6 +1258,7 @@ void loop() {
 
             if (!pushActive() && (gFetchNow || (int32_t)(millis() - gNextScheduleFetch) >= 0)) {
                 refreshSchedule(gFirstFetchPending);
+                if (gFirstFetchPending) Leds::setShowSetup(false);
                 gFirstFetchPending = false;
             }
 
@@ -1300,6 +1326,9 @@ void loop() {
                     status.state = "Standby";
                 }
             }
+
+            status.dark = !lampAwake();
+            Leds::setDark(status.dark);
             break;
         }
 
