@@ -7,6 +7,7 @@ visa, på sekunden, medan kameran rullar.
     python3 tools/film.py 192.168.1.250 match
     python3 tools/film.py 192.168.1.250 mal
     python3 tools/film.py 192.168.1.250 huvud
+    python3 tools/film.py 192.168.1.250 slutspurt   # matchljuset, se nedan
     python3 tools/film.py - huvud --torr          # visa tidslinjen, rör ingen lampa
 
 Lampan styrs som mockservern gör det: hela matchläget trycks in på POST /push,
@@ -14,6 +15,11 @@ med hjärtslag emellan så att PUSH_LEASE_MS aldrig löper ut. Målet tänds dä
 med POST /test. Det är samma fyrverkeri, men utan tv-fördröjningen — ett mål
 via ställningen skulle vänta settings.goalDelayS (15 s som standard) och då
 stämmer inte tidslinjen.
+
+Matchljusets filmer — slutspurt, paus, övertid, suck, seger och slutminuter —
+styrs i stället med knapparna på /ljus, samma demolägen som i seriemonitorn.
+Demoläget går före allt annat i lampan, så de behöver varken push eller
+felsökningsläget. Det avslutas när manuset är slut eller avbryts.
 
 Före start läses lampans inställningar av från statussidan. Felsökningsläget
 slås på om det var av, och allt återställs när manuset är slut eller avbryts
@@ -47,7 +53,9 @@ TEAM_CODE = "IFB"
 OPPONENT = "LHF"
 
 HEARTBEAT_S = 20          # långt under PUSH_LEASE_MS (5 min)
-GOAL_S = 12               # GOAL_DURATION_MS
+GOAL_S = 12               # /test och demomålet: GOAL_TEST_IMPORTANCE ≈ 12 s
+BIG_GOAL_S = 22           # avgörande mål, GOAL_MAX_MS
+DANCE_S = 45              # DANCE_MS
 GLOW_BREATH_S = 60 / 9    # GLOW_BPM → ~6,7 s
 LIVE_BREATH_S = 60 / 18   # GLOW_BPM * 2 under match → ~3,3 s
 
@@ -60,7 +68,12 @@ LIVE_BREATH_S = 60 / 18   # GLOW_BPM * 2 under match → ~3,3 s
 #   "gnistor" standby med gnistor (vann senaste matchen)
 #   "match"   matchfönster öppet, bärnsten
 #   "mal"     målfyrverkeriet, tolv sekunder
+#   "ljus:k"  demoläget på /ljus med tangenten k, t.ex. "ljus:h" för
+#             hjärtslaget och "ljus:b" för ett avgörande mål (listan i
+#             kDemo i src/main.cpp)
 #   "slut"    tidslinjen är klar — sista bilden står kvar
+# Ett manus använder antingen push-åtgärderna eller "ljus:", inte båda: medan
+# demoläget står på syns inget av det som trycks in.
 # Första steget ligger alltid på 0 och är startläget som ställs in före Enter.
 #
 # Looparna spelas in längre än de ska bli, så att det finns flera andetag att
@@ -70,6 +83,10 @@ class Script:
     title: str
     note: str
     steps: list[tuple[float, str, str]]
+
+    @property
+    def demo(self) -> bool:
+        return self.steps[0][1].startswith("ljus:")
 
 
 SCRIPTS: dict[str, Script] = {
@@ -112,6 +129,67 @@ SCRIPTS: dict[str, Script] = {
             (24 + GOAL_S, "match", "fyrverkeriet slut, matchen fortsätter"),
             (42, "gnistor", "efter en vinst: glöd med gnistor fram till nästa match"),
             (56, "slut", ""),
+        ],
+    ),
+    "slutspurt": Script(
+        "Slutspurten (tre kort eller en film)",
+        "Varje slutspurt står i 15 s. Klipp 10 s av varje, eller låt dem gå i "
+        "ett svep.",
+        [
+            (0, "ljus:8", "bärnsten, matchen pågår"),
+            (4, "ljus:h", "lika — hjärtslag"),
+            (19, "ljus:l", "Löven leder — guldregn"),
+            (34, "ljus:u", "Löven under — anfallsvåg"),
+            (49, "slut", ""),
+        ],
+    ),
+    "paus": Script(
+        "Paus (timglaset)",
+        "Demots timglas rinner ut på en minut, i verkligheten på 17. Klipp "
+        "gärna ihop början, mitten och de sista pulserande sekunderna.",
+        [
+            (0, "ljus:8", "bärnsten, perioden slut"),
+            (3, "ljus:p", "paus — timglaset börjar fullt"),
+            (70, "slut", "glaset tomt, listen andas"),
+        ],
+    ),
+    "overtid": Script(
+        "Övertid (dragkampen, tyst loop)",
+        "Gränsen vandrar slumpmässigt; välj ett avsnitt där den rör sig åt båda "
+        "hållen.",
+        [
+            (0, "ljus:o", "övertid — dragkamp"),
+            (40, "slut", ""),
+        ],
+    ),
+    "suck": Script(
+        "Motståndarmål (sucken)",
+        "Klipp från T0+2 till T0+9.",
+        [
+            (0, "ljus:8", "bärnsten, matchen pågår"),
+            (3, "ljus:s", "motståndarmål — suck"),
+            (10, "slut", ""),
+        ],
+    ),
+    "seger": Script(
+        "Segerdansen",
+        f"Dansen står i {DANCE_S} s och tonar över i segerläget.",
+        [
+            (0, "ljus:8", "bärnsten, matchen pågår"),
+            (3, "ljus:c", "slutsignal, vinst — segerdans"),
+            (3 + DANCE_S, "ljus:v", "segerläget"),
+            (3 + DANCE_S + 8, "slut", ""),
+        ],
+    ),
+    "slutminuter": Script(
+        "Slutminuterna (huvudfilm för matchljuset, med ljud)",
+        "Ca 85 s rått: lika i slutet av tredje, avgörande mål, segerdans.",
+        [
+            (0, "ljus:8", "bärnsten, 2–2 i tredje"),
+            (6, "ljus:h", "slutminuterna — hjärtslag"),
+            (22, "ljus:b", "AVGÖRANDE MÅL"),
+            (22 + BIG_GOAL_S + 1, "ljus:c", "slutsignal — segerdans"),
+            (22 + BIG_GOAL_S + 1 + 30, "slut", ""),
         ],
     ),
 }
@@ -188,6 +266,10 @@ class Lamp:
         self._call("/push", body, "application/json")
 
     def set(self, action: str) -> None:
+        if action.startswith("ljus:"):
+            self._call("/ljus", urlencode({"k": action[5:]}).encode(),
+                       "application/x-www-form-urlencoded")
+            return
         if action == "mal":
             self._call("/test", b"", "application/x-www-form-urlencoded")
             return
@@ -226,13 +308,13 @@ def run(lamp: Lamp, script: Script, brightness: int | None) -> None:
     before = lamp.read_settings()
     print(f"  lampan: {before['mode']}, ljusstyrka {before['bright']}, "
           f"felsökningsläge {'på' if before['dbgpush'] else 'av'}")
-    if before["mode"].startswith("Seger"):
+    if before["mode"].startswith("Seger") and not script.demo:
         print("  ! segerläget är aktivt och går före allt som trycks in.\n"
               "    Vänta ut det eller starta om lampan efter att ha nollställt det.")
         return
 
     changed: dict[str, str] = {}
-    if not before["dbgpush"]:
+    if not before["dbgpush"] and not script.demo:
         changed["dbgpush"] = "0"
     if brightness is not None and brightness != before["bright"]:
         if not before["bright"]:
@@ -252,7 +334,8 @@ def run(lamp: Lamp, script: Script, brightness: int | None) -> None:
 
         first = script.steps[0][1]
         lamp.set(first)
-        threading.Thread(target=lamp.heartbeat, daemon=True).start()
+        if not script.demo:
+            threading.Thread(target=lamp.heartbeat, daemon=True).start()
         print(f"  startläge: {script.steps[0][2]}\n")
 
         input("  Starta inspelningen och tryck Enter … ")
@@ -275,6 +358,13 @@ def run(lamp: Lamp, script: Script, brightness: int | None) -> None:
         print("\n  Stoppa inspelningen.")
     finally:
         lamp.stop.set()
+        if script.demo:
+            try:
+                lamp.set("ljus:x")
+                print("  demoläget avslutat, lampan tillbaka i normal drift")
+            except Exception as exc:
+                print(f"  ! kunde inte avsluta demoläget: {exc} — tryck Normal "
+                      "drift på /ljus", file=sys.stderr)
         if changed:
             try:
                 lamp.settings(**changed)
@@ -282,7 +372,7 @@ def run(lamp: Lamp, script: Script, brightness: int | None) -> None:
                       ", ".join(f"{k}={v}" for k, v in changed.items()))
             except Exception as exc:
                 print(f"  ! kunde inte återställa {changed}: {exc}", file=sys.stderr)
-        elif before["dbgpush"]:
+        elif before["dbgpush"] and not script.demo:
             print("  felsökningsläget var på redan innan — lampan släpper "
                   "push-läget själv inom fem minuter")
 
@@ -291,7 +381,7 @@ def main() -> None:
     ap = argparse.ArgumentParser(
         description="Spela upp en film på LövGlöd, på sekunden.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="\n".join(f"  {k:6} {s.title}" for k, s in SCRIPTS.items()))
+        epilog="\n".join(f"  {k:11} {s.title}" for k, s in SCRIPTS.items()))
     ap.add_argument("lampa", help="lampans adress, t.ex. 192.168.1.250 (- med --torr)")
     ap.add_argument("film", choices=SCRIPTS)
     ap.add_argument("--ljusstyrka", type=int, metavar="5-255",
