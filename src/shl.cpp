@@ -190,6 +190,95 @@ uint32_t gSseComments   = 0;
 
 constexpr size_t SSE_MAX = 8192;
 
+// ── Matchläge ur strömmen ───────────────────────────────────────────────────
+LiveInfo gInfo;
+
+// Skottryck: avklingande summor per lag, se MOOD_SHOT_HALF_LIFE_S.
+float    gShotsUs   = 0;
+float    gShotsThem = 0;
+uint32_t gShotsAtMs = 0;
+
+// Skott vi redan räknat, per eventId. Servern skickar om gamla händelser hela
+// tiden — 45 omsändningar av 7 mål på ÖRE–IFB — och skotten är inga undantag.
+// En match har ett par hundra händelser; bortom taket räknas skotten ändå,
+// bara utan dubblettskydd.
+constexpr uint16_t EVENT_ID_MAX = 1024;
+uint8_t  gSeenShot[EVENT_ID_MAX / 8];
+
+void resetLiveInfo() {
+    gInfo      = LiveInfo();
+    gShotsUs   = gShotsThem = 0;
+    gShotsAtMs = millis();
+    memset(gSeenShot, 0, sizeof(gSeenShot));
+}
+
+void decayShots() {
+    const uint32_t now = millis();
+    const float k = expf(-(float)(now - gShotsAtMs) / 1000.0f * 0.693147f / MOOD_SHOT_HALF_LIFE_S);
+    gShotsUs   *= k;
+    gShotsThem *= k;
+    gShotsAtMs  = now;
+}
+
+GameState parseGameState(const char *s) {
+    if (!s) return GameState::Unknown;
+    if (!strcmp(s, "ongoing"))      return GameState::Ongoing;
+    if (!strcmp(s, "intermission")) return GameState::Intermission;
+    if (!strcmp(s, "overtime"))     return GameState::Overtime;
+    if (!strcmp(s, "decided"))      return GameState::Decided;
+    // Inte observerat än, men straffar måste heta något.
+    if (strstr(s, "shoot") || strstr(s, "penalt")) return GameState::Shootout;
+    return GameState::Unknown;
+}
+
+// Läser det matchljuset behöver ur en ram. Ställningen tas separat.
+void readLiveInfo(JsonDocument &doc, time_t eventUtc) {
+    // liveState: en ram per byte, sedan samma värde om och om igen.
+    if (const char *ls = doc["liveState"]["liveState"] | (const char *)nullptr) {
+        const GameState st = parseGameState(ls);
+        // Avgjord är slutgiltigt. En server som släpar kan annars kasta
+        // tillbaka lampan till övertid mitt i segerdansen.
+        if (st != GameState::Unknown && st != gInfo.state && gInfo.state != GameState::Decided) {
+            TRACE("[läge] %s (period %u, %u s)\n", ls, gInfo.period, gInfo.elapsedS);
+            gInfo.prevState = gInfo.state;
+            gInfo.state     = st;
+            gInfo.stateRxMs = millis();
+        }
+    }
+
+    // gameTime: speltid i perioden, "mm:ss". Får inte gå bakåt inom en period
+    // — i övertiden på ÖRE–IFB kom 03:00 och sedan 02:35.
+    JsonVariantConst gt = doc["gameTime"];
+    if (!gt.isNull()) {
+        const int period = gt["period"] | 0;
+        int m = 0, sec = 0;
+        if (period > 0 && sscanf(gt["periodTime"] | "", "%d:%d", &m, &sec) == 2) {
+            const uint16_t el = (uint16_t)(m * 60 + sec);
+            if (period > gInfo.period || (period == gInfo.period && el >= gInfo.elapsedS)) {
+                gInfo.period   = (uint8_t)period;
+                gInfo.elapsedS = el;
+                gInfo.hasClock = true;
+            }
+        }
+    }
+
+    // Skott, för skottrycket.
+    JsonVariantConst ev = doc["liveEvent"];
+    if (!ev.isNull() && strcmp(ev["type"] | "", "shot") == 0) {
+        const int id = ev["eventId"] | -1;
+        if (id >= 0 && id < EVENT_ID_MAX) {
+            if (gSeenShot[id / 8] & (1 << (id % 8))) return;
+            gSeenShot[id / 8] |= 1 << (id % 8);
+        }
+        const time_t now = time(nullptr);
+        if (eventUtc && now > 1700000000 && now - eventUtc > MOOD_SHOT_MAX_AGE_S) return;
+        const bool us = strcmp(ev["eventTeam"]["teamCode"] | "", SHL_TEAM_CODE) == 0;
+        decayShots();
+        (us ? gShotsUs : gShotsThem) += 1.0f;
+        TRACE("[skott] %s (#%d)\n", us ? "Björklöven" : "motståndaren", id);
+    }
+}
+
 bool sseConnect() {
     gSse.stop();
     configureTls(gSse);
@@ -282,6 +371,8 @@ bool sseDispatch(LiveScore &out) {
             TRACE("[sse] ny händelse, eftersläpning %ld s%s\n", lag,
                   first ? " (referens)" : lag > 90 ? " — FÖR SENT" : "");
         }
+
+        readLiveInfo(doc, ut);
 
         int h = -1, a = -1;
         if (findScorePair(doc.as<JsonVariantConst>(), h, a)) {
@@ -520,6 +611,7 @@ bool pollLiveScore(const String &gameUuid, LiveScore &out) {
 
 void sseStart(const String &gameUuid, time_t startUtc) {
     if (gSseActive && gSseGameUuid == gameUuid) return;
+    if (gSseGameUuid != gameUuid) resetLiveInfo();
     gSseGameUuid = gameUuid;
     gSseGameStart = startUtc;
     gSseActive   = true;
@@ -533,6 +625,17 @@ void sseStop() {
     gSseActive = false;
     gSse.stop();
     gSseGameUuid = "";
+    resetLiveInfo();
+}
+
+const LiveInfo &liveInfo() { return gInfo; }
+
+void shotPressure(float &perMin, float &balance) {
+    decayShots();
+    const float sum = gShotsUs + gShotsThem;
+    // Summan av avklingande vikter delat med medellivslängden ger takten.
+    perMin  = sum / (MOOD_SHOT_HALF_LIFE_S / 0.693147f / 60.0f);
+    balance = (gShotsUs - gShotsThem) / (sum > 1.5f ? sum : 1.5f);
 }
 
 bool sseConnected() { return gSseActive && gSse.connected(); }

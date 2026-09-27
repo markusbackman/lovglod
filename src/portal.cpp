@@ -41,6 +41,7 @@ bool       gSubmitted  = false;
 bool       gRefresh    = false;
 PushState  gPush;
 bool       gPushPending = false;
+char       gDemoKey    = 0;          // knapp på /ljus som väntar på loop()
 String     gScanCache;
 uint32_t   gScanAt     = 0;
 
@@ -321,6 +322,8 @@ void handleStatus() {
     };
 
     row("Läge",             status.state, true);
+    if (status.demo.length())
+        row("Demoläge",     status.demo + "  — avsluta på /ljus", true);
     row("Datakälla",        status.pushMode ? String("push från mockservern")
                                           : String("shl.se  (skarp)"),
                             status.pushMode);
@@ -390,6 +393,7 @@ void handleStatus() {
            "<h2>Åtgärder</h2><div class=card>"
            "<form method=POST action=/test><button class=ghost type=submit>"
            "Testa målfyrverkeriet</button></form>"
+           "<a class=back href=/ljus>Testa matchljuset →</a>"
            "<form method=POST action=/refresh><button class=ghost type=submit>"
            "Hämta matchdata nu</button></form>"
            "<form method=POST action=/update><button class=ghost type=submit>"
@@ -483,6 +487,60 @@ void handleForget() {
                     FPSTR(PAGE_END));
     delay(600);
     ESP.restart();
+}
+
+// Matchljusets lägen går inte att se utan en match, och lampan sitter ihop med
+// skruvar — seriemonitorn är ingen väg. Samma tangenter som där, som knappar.
+struct DemoButton { char key; const char *label; };
+const DemoButton kLightButtons[] = {
+    {'8', "Matchglöd — som vanligt"},
+    {'h', "Slutspurt, lika — hjärtslag"},
+    {'l', "Slutspurt, Löven leder — guldregn"},
+    {'u', "Slutspurt, Löven under — anfallsvåg"},
+    {'p', "Paus — timglas på en minut"},
+    {'o', "Övertid — dragkamp"},
+    {'c', "Slutsignal, vinst — segerdans"},
+    {'v', "Segerläget"},
+};
+const DemoButton kLightOverlays[] = {
+    {'g', "Mål — vanligt (12 s)"},
+    {'b', "Mål — avgörande (22 s)"},
+    {'s', "Motståndarmål — suck"},
+};
+
+void handleLight() {
+    if (stationOnly()) return;
+    String p = head("LövGlöd — Matchljus", "Admin", F("Matchljus"),
+                    status.demo.length() ? "Visar: <b>" + htmlEscape(status.demo) + "</b>"
+                                         : String(F("Normal drift")));
+    p += F("<h2>Lägen</h2><div class=card><p class=note>Låser listen i läget tills "
+           "du väljer ett annat, trycker Normal drift eller tio minuter gått. "
+           "Under tiden hämtar lampan ingen matchdata.</p>");
+    auto button = [&](const DemoButton &b) {
+        p += "<form method=POST action=/ljus><input type=hidden name=k value='";
+        p += b.key;
+        p += "'><button class=ghost type=submit>";
+        p += b.label;
+        p += "</button></form>";
+    };
+    for (const DemoButton &b : kLightButtons) button(b);
+    p += F("</div><h2>Ovanpå</h2><div class=card><p class=note>Spelas över det som "
+           "visas just nu — välj till exempel hjärtslag först och sedan ett "
+           "avgörande mål. Sucken syns över de lugna lägena.</p>");
+    for (const DemoButton &b : kLightOverlays) button(b);
+    p += F("</div><form method=POST action=/ljus><input type=hidden name=k value=x>"
+           "<button type=submit>Normal drift</button></form>"
+           "<a class=back href=/>← Tillbaka</a>");
+    p += FPSTR(PAGE_END);
+    server.send(200, "text/html; charset=utf-8", p);
+}
+
+void handleLightPost() {
+    if (stationOnly()) return;
+    const String k = server.arg("k");
+    if (k.length() == 1) gDemoKey = k[0];
+    server.sendHeader("Location", "/ljus");
+    server.send(303);
 }
 
 void handleDebug() {
@@ -616,6 +674,8 @@ void registerRoutes() {
     server.on("/refresh",  HTTP_POST, handleRefresh);
     server.on("/nettest",  HTTP_POST, handleNetTest);
     server.on("/push",     HTTP_POST, handlePush);
+    server.on("/ljus",     HTTP_GET,  handleLight);
+    server.on("/ljus",     HTTP_POST, handleLightPost);
 
     // Listvalet i båda lägena: i portalen före WiFi, på statussidan i efterhand.
     server.on("/strip",  HTTP_GET,  handleStripPage);
@@ -687,5 +747,7 @@ bool refreshRequested()       { return gRefresh; }
 void clearRefresh()           { gRefresh = false; }
 bool pushPending()            { return gPushPending; }
 PushState takePush()          { gPushPending = false; return gPush; }
+bool demoPending()            { return gDemoKey != 0; }
+char takeDemo()               { const char k = gDemoKey; gDemoKey = 0; return k; }
 
 }  // namespace Portal

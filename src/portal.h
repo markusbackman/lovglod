@@ -14,6 +14,7 @@ struct StatusInfo {
     String resetReason  = "okänd";  // varför enheten startade om sist
     bool   resetAbnormal = false;   // ...och om det var något att bry sig om
     bool   pushMode     = false;   // matchläget matas in via POST /push
+    String demo;                   // demoläget som visas, tomt = av
 };
 
 // Push från mockservern: hela matchläget i ett anrop, istället för att lampan
@@ -56,4 +57,8 @@ void clearRefresh();
 // skäl som ovan: målfyrverkeriet ska inte starta inne i ett HTTP-anrop.
 bool pushPending();
 PushState takePush();
+// Knapparna på /ljus: samma tangenter som demoläget i seriemonitorn. Tas emot
+// i webbservern och spelas upp i loop(), som allt annat som tänder listen.
+bool demoPending();
+char takeDemo();
 }

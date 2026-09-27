@@ -16,7 +16,12 @@ avslutas med hur du skruvar på beteendet och ställer in tv-fördröjningen.
 | [Standby](#led_standby--den-långsamma-glöden) | Långsamt gult andetag, ~7 s | Vardag — här står lampan nästan jämt |
 | [Vann senast](#gnistor--vi-vann-senast-ovanpå-glöden) | Vita gnistor ovanpå glöden | Björklöven vann sin senaste match — lyser till nästa nedsläpp |
 | [Match pågår](#led_live--match-pågår) | Bärnsten, dubbelt så snabbt andetag | Matchfönstret är öppet |
-| [MÅL](#led_goal--målfyrverkeriet) | 12 s stroboskop och kometer | Mål — 15 s fördröjt så tv:n hinner ikapp |
+| [Slutspurt](#slutspurten--ovanpå-matchglöden) | Hjärtslag, guldregn eller anfallsvågor ovanpå glöden | Tajt match mot slutet av tredje |
+| [Paus](#led_intermission--timglaset) | Bärnstensstapel som krymper mot mitten | Paus mellan perioderna |
+| [Övertid](#led_overtime--dragkampen) | Guld mot blåvitt, gränsen slits fram och tillbaka | Övertid och straffar |
+| [MÅL](#led_goal--målfyrverkeriet) | 7–22 s stroboskop och kometer | Mål — större ju viktigare, 15 s fördröjt så tv:n hinner ikapp |
+| [Motståndarmål](#suck--motståndarmål) | Listen faller ihop och hämtar sig | Motståndaren gjorde mål |
+| [Segerdans](#led_dance--segerdansen) | Guld och grönt jagar utåt från mitten | Slutsignal, Björklöven vann |
 | [Uppdaterar](#led_updating--ota-förlopp) | Gul stapel som fylls | Ny firmware laddas ner |
 | [Ingen data](#led_error--ingen-kontakt) | Svagt rött andetag | På WiFi, men SHL svarar inte |
 
@@ -182,16 +187,123 @@ skillnad från ett ljusare läge kostar det ingenting i ström.
 Läget slås på när matchfönstret öppnas — nedsläpp minus marginal enligt
 spelschemat, eller när mockservern säger till.
 
+### Vad lampan vet om matchen
+
+Allt matchljus nedan bygger på det SHL:s live-ström faktiskt skickar. Det är
+mindre än man tror, och inspelningen av ÖRE–IFB
+(`mock/recordings/2026-09-24-OHK-IFB`) visar exakt hur lite:
+
+| Signal | Hur ofta och hur sent |
+|---|---|
+| `liveState` — pågår, paus, övertid, avgjord | En gång per byte, 10–31 s efter att det hänt i hallen |
+| `gameTime` — speltid i perioden | Var 20–60:e sekund, bara när klockan rört sig. Säger aldrig om klockan står. De sista sekunderna av en period kommer oftast inte alls. |
+| Skott | Varje skott med lag, ~36 s efter skottet |
+| Ställning | 54–77 s efter målet |
+
+Därför räknar **ingenting sekunder mot en slutsignal**. Klockan duger till
+"ungefär åtta minuter kvar", inte till "tio sekunder kvar" — de sista 26
+sekunderna av tredje perioden på ÖRE–IFB rapporterades aldrig. Lampan gissar
+heller aldrig framåt: den använder senaste klockramen som den är.
+
+Allt som kan avslöja något visas med [tv-fördröjningen](#tv-fördröjning):
+ställningen, paus och övertid. Slog listen om från hjärtslag till guldregn i
+samma stund som SHL rapporterade målet, vore målet avslöjat innan fyrverkeriet —
+och innan tv:n.
+
+### Slutspurten — ovanpå matchglöden
+
+Lampan räknar hela matchen fram en **intensitet** mellan 0 och 1, hur
+spännande den tycker att det är:
+
+```
+intensitet = tid × (tajthet + läge) + skottryck
+```
+
+- **Tid** är noll fram till åtta minuter före slutet av tredje
+  (`MOOD_RAMP_S`) och stiger sedan mot 1 längs en kurva där det mesta händer på
+  slutet (`MOOD_CURVE 1.6`).
+- **Tajthet** är 1 vid lika, 0,8 vid ett måls skillnad, 0,35 vid två och
+  nästan inget därutöver. 5–1 med fem minuter kvar ger ingen slutspurt.
+- **Läge** lägger till 0,2 när Löven leder med ett mål och 0,1 när de ligger
+  under med ett.
+- **Skottryck** är en avklingande räkning av skotten, halveringstid tre
+  minuter. Många skott i en tajt match höjer intensiteten en bit redan innan
+  slutminuterna (`MOOD_SHOT_WEIGHT`).
+
+Intensiteten glider mot sitt nya värde över ungefär tio sekunder
+(`MOOD_SMOOTH_MS`) i stället för att hoppa när en klockram kommer — mellan två
+ramar kan det ha gått en minut i matchen.
+
+När intensiteten passerar 20 % (`MOOD_THRESHOLD`) tonas slutspurten in över
+matchglöden, och den är helt framme vid 45 %. Vilken slutspurt beror på
+ställningen:
+
+- **Lika — hjärtslag.** Dubbelslag som sprider sig från mitten. Pulsen går
+  från vilopuls (`HEART_REST_BPM 55`) mot `HEART_MAX_BPM 140`, och färgen värms
+  från guld mot rött (`MOOD_HEAT`).
+- **Löven leder — guldregn.** Guldglöd där gnistorna tätnar med intensiteten,
+  från en per sekund till ett fyrtiotal. Ingen slutnedräkning: den skulle gissa
+  på en klocka lampan inte har.
+- **Löven under — anfallsvåg.** Vågor rullar från Lövens ände mot
+  motståndarens, allt snabbare — och ännu snabbare när Löven faktiskt skjuter
+  mest.
+
+På ÖRE–IFB, 3–3 in i tredje, hade hjärtslaget tonats in ungefär fem minuter
+före slutet och slagit på drygt 80 % när perioden tog slut.
+
+**Vilken ände är Lövens?** Hemmalaget har listens början, som i tv-grafiken
+där hemmalaget står till vänster. Spelar Löven borta kommer anfallsvågorna och
+dragkampens guld alltså från andra änden.
+
+### `LED_INTERMISSION` — timglaset
+
+En bärnstensstapel står över hela listen när pausen börjar och krymper mot
+mitten medan tiden går, och korn faller ut mot kanterna. Sista minuten
+pulserar den — dags att hämta chipsen.
+
+Pausens längd står **inte** i datan. ÖRE–IFB hade 17:39 och 18:26, och 81 s
+före övertiden. Timglaset rinner därför ut på en antagen längd, 17 minuter
+(`PAUSE_EST_S`) eller 90 s före övertid (`PAUSE_OT_EST_S`), och när det är tomt
+andas listen lugnt tills nästa period faktiskt rapporteras. Hellre ett glas som
+väntar än ett som påstår att nedsläppet är nu.
+
+Startar lampan mitt i en paus börjar glaset fullt — den vet inte när pausen
+började.
+
+### `LED_OVERTIME` — dragkampen
+
+Guld från Lövens ände, motståndarens färg — kall blåvit, `OPP_R/G/B` — från
+den andra. Gränsen mellan dem slits fram och tillbaka och gnistrar, och
+skottrycket flyttar den: skjuter Löven mest tar guldet mark. Gäller både
+övertid och straffar.
+
 ### `LED_GOAL` — målfyrverkeriet
 
-12 sekunder (`GOAL_DURATION_MS`) i två faser:
+Två faser, och **hur stort fyrverkeriet blir beror på hur mycket målet
+betydde**:
 
-1. **Stroboskop, 0–2,5 s** (`GOAL_STROBE_MS`). Hela listen blixtrar i ~14 Hz
-   mot en dämpad gul botten, växelvis vitt och mättat gult. Det är den delen
-   som får folk att titta upp.
-2. **Eldgivning, 2,5–12 s.** Var 110:e ms skjuts en ny komet ut från listens
-   mitt åt båda hållen samtidigt: vitglödande kärna med två gula svansled
-   efter sig. Ovanpå det slumpade gnistregn så salvorna inte blir mekaniska.
+1. **Stroboskop.** Hela listen blixtrar i ~14 Hz mot en dämpad gul botten,
+   växelvis vitt och mättat gult. Det är den delen som får folk att titta upp.
+2. **Eldgivning.** Kometer skjuts ut från listens mitt åt båda hållen
+   samtidigt: vitglödande kärna med två gula svansled efter sig. Ovanpå det
+   slumpade gnistregn så salvorna inte blir mekaniska.
+
+Målets vikt räknas på ställningen efter målet, med samma intensitet som
+slutspurten, plus ett tillägg för kvittering eller ledningsmål i tredje.
+Övertidsmål avgör matchen och får alltid full vikt.
+
+| | Tidigt i matchen | Testknappen | Avgörande mål |
+|---|---|---|---|
+| Vikt | 25 % (golvet) | 33 % | 100 % |
+| Längd | ~11 s | 12 s | 22 s |
+| Stroboskop | 1,9 s | 2,1 s | 4 s |
+| Ny salva | var 165:e ms | var 150:e ms | var 60:e ms, varannan i grönt |
+
+En kvittering till 2–2 med fem minuter kvar hamnar kring 55 %, samma mål med
+två minuter kvar kring 85 %, och ett övertidsmål alltid på 100 %.
+
+Gränserna sitter i `GOAL_MIN_MS`/`GOAL_MAX_MS` och grannarna i
+`include/config.h`.
 
 Sista 1,2 sekunderna tonas allt ner mot standby istället för att slockna tvärt.
 
@@ -201,13 +313,35 @@ syns på skärmen — och alla i rummet vet att det gick in innan de får se det
 [Tv-fördröjning](#tv-fördröjning) nedan.
 
 **Mål i rad staplar inte om från början.** Ett nytt mål under pågående
-fyrverkeri förlänger bara till 12 s från nu — annars hade ett snabbt 2-mål
+fyrverkeri förlänger bara, och vikten får bara växa — annars hade ett snabbt 2-mål
 kastat tillbaka listen till stroboskopet och man hade tappat känslan av att det
 var *två* mål.
 
-Fyrverkeriet tänds bara på Björklövens mål. Motståndarens mål syns i
-ställningen men rör aldrig listen — lampan hejar inte på fel lag. Knappen
-**"Testa målfyrverkeriet"** på statussidan kör hela sekvensen när som helst.
+Fyrverkeriet tänds bara på Björklövens mål — lampan hejar inte på fel lag.
+Knappen **"Testa målfyrverkeriet"** på statussidan kör hela sekvensen när som
+helst.
+
+### Suck — motståndarmål
+
+Motståndarens mål får inget fyrverkeri, men listen suckar: den faller ihop mot
+nästan mörker på en halv sekund och hämtar sig långsamt under fyra
+(`SIGH_MS`). Sucken köas med samma tv-fördröjning som våra mål och läggs bara
+över de lugna lägena, aldrig över ett fyrverkeri.
+
+### `LED_DANCE` — segerdansen
+
+När strömmen säger att matchen är avgjord och Löven leder: guld- och gröna
+block jagar utåt från mitten med gnistor ovanpå, i 45 sekunder (`DANCE_MS`)
+medan laget tackar publiken. De sista fem sekunderna tonar den över i
+segerläget, som då redan är tänt — lampan väntar inte på played-games när den
+själv sett slutsignalen.
+
+Ett övertidsmål som fortfarande väntar på tv-fördröjningen får brinna klart
+först. Går matchen till straffar står ställningen lika när den avgörs, och då
+vet lampan inte vem som vann: den dansar inte, och segerläget tänds som förut
+när played-games bekräftar vinsten.
+
+Förlust går direkt tillbaka till standby.
 
 ### `LED_UPDATING` — OTA-förlopp
 
@@ -256,11 +390,23 @@ Allt sitter i `include/config.h`:
 #define GLOW_MIN_VAL    22     // andetagets botten
 #define GLOW_FLOOR_VAL  15     // hårt golv per diod — höj om glöden drar åt rött
 #define LED_DITHER      BINARY_DITHER  // DISABLE_DITHER om du ser flimmer
-#define GOAL_DURATION_MS 12000
+#define GOAL_MIN_MS      7000          // minsta målet …
+#define GOAL_MAX_MS      22000         // … och det avgörande
+#define MOOD_RAMP_S      (8 * 60)      // när slutspurten börjar byggas upp
+#define MOOD_THRESHOLD   0.20f         // när den börjar synas
+#define HEART_MAX_BPM    140           // hjärtslagets toppuls
+#define PAUSE_EST_S      (17 * 60)     // timglasets antagna paus
 #define GOAL_DELAY_DEFAULT_S 15        // tv-fördröjning, ändras på statussidan
 #define SPARKLE_MEAN_INTERVAL_MS 700   // högre = färre gnistor
 #define SPARKLE_MAX_GAME_AGE_S (14UL*24*60*60)  // tak när nästa match saknas
 ```
+
+Vill du se matchljuset utan att vänta på en match: **Testa matchljuset** på
+statussidan (`http://lovglod.local/ljus`) har en knapp per läge — slutspurterna,
+paus, övertid, segerdans, mål och suck. Knappen låser listen i läget tills du
+väljer Normal drift, eller tills tio minuter gått (`DEMO_TIMEOUT_MS`); under
+tiden hämtar lampan ingen matchdata. Samma lägen finns på tangenterna i
+seriemonitorn, `d` listar dem.
 
 Vill du testa effekterna utan att vänta på en match: knappen **"Testa
 målfyrverkeriet"** på statussidan. Den tänder alltid direkt — en testknapp som

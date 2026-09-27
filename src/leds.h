@@ -1,5 +1,6 @@
 #pragma once
 #include <Arduino.h>
+#include "config.h"
 
 enum LedMode : uint8_t {
     LED_BOOT,        // gult ljus som flödar in och blir stående
@@ -8,11 +9,25 @@ enum LedMode : uint8_t {
     LED_CONNECTING,  // gult jagande ljus
     LED_WORKING,     // förloppsstapel under blockerande uppstartsarbete
     LED_STANDBY,     // långsam gul glöd (grundläget)
-    LED_LIVE,        // matchen pågår: snabbare glöd, dragen åt bärnsten
-    LED_GOAL,        // MÅL! snabb gul eldgivning
+    LED_LIVE,        // matchen pågår: bärnstensglöd, slutspurt ovanpå när det är spännande
+    LED_GOAL,        // MÅL! stroboskop och kometer, längre ju viktigare mål
     LED_VICTORY,     // vi vann: lugna kometer i timmar efteråt
     LED_UPDATING,    // förloppsindikator vid OTA
-    LED_ERROR        // rött andetag — ingen data
+    LED_ERROR,       // rött andetag — ingen data
+    LED_INTERMISSION,// paus: timglas som rinner ut över pausens antagna längd
+    LED_OVERTIME,    // övertid och straffar: dragkamp mellan lagen
+    LED_DANCE        // slutsignal, vi vann: segerdans, sedan segerläget
+};
+
+// Det listen behöver veta om matchen för att rita matchljuset. main.cpp räknar
+// fram det ur ställningen och live-strömmen och lämnar över det varje varv.
+struct MatchMood {
+    uint8_t  intensity   = 0;     // 0–255, redan utjämnad — se MOOD_SMOOTH_MS
+    int8_t   lead        = 0;     // >0 Björklöven leder, <0 ligger under
+    int8_t   pressure    = 0;     // skottbalans -100–100, + = Björklöven trycker
+    bool     usAtStart   = true;  // Björklövens sida är listens början (index 0)
+    uint32_t pauseStartMs = 0;    // millis() när pausen började synas
+    uint32_t pauseEstMs  = 0;     // pausens antagna längd
 };
 
 // Vilken list som sitter på. Värdet sparas i NVS — numrera aldrig om, lägg
@@ -47,7 +62,20 @@ bool sparkles();
 // delayMs > 0 köar målet istället för att tända direkt — tv-sändningen ligger
 // efter SHL:s live-data, och lampan ska inte avslöja målet innan det syns på
 // skärmen. Kön hålls i tidsordning och töms i render().
-void triggerGoal(uint32_t delayMs = 0);
+//
+// importance, 0–255, avgör hur stort fyrverkeriet blir: längd, stroboskop och
+// täthet i salvorna. Se GOAL_MIN_MS och goalImportance() i main.cpp.
+void triggerGoal(uint32_t delayMs = 0, uint8_t importance = GOAL_TEST_IMPORTANCE);
+
+// Motståndarmål: listen suckar — faller ihop mot mörker och hämtar sig. Köas
+// med samma tv-fördröjning som våra mål, så att den inte avslöjar något heller.
+void sigh(uint32_t delayMs = 0);
+
+// Matchläget för LED_LIVE, LED_INTERMISSION och LED_OVERTIME.
+void setMood(const MatchMood &m);
+
+// Segerdansen. Tar över som målfyrverkeriet och lämnar till segerläget.
+void dance();
 
 // Köade mål som ännu inte tänts, och tiden kvar till det första (0 om kön är
 // tom). Statussidan visar dem så att en tyst list under match går att förklara.

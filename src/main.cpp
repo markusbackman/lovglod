@@ -3,7 +3,12 @@
 //
 //  Standby        långsam gul glöd
 //  Vann senast    några glittrande gnistor ovanpå glöden, till nästa match
-//  Mål            snabb gul eldgivning i 12 sekunder
+//  Match pågår    bärnstensglöd; slutspurt ovanpå när det är tajt mot slutet
+//  Paus           timglas som rinner ut över pausens antagna längd
+//  Övertid        dragkamp mellan lagen, flyttas av skottrycket
+//  Mål            stroboskop och kometer, 7–22 s beroende på hur viktigt
+//  Motståndarmål  listen suckar
+//  Slutsignal     segerdans, sedan segerläget i tre timmar
 //  Inget WiFi     eget nät + captive portal som frågar efter SSID/lösenord
 //  Uppdatering    signerad self-update från GitHub Releases, annars USB
 //
@@ -64,6 +69,8 @@ static bool      gDataOk            = true;   // false när SHL inte svarar alls
 static bool      gFirstFetchPending = false;  // första hämtningen visar förlopp
 static uint32_t  gNextResultPoll    = 0;      // tät koll efter matchens slut
 
+static void resetMood();                      // matchljuset, se nedan
+
 // Ritar upp förloppet mellan blockerande steg. renderNow() krävs: nästa rad
 // efter återropet blockerar ofta i sekunder, och en vanlig render() kan hoppa
 // över bildrutan om FPS-grinden inte släppt än.
@@ -79,49 +86,77 @@ static void showWorkStep(uint8_t done, uint8_t total) {
 // blockerande SHL-hämtning mitt i en animation ser ut som ett fel i
 // animationen, och det är animationen vi tittar på.
 struct DemoItem {
+    char        key;
     const char *name;
     LedMode     mode;
     bool        sparkles;
+    int8_t      lead;        // matchljuset: >0 leder, <0 under
+    uint8_t     intensity;   // matchljuset: 0–255
 };
 
 static const DemoItem kDemo[] = {
-    {"uppstartsflöde",                LED_BOOT,         false},
-    {"portal, setup (grön puls)",     LED_PORTAL,       false},
-    {"portal, WiFi nekat (röd puls)", LED_PORTAL_RETRY, false},
-    {"ansluter (gult jagande ljus)",  LED_CONNECTING,   false},
-    {"uppstartsförlopp (stapel)",     LED_WORKING,      false},
-    {"standby-glöd",                  LED_STANDBY,      false},
-    {"standby + gnistor (vann sist)", LED_STANDBY,      true },
-    {"live, match pågår",             LED_LIVE,         false},
-    {"OTA-uppdatering (stapel)",      LED_UPDATING,     false},
-    {"fel, ingen data (rött)",        LED_ERROR,        false},
-    {"seger — 3 h efter vinst",       LED_VICTORY,      false},
+    {'1', "uppstartsflöde",                LED_BOOT,         false, 0, 0},
+    {'2', "portal, setup (grön puls)",     LED_PORTAL,       false, 0, 0},
+    {'3', "portal, WiFi nekat (röd puls)", LED_PORTAL_RETRY, false, 0, 0},
+    {'4', "ansluter (gult jagande ljus)",  LED_CONNECTING,   false, 0, 0},
+    {'5', "uppstartsförlopp (stapel)",     LED_WORKING,      false, 0, 0},
+    {'6', "standby-glöd",                  LED_STANDBY,      false, 0, 0},
+    {'7', "standby + gnistor (vann sist)", LED_STANDBY,      true,  0, 0},
+    {'8', "live, match pågår",             LED_LIVE,         false, 0, 0},
+    {'9', "OTA-uppdatering (stapel)",      LED_UPDATING,     false, 0, 0},
+    {'0', "fel, ingen data (rött)",        LED_ERROR,        false, 0, 0},
+    {'v', "seger — 3 h efter vinst",       LED_VICTORY,      false, 0, 0},
+    {'h', "slutspurt, lika (hjärtslag)",   LED_LIVE,         false, 0, 230},
+    {'l', "slutspurt, Löven leder (guldregn)", LED_LIVE,     false, 1, 230},
+    {'u', "slutspurt, Löven under (anfallsvåg)", LED_LIVE,   false, -1, 230},
+    {'p', "paus (timglas, en minut)",      LED_INTERMISSION, false, 0, 0},
+    {'o', "övertid (dragkamp)",            LED_OVERTIME,     false, 0, 0},
+    {'c', "slutsignal, vinst (segerdans)", LED_DANCE,        false, 0, 0},
 };
 static const uint8_t kDemoCount = sizeof(kDemo) / sizeof(kDemo[0]);
 
-static int8_t   gDemoIdx  = -1;      // -1 = demoläget av
-static uint32_t gDemoTick = 0;
-static uint8_t  gDemoPct  = 0;
+static int8_t   gDemoIdx   = -1;     // -1 = demoläget av
+static uint32_t gDemoTick  = 0;
+static uint8_t  gDemoPct   = 0;
+static uint32_t gDemoSince = 0;      // senaste tangent — se DEMO_TIMEOUT_MS
 
 static void demoList() {
-    Serial.println("[demo] animationer — siffra visar, v = seger, g = mål, x = normalt");
+    Serial.println("[demo] animationer — tangent visar, g = mål, b = stort mål, s = suck, x = normalt");
     for (uint8_t i = 0; i < kDemoCount; i++)
-        Serial.printf("       %c  %s\n", i == 9 ? '0' : char('1' + i), kDemo[i].name);
+        Serial.printf("       %c  %s\n", kDemo[i].key, kDemo[i].name);
+}
+
+// Matchljuset ritar ur MatchMood, som main.cpp annars räknar fram ur matchen.
+// I demoläget sätts den här i stället — pausen på en minut så att hela
+// timglaset går att se.
+static void demoMood(const DemoItem &d) {
+    MatchMood m;
+    m.intensity    = d.intensity;
+    m.lead         = d.lead;
+    m.usAtStart    = true;
+    m.pauseStartMs = millis();
+    m.pauseEstMs   = 60000;
+    m.pressure     = (int8_t)(sinf(millis() / 4000.0f) * 80);
+    Leds::setMood(m);
 }
 
 static void demoSelect(int8_t idx) {
     if (idx < 0 || idx >= (int8_t)kDemoCount) return;
     gDemoIdx  = idx;
     gDemoPct  = 0;
-    gDemoTick = 0;
+    gDemoTick = millis();
     Leds::setSparkles(kDemo[idx].sparkles);
+    demoMood(kDemo[idx]);
     Leds::lockMode(kDemo[idx].mode);
-    Serial.printf("[demo] %d — %s\n", idx + 1, kDemo[idx].name);
+    status.demo  = kDemo[idx].name;
+    status.state = String("Demo — ") + kDemo[idx].name;
+    Serial.printf("[demo] %c — %s\n", kDemo[idx].key, kDemo[idx].name);
 }
 
 static void demoOff() {
     if (gDemoIdx < 0) return;
     gDemoIdx = -1;
+    status.demo = "";
     Leds::setSparkles(false);
     Leds::unlockMode();
     Serial.println("[demo] av — normal drift igen");
@@ -133,9 +168,30 @@ static void demoLoop() {
     if (gDemoIdx < 0) return;
     const LedMode m = kDemo[gDemoIdx].mode;
 
+    // En lampa i någons vardagsrum får inte bli stående i demoläget för att
+    // ingen tryckte "Normal drift" — då missar den nästa match.
+    if (millis() - gDemoSince > DEMO_TIMEOUT_MS) {
+        Serial.println("[demo] tio minuter utan tangent — tillbaka till normal drift");
+        demoOff();
+        return;
+    }
+
     if (m == LED_BOOT && millis() - gDemoTick > BOOT_FILL_MS + BOOT_HOLD_MS + 600) {
         gDemoTick = millis();
         Leds::lockMode(LED_BOOT);            // spela om flödet med paus emellan
+    }
+
+    // Pausen och segerdansen tar slut; spela om dem med en stund emellan.
+    if ((m == LED_INTERMISSION && millis() - gDemoTick > 70000) ||
+        (m == LED_DANCE && millis() - gDemoTick > DANCE_MS + 8000)) {
+        demoSelect(gDemoIdx);
+        return;
+    }
+    // Dragkampens gräns vandrar med skottrycket.
+    if (m == LED_OVERTIME) {
+        MatchMood mm;
+        mm.pressure = (int8_t)(sinf(millis() / 4000.0f) * 80);
+        Leds::setMood(mm);
     }
 
     if ((m == LED_WORKING || m == LED_UPDATING) && millis() - gDemoTick > 400) {
@@ -236,6 +292,34 @@ static void printSerialHelp() {
     Serial.println("  kommandon:  w = glöm WiFi och starta om   n = kör nätverkstest");
     Serial.println("              i = status                    r = starta om");
     Serial.println("              d = lista animationer          x = avsluta demoläget");
+    Serial.println("              g = mål   b = stort mål   s = suck   (fler i listan under d)");
+}
+
+// Demoläget styrs med samma tangenter från seriemonitorn och från knapparna på
+// /ljus. Falskt om tangenten inte betyder något här.
+static bool demoKey(char c) {
+    c = tolower(c);
+    gDemoSince = millis();
+    switch (c) {
+        case 'x':
+            demoOff();
+            return true;
+        case 'g':
+            Serial.println("[demo] MÅL!");
+            Leds::triggerGoal();
+            return true;
+        case 'b':
+            Serial.println("[demo] AVGÖRANDE MÅL!");
+            Leds::triggerGoal(0, 255);
+            return true;
+        case 's':
+            Serial.println("[demo] motståndarmål — suck");
+            Leds::sigh();
+            return true;
+    }
+    for (uint8_t i = 0; i < kDemoCount; i++)
+        if (kDemo[i].key == c) { demoSelect(i); return true; }
+    return false;
 }
 
 static void handleSerialCommands() {
@@ -280,29 +364,10 @@ static void handleSerialCommands() {
             demoList();
             break;
 
-        case 'x': case 'X':
-            demoOff();
-            break;
-
-        case 'g': case 'G':
-            Serial.println("[demo] MÅL!");
-            Leds::triggerGoal();
-            break;
-
-        case 'v': case 'V':
-            demoSelect(kDemoCount - 1);          // segerläget, sist i listan
-            break;
-
-        case '1': case '2': case '3': case '4': case '5':
-        case '6': case '7': case '8': case '9':
-            demoSelect(c - '1');
-            break;
-        case '0':
-            demoSelect(9);
-            break;
-
         case '\n': case '\r': break;
-        default: printSerialHelp(); break;
+        default:
+            if (!demoKey(c)) printSerialHelp();
+            break;
     }
 }
 
@@ -433,7 +498,7 @@ static void refreshSchedule(bool showProgress) {
     }
     if (nextOk) {
         // Ny match? Nollställ ställningen så att gamla mål inte trigger igen.
-        if (n.uuid != gNext.uuid) gScore = LiveScore();
+        if (n.uuid != gNext.uuid) { gScore = LiveScore(); resetMood(); }
         gNext = n;
         status.nextGame = n.homeCode + " – " + n.awayCode + "  " +
                           formatLocal(n.startUtc, "%a %d %b %H:%M");
@@ -469,6 +534,163 @@ static bool insideLiveWindow() {
     return gNext.valid && insideWindowOf(gNext.startUtc);
 }
 
+// ── Matchljus ───────────────────────────────────────────────────────────────
+// Räknar fram MatchMood ur ställningen och live-strömmen, och väljer läge för
+// listen under matchfönstret. Se "Matchljus" i config.h.
+//
+// Allt som kan avslöja något går med tv-fördröjningen. Slog stämningen om från
+// hjärtslag till guldregn i samma stund som SHL rapporterade målet, vore målet
+// avslöjat femton sekunder innan fyrverkeriet — och innan tv:n.
+
+// Ställningen listen får visa, med tv-fördröjning. Går efter gScore.
+struct ShownScore { uint32_t at; int ours; int theirs; };
+static ShownScore gShownQueue[GOAL_QUEUE_MAX];
+static uint8_t    gShownCount  = 0;
+static int        gShownOurs   = 0;
+static int        gShownTheirs = 0;
+
+static float      gMoodI       = 0;      // utjämnad intensitet, 0–1
+static uint32_t   gMoodAt      = 0;
+static GameState  gLastShown   = GameState::Unknown;
+static uint32_t   gPauseStart  = 0;
+
+static void resetMood() {
+    gShownCount = 0;
+    gShownOurs = gShownTheirs = 0;
+    gMoodI      = 0;
+    gLastShown  = GameState::Unknown;
+}
+
+static void queueShownScore(int ours, int theirs, uint32_t delayMs) {
+    if (!delayMs || gShownCount >= GOAL_QUEUE_MAX) {
+        gShownOurs = ours; gShownTheirs = theirs;
+        return;
+    }
+    gShownQueue[gShownCount++] = {millis() + delayMs, ours, theirs};
+}
+
+static void drainShownScore() {
+    while (gShownCount && (int32_t)(millis() - gShownQueue[0].at) >= 0) {
+        gShownOurs   = gShownQueue[0].ours;
+        gShownTheirs = gShownQueue[0].theirs;
+        for (uint8_t i = 1; i < gShownCount; i++) gShownQueue[i - 1] = gShownQueue[i];
+        gShownCount--;
+    }
+}
+
+static uint32_t tvDelayMs() { return (uint32_t)settings.goalDelayS * 1000; }
+
+// Matchläget som listen får visa: det nya läget först när tv-fördröjningen
+// gått ut sedan det kom, dessförinnan det förra.
+static GameState shownState(const LiveInfo &li) {
+    return millis() - li.stateRxMs >= tvDelayMs() ? li.state : li.prevState;
+}
+
+// Intensiteten, 0–1. Se formeln i config.h.
+static float moodIntensity(const LiveInfo &li, int ours, int theirs) {
+    const GameState st = shownState(li);
+    if (st == GameState::Decided) return 0;     // avgjort — inget kvar att vara spänd på
+    if (st == GameState::Overtime || st == GameState::Shootout || li.period >= 4)
+        return MOOD_OVERTIME;
+    if (st != GameState::Ongoing || !li.hasClock || li.period < 1) return 0;
+
+    const int32_t regLeft = (3 - (int32_t)li.period) * 1200 + max(0, 1200 - (int)li.elapsedS);
+    const float   tf = powf(constrain(1.0f - (float)regLeft / MOOD_RAMP_S, 0.0f, 1.0f), MOOD_CURVE);
+
+    const int   d  = ours - theirs, ad = abs(d);
+    const float close = ad == 0 ? 1.0f : ad == 1 ? 0.8f : ad == 2 ? 0.35f : 0.08f;
+    const float bonus = d == 1 ? MOOD_LEAD_BONUS : d == -1 ? MOOD_TRAIL_BONUS : 0;
+
+    float perMin, balance;
+    Shl::shotPressure(perMin, balance);
+    const float act  = constrain((perMin - MOOD_SHOTS_CALM) / (MOOD_SHOTS_HOT - MOOD_SHOTS_CALM), 0.0f, 1.0f);
+    const float shot = MOOD_SHOT_WEIGHT * act * close * (0.3f + 0.7f * tf);
+
+    return constrain(tf * (close + bonus) + shot, 0.0f, 1.0f);
+}
+
+// Hur mycket ett mål betydde, 0–255, räknat på ställningen efter målet.
+// Övertidsmål avgör matchen och får alltid det största fyrverkeriet.
+static uint8_t goalImportance(int ours, int theirs) {
+    const LiveInfo &li = Shl::liveInfo();
+    if (li.period >= 4 || li.state == GameState::Overtime) return 255;
+    const int   d   = ours - theirs;
+    float imp = 0.25f + 0.75f * moodIntensity(li, ours, theirs);
+    if (li.period == 3 && (d == 0 || d == 1)) imp += 0.15f;     // kvittering eller ledning i tredje
+    return (uint8_t)(constrain(imp, 0.0f, 1.0f) * 255);
+}
+
+// Vilket läge listen ska stå i under matchfönstret, och stämningen till det.
+static LedMode serviceMood() {
+    drainShownScore();
+    const LiveInfo &li = Shl::liveInfo();
+    const GameState st = shownState(li);
+
+    if (st == GameState::Intermission && gLastShown != GameState::Intermission)
+        gPauseStart = millis();
+    gLastShown = st;
+
+    // Glid mot målet i stället för att hoppa när en klockram kommer.
+    const float    target = moodIntensity(li, gShownOurs, gShownTheirs);
+    const uint32_t now    = millis();
+    const float    dt     = gMoodAt ? (float)(now - gMoodAt) : 0;
+    gMoodAt = now;
+    gMoodI += (target - gMoodI) * (1.0f - expf(-dt / MOOD_SMOOTH_MS));
+
+    float perMin, balance;
+    Shl::shotPressure(perMin, balance);
+
+    MatchMood m;
+    m.intensity    = (uint8_t)(constrain(gMoodI, 0.0f, 1.0f) * 255);
+    m.lead         = (int8_t)constrain(gShownOurs - gShownTheirs, -1, 1);
+    m.pressure     = (int8_t)(constrain(balance, -1.0f, 1.0f) * 100);
+    // Hemmalaget till vänster, som i tv-grafiken — listens början är vänster.
+    m.usAtStart    = gNext.homeIsUs;
+    m.pauseStartMs = gPauseStart;
+    m.pauseEstMs   = 1000UL * (li.period >= 3 ? PAUSE_OT_EST_S : PAUSE_EST_S);
+    Leds::setMood(m);
+
+    switch (st) {
+        case GameState::Intermission: return LED_INTERMISSION;
+        case GameState::Overtime:
+        case GameState::Shootout:     return LED_OVERTIME;
+        case GameState::Decided:
+            // Förlust: tillbaka till vardagsglöden. Vinsten tas om hand av
+            // segerdansen och segerläget. Lika betyder straffar vi inte vet
+            // utgången av — played-games avgör det.
+            if (gShownOurs < gShownTheirs) return LED_STANDBY;
+            return LED_LIVE;
+        default:                      return LED_LIVE;
+    }
+}
+
+// Slutsignal och vi leder: segerdans, och segerläget tänds direkt i stället
+// för att vänta på played-games. Matchens nedsläpp är identiteten, samma som
+// maybeArmVictory() använder, så vinsten firas inte två gånger.
+static void maybeDance() {
+    if (!gNext.valid || !gTimeSynced) return;
+    if (shownState(Shl::liveInfo()) != GameState::Decided) return;
+    if (gShownOurs <= gShownTheirs) return;
+    if ((uint32_t)gNext.startUtc == settings.victoryGame) return;
+    // Låt ett köat eller pågående övertidsmål brinna klart först.
+    if (Leds::mode() == LED_GOAL || Leds::pendingGoals()) return;
+
+    settings.noteVictory((uint32_t)gNext.startUtc,
+                         (uint32_t)(time(nullptr) + VICTORY_DURATION_MS / 1000));
+    Serial.printf("[seger] slutsignal %d–%d — segerdans, sedan firar i %lu h\n",
+                  gShownOurs, gShownTheirs, VICTORY_DURATION_MS / 3600000UL);
+    Leds::dance();
+}
+
+static const char *moodStateText(LedMode m) {
+    switch (m) {
+        case LED_INTERMISSION: return "Paus";
+        case LED_OVERTIME:     return "Övertid";
+        case LED_STANDBY:      return "Matchen slut";
+        default:               return "Match pågår";
+    }
+}
+
 // Jämför ny ställning mot den gamla och fyrar av vid mål.
 static void applyScore(const LiveScore &fresh, const char *src = "push") {
     TRACE("[score] %s: %d–%d (förra %s%d–%d)\n", src, fresh.home, fresh.away,
@@ -490,6 +712,8 @@ static void applyScore(const LiveScore &fresh, const char *src = "push") {
                   settings.liveScoreHome, settings.liveScoreAway, gScore.home, gScore.away);
         }
         settings.noteLiveScore(gScore.home, gScore.away);
+        queueShownScore(gNext.homeIsUs ? gScore.home : gScore.away,
+                        gNext.homeIsUs ? gScore.away : gScore.home, 0);
         return;
     }
 
@@ -518,12 +742,19 @@ static void applyScore(const LiveScore &fresh, const char *src = "push") {
 
     TRACE("[score] dH=%d dA=%d, vi är %s → våra %d, deras %d\n", dHome, dAway,
           gNext.homeIsUs ? "hemma" : "borta", ourGoals, theirGoals);
+    const int ours   = gNext.homeIsUs ? gScore.home : gScore.away;
+    const int theirs = gNext.homeIsUs ? gScore.away : gScore.home;
+    queueShownScore(ours, theirs, delayMs);
+
     if (ourGoals > 0) {
-        Serial.printf("[MÅL] Björklöven! %d–%d%s\n", fresh.home, fresh.away,
+        const uint8_t imp = goalImportance(ours, theirs);
+        Serial.printf("[MÅL] Björklöven! %d–%d, vikt %u%s\n", fresh.home, fresh.away, imp,
                       delayMs ? "  (väntar på tv)" : "");
-        Leds::triggerGoal(delayMs);
+        Leds::triggerGoal(delayMs, imp);
     } else if (theirGoals > 0) {
-        Serial.printf("[mål] motståndaren. %d–%d\n", fresh.home, fresh.away);
+        Serial.printf("[mål] motståndaren. %d–%d%s\n", fresh.home, fresh.away,
+                      delayMs ? "  (suck väntar på tv)" : "");
+        Leds::sigh(delayMs);
     }
 }
 
@@ -545,6 +776,7 @@ static void serviceLive() {
             Serial.println("[live] matchfönster stängt");
             Shl::sseStop();
             gScore = LiveScore();
+            resetMood();
             status.liveScore = "—";
             // Ett mål som fortfarande väntar på tv-fördröjningen när fönstret
             // stänger hör inte hemma i nästa match.
@@ -571,6 +803,8 @@ static void serviceLive() {
     }
 
     status.sseLive = Shl::sseConnected();
+
+    maybeDance();
 
     // Nära slutsignalen: fråga played-games ofta, så segerläget tänds i
     // anslutning till matchen och inte vid nästa sexttimmarshämtning. Först
@@ -859,7 +1093,8 @@ void setup() {
 #ifdef LIVE_TRACE
 static const char *modeName(LedMode m) {
     static const char *n[] = {"BOOT", "PORTAL", "PORTAL_RETRY", "CONNECTING", "WORKING",
-                              "STANDBY", "LIVE", "GOAL", "VICTORY", "UPDATING", "ERROR"};
+                              "STANDBY", "LIVE", "GOAL", "VICTORY", "UPDATING", "ERROR",
+                              "INTERMISSION", "OVERTIME", "DANCE"};
     return m < sizeof(n) / sizeof(n[0]) ? n[m] : "?";
 }
 
@@ -893,6 +1128,7 @@ void loop() {
     Portal::loop();
     serviceOtaValidation();
     handleSerialCommands();
+    if (Portal::demoPending()) demoKey(Portal::takeDemo());
     demoLoop();
 
     // Demoläget äger listen helt — inga hämtningar, inga lägesbyten bakom ryggen.
@@ -993,7 +1229,8 @@ void loop() {
             // Håll LED-läget i synk med tillståndet (målfyrverkeriet får styra själv).
             // Kör efter refreshSchedule() i samma varv, så förloppsstapeln ersätts
             // av rätt läge så fort hämtningen är klar och kan inte fastna.
-            if (Leds::mode() != LED_GOAL && Leds::mode() != LED_UPDATING) {
+            if (Leds::mode() != LED_GOAL && Leds::mode() != LED_UPDATING &&
+                Leds::mode() != LED_DANCE) {
                 if (victoryActive()) {
                     // Går före felläget med flit: segern är redan känd och
                     // sparad, så ett tillfälligt SHL-avbrott ska inte avbryta
@@ -1003,9 +1240,15 @@ void loop() {
                 } else if (!gDataOk && !pushActive()) {
                     Leds::setMode(LED_ERROR);
                     status.state = "Ingen kontakt med SHL";
+                } else if (gInLiveWindow) {
+                    const LedMode m = pushActive() ? LED_LIVE : serviceMood();
+                    Leds::setMode(m);
+                    status.state = moodStateText(m);
+                    if (m == LED_LIVE && gMoodI >= MOOD_THRESHOLD)
+                        status.state += " · slutspurt " + String((int)(gMoodI * 100)) + " %";
                 } else {
-                    Leds::setMode(gInLiveWindow ? LED_LIVE : LED_STANDBY);
-                    status.state = gInLiveWindow ? "Match pågår" : "Standby";
+                    Leds::setMode(LED_STANDBY);
+                    status.state = "Standby";
                 }
             }
             break;

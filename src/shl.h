@@ -26,6 +26,20 @@ struct LastResult {
     String summary;
 };
 
+// Matchläget ur live-strömmen, utöver ställningen. Allt är det senast
+// rapporterade — lampan gissar aldrig framåt. Se "Matchljus" i config.h för
+// hur ofta och hur sent det kommer.
+enum class GameState : uint8_t { Unknown, Ongoing, Intermission, Overtime, Shootout, Decided };
+
+struct LiveInfo {
+    GameState state     = GameState::Unknown;
+    GameState prevState = GameState::Unknown;
+    uint32_t  stateRxMs = 0;       // millis() när state kom
+    uint8_t   period    = 0;       // 1–3, 4 = övertid, 5 = straffar
+    uint16_t  elapsedS  = 0;       // speltid i perioden enligt senaste klockramen
+    bool      hasClock  = false;
+};
+
 namespace Shl {
 
 // ── Pollning (HTTPS GET mot www.shl.se) ────────────────────────────────────
@@ -50,6 +64,13 @@ bool sseConnected();
 
 // Anropas varje varv i loop(). Returnerar true när en ny ställning lästs in.
 bool ssePump(LiveScore &out);
+
+// Matchläget enligt strömmen. Nollställs när strömmen startas för en ny match.
+const LiveInfo &liveInfo();
+
+// Skottryck just nu: skott per minut (båda lagen, avklingande) och balansen
+// mellan lagen, -1–1 där +1 är att bara Björklöven skjuter.
+void shotPressure(float &perMin, float &balance);
 
 // ── Datakälla ──────────────────────────────────────────────────────────────
 // Bas-URL:erna lampan hämtar från. Visas på felsökningssidan.

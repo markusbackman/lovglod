@@ -242,9 +242,98 @@
 // Fem timmar från nedsläpp är drygt två timmar efter slutsignalen.
 #define VICTORY_MAX_GAME_AGE_S (5UL * 60 * 60)
 
-// Målfyrverkeri
-#define GOAL_DURATION_MS 12000
-#define GOAL_STROBE_MS   2500       // inledande stroboskop innan "skotten"
+// Målfyrverkeri. Skalar med hur mycket målet betydde (0–255, se
+// goalImportance() i main.cpp): ett tidigt mål i en utklassning får den korta
+// varianten, en sen kvittering eller ett övertidsmål den långa. Mitt emellan
+// ligger testknappen, GOAL_TEST_IMPORTANCE, som ger den gamla längden på 12 s.
+#define GOAL_MIN_MS          7000   // vikt 0
+#define GOAL_MAX_MS          22000  // vikt 255
+#define GOAL_STROBE_MIN_MS   1200
+#define GOAL_STROBE_MAX_MS   4000
+#define GOAL_VOLLEY_SLOW_MS  200    // tid mellan kometsalvorna vid vikt 0
+#define GOAL_VOLLEY_FAST_MS  60     // ...och vid vikt 255
+#define GOAL_TEAM_COLORS_AT  204    // från den här vikten skjuts varannan salva i grönt
+#define GOAL_TEST_IMPORTANCE 85     // ≈ 12 s, samma som fyrverkeriet alltid varit
+
+// ─────────────────────────────────────────────────────────────
+//  Matchljus — det lampan visar under matchen
+// ─────────────────────────────────────────────────────────────
+// Allt nedan bygger på det SHL:s live-ström faktiskt skickar, uppmätt i
+// inspelningen av ÖRE–IFB (mock/recordings/2026-09-24-OHK-IFB):
+//
+//   liveState  ongoing / intermission / overtime / decided, en gång per byte,
+//              10–31 s efter att det hänt i hallen
+//   gameTime   speltid i perioden, var 20–60:e sekund och bara när klockan
+//              rört sig. Säger aldrig om klockan står. De sista sekunderna av
+//              en period rapporteras oftast inte alls.
+//   shot       varje skott, med lag, ~36 s efter skottet
+//
+// Därför räknar ingenting här sekunder mot en slutsignal. Klockan duger till
+// "ungefär åtta minuter kvar", inte till "tio sekunder kvar".
+//
+// Intensiteten, 0–1, är hur spännande lampan tycker att det är:
+//
+//   tid × (tajthet + läge) + skottryck
+//
+// tid      0 fram till MOOD_RAMP_S före slutet av tredje, sedan upp mot 1
+//          längs kurvan MOOD_CURVE (över 1: det mesta händer på slutet)
+// tajthet  lika 1, ett måls skillnad 0,8, två 0,35, mer 0,08
+// läge     tillägg när Löven leder eller ligger under med exakt ett mål
+// skott    MOOD_SHOT_WEIGHT × tempot i skotten × tajtheten
+#define MOOD_RAMP_S         (8 * 60)
+#define MOOD_CURVE          1.6f
+#define MOOD_LEAD_BONUS     0.20f
+#define MOOD_TRAIL_BONUS    0.10f
+#define MOOD_SHOT_WEIGHT    0.30f
+#define MOOD_OVERTIME       1.0f    // övertiden står alltid på helspänn
+
+// Slutspurten tonas in över matchglöden när intensiteten passerar tröskeln,
+// och är helt framme ~25 procentenheter senare.
+#define MOOD_THRESHOLD      0.20f
+#define MOOD_FADE           0.25f
+
+// Intensiteten glider mot sitt nya värde i stället för att hoppa när en
+// klockram kommer — mellan två ramar kan det ha gått en minut i matchen.
+#define MOOD_SMOOTH_MS      10000
+
+// Skottrycket är en avklingande summa per lag, i väggklocktid. Halveringstiden
+// avgör hur snabbt det glömmer. Tempot räknas mot ett normalt flöde på ~1,3
+// skott per minut väggtid (125 skott på ÖRE–IFB:s ~95 minuter i perioderna);
+// MOOD_SHOTS_HOT per minut är fullt ös.
+#define MOOD_SHOT_HALF_LIFE_S 180
+#define MOOD_SHOTS_CALM     1.0f
+#define MOOD_SHOTS_HOT      2.5f
+// Skott äldre än så här när de kommer räknas inte. Efter en återanslutning
+// skickar servern om hela matchens historik, och den ska inte se ut som ett
+// anfall.
+#define MOOD_SHOT_MAX_AGE_S 180
+
+// Hjärtslaget (slutspurt vid jämnt läge)
+#define HEART_REST_BPM      55
+#define HEART_MAX_BPM       140
+// Hur långt mot rött färgen drar vid full intensitet, 0–1.
+#define MOOD_HEAT           0.75f
+
+// Pausen. Längden står inte i datan — ÖRE–IFB hade 17:39 och 18:26, och 81 s
+// före övertiden. Timglaset rinner ut på den antagna tiden och andas sedan
+// "snart igång" tills nästa period faktiskt rapporteras.
+#define PAUSE_EST_S         (17 * 60)
+#define PAUSE_OT_EST_S      90
+
+// Motståndarens färg i dragkampen under övertid. Kall blåvit — lampan hejar
+// inte på fel lag, den visar bara var gränsen går.
+#define OPP_R 168
+#define OPP_G 196
+#define OPP_B 255
+
+// Segerdansen vid slutsignalen, innan segerläget tar vid.
+#define DANCE_MS            45000
+// Suck vid motståndarmål: listen faller ihop och hämtar sig.
+#define SIGH_MS             4000
+
+// Demoläget (seriemonitorn och /ljus) släpper av sig självt efter så här lång
+// tid utan ny tangent. Medan det står på hämtar lampan ingen matchdata.
+#define DEMO_TIMEOUT_MS     (10UL * 60 * 1000)
 
 // TV-fördröjning. Live-datan från SHL kommer före tv-bilden — utan fördröjning
 // skulle lampan avslöja målet för alla i rummet innan det syns på skärmen.

@@ -1,0 +1,1085 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LövGlöd · Matchljuslabbet</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Antonio:wght@500;700&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#06120c; --panel:#0c1f16; --panel2:#11291d; --line:#1d3a2b;
+  --green:#1f7a45; --gold:#f5c400; --text:#e8f0eb; --mute:#86a192; --red:#e5322d;
+  --glow: 0,0,0;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 Barlow,system-ui,sans-serif}
+h1,h2,h3{font-family:Antonio,'Arial Narrow',sans-serif;text-transform:uppercase;letter-spacing:.03em;margin:0;font-weight:700}
+button,select,input{font:inherit;color:inherit}
+button{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:6px 10px;cursor:pointer}
+button:hover{border-color:var(--gold)}
+button.on{background:var(--gold);color:#111;border-color:var(--gold)}
+button:disabled{opacity:.35;cursor:default;border-color:var(--line)}
+select{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:6px 8px}
+.wrap{max-width:1480px;margin:0 auto;padding:18px 22px 60px}
+header{display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;margin-bottom:14px}
+header h1{font-size:30px;color:var(--gold)}
+header h1 span{color:var(--text)}
+header p{margin:0;color:var(--mute);max-width:820px}
+
+/* Scen */
+.stage{position:relative;border-radius:14px;padding:34px 26px 22px;
+  background:radial-gradient(ellipse 70% 120% at 50% 40%, rgba(var(--glow),.22), transparent 70%), #030806;
+  border:1px solid var(--line);overflow:hidden}
+.lamp{position:relative;border-radius:10px;padding:10px 12px;background:#0b0f0d;border:1px solid #1a221e;
+  box-shadow:0 0 60px 6px rgba(var(--glow),.28), inset 0 0 20px rgba(0,0,0,.8)}
+#main{display:block;width:100%;height:96px}
+#main.diffuse{filter:blur(7px) saturate(1.1)}
+.solo-banner{position:absolute;top:8px;left:50%;transform:translateX(-50%);background:var(--gold);color:#111;
+  border-radius:20px;padding:3px 12px;font-weight:600;font-size:12px;display:none;gap:8px;align-items:center;z-index:2}
+.solo-banner button{padding:0 8px;font-size:12px;background:#111;color:var(--gold);border:0}
+.hud{display:grid;grid-template-columns:auto 1fr auto;gap:22px;align-items:center;margin-top:18px}
+.score{display:flex;align-items:center;gap:14px;font-family:Antonio,sans-serif}
+.score .team{font-size:22px;letter-spacing:.05em;color:var(--mute)}
+.score .team.loven{color:var(--gold)}
+.score .num{font-size:44px;line-height:1;font-weight:700;min-width:30px;text-align:center}
+.score .dash{font-size:30px;color:var(--mute)}
+.clock{display:flex;flex-direction:column;gap:3px;margin-left:10px}
+.badge{display:inline-block;font-family:Antonio,sans-serif;font-size:13px;letter-spacing:.08em;padding:2px 8px;border-radius:4px;background:var(--panel2);border:1px solid var(--line)}
+.badge.live{background:var(--red);border-color:var(--red)}
+.badge.paus{background:#2b5d8a;border-color:#2b5d8a}
+.badge.ot{background:var(--gold);color:#111;border-color:var(--gold)}
+.badge.final{background:var(--green);border-color:var(--green)}
+.clock .time{font-family:Antonio,sans-serif;font-size:26px;letter-spacing:.04em}
+.meter{display:flex;flex-direction:column;gap:5px}
+.meter .row{display:flex;justify-content:space-between;color:var(--mute);font-size:12px}
+.meter .bar{height:10px;border-radius:5px;background:#10251a;overflow:hidden;position:relative}
+.meter .bar i{position:absolute;inset:0 auto 0 0;width:0;background:linear-gradient(90deg,#f5c400,#ff7a00 60%,#ff2a00)}
+.meter .bar b{position:absolute;top:-3px;bottom:-3px;width:2px;background:#fff8;}
+.meter .why{font-size:12px;color:var(--mute)}
+.active{font-size:13px;text-align:right;min-width:230px}
+.active b{display:block;font-size:15px;color:var(--gold)}
+.active .ma{color:var(--mute);font-size:12px}
+.active .ma.cap{color:#ff6b5b}
+
+/* Tidslinje */
+.timeline{margin-top:14px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 16px}
+.tl-ctrl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}
+.tl-ctrl .sep{width:1px;height:22px;background:var(--line);margin:0 4px}
+.tl-ctrl .lbl{color:var(--mute);font-size:12px}
+.track{position:relative;height:34px}
+.track .segs{position:absolute;inset:8px 0;display:flex;border-radius:4px;overflow:hidden}
+.track .seg{height:100%;border-right:1px solid var(--bg);font-size:10px;color:#fff9;display:flex;align-items:center;justify-content:center;overflow:hidden;white-space:nowrap}
+.seg.pre{background:#1a2a22}.seg.period{background:#1f5a38}.seg.intermission{background:repeating-linear-gradient(45deg,#18344a,#18344a 4px,#1c3d57 4px,#1c3d57 8px)}
+.seg.ot{background:#8a6d00}.seg.so{background:#8a4a00}.seg.final{background:#243029}
+.track .pin{position:absolute;top:2px;width:10px;height:10px;margin-left:-5px;border-radius:50%;border:2px solid var(--bg);pointer-events:none}
+.pin.L{background:var(--gold)}.pin.O{background:#9aa;top:auto;bottom:2px}
+.track .shot{position:absolute;top:8px;width:1px;height:5px;background:rgba(245,196,0,.55);pointer-events:none}
+.track .shot.O{top:auto;bottom:8px;background:rgba(170,190,200,.5)}
+.truth{grid-column:1/-1;font-size:12px;color:var(--mute);margin-top:-8px}
+.track input[type=range]{position:absolute;inset:0;width:100%;height:100%;margin:0;background:transparent;-webkit-appearance:none;appearance:none;cursor:pointer}
+.track input[type=range]::-webkit-slider-runnable-track{background:transparent;height:34px}
+.track input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:4px;height:34px;background:#fff;border-radius:2px;box-shadow:0 0 8px #fff}
+.track input[type=range]::-moz-range-track{background:transparent}
+.track input[type=range]::-moz-range-thumb{width:4px;height:34px;background:#fff;border:0;border-radius:2px}
+
+/* Layout */
+.cols{display:grid;grid-template-columns:340px 1fr;gap:18px;margin-top:18px;align-items:start}
+@media (max-width:1000px){.cols{grid-template-columns:1fr}.hud{grid-template-columns:1fr}.active{text-align:left}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:14px}
+.panel h2{font-size:16px;color:var(--gold);margin-bottom:10px}
+.panel .hint{color:var(--mute);font-size:12px;margin:-4px 0 10px}
+.ctl{display:grid;grid-template-columns:1fr 54px;gap:2px 8px;align-items:center;margin-bottom:9px}
+.ctl label{font-size:13px}
+.ctl output{font-variant-numeric:tabular-nums;text-align:right;color:var(--gold);font-size:12px}
+.ctl input[type=range]{grid-column:1/3;width:100%;accent-color:var(--gold)}
+.ctl small{grid-column:1/3;color:var(--mute);font-size:11px;line-height:1.3}
+.chk{display:flex;gap:8px;align-items:center;margin-bottom:8px;font-size:13px}
+.chk input{accent-color:var(--gold)}
+.btns{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.row2{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.row2 select{flex:1}
+
+/* Galleri */
+.group{margin-bottom:22px}
+.group-h{display:flex;align-items:baseline;gap:12px;margin-bottom:8px;flex-wrap:wrap}
+.group-h h2{font-size:20px}
+.group-h .when{color:var(--mute);font-size:13px}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px;cursor:pointer;position:relative;transition:border-color .15s}
+.card:hover{border-color:#3d6b52}
+.card.sel{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold) inset}
+.card canvas{display:block;width:100%;height:30px;border-radius:5px;background:#030605}
+.card .meta{margin-top:8px;padding-right:56px}
+.card .meta b{font-size:14px}
+.card .meta .tag{font-size:10px;color:#111;background:var(--gold);border-radius:3px;padding:0 5px;margin-left:6px;vertical-align:2px}
+.card .meta p{margin:3px 0 0;color:var(--mute);font-size:12px;line-height:1.35}
+.card .ci{font-size:11px;color:var(--mute);margin-top:4px;font-variant-numeric:tabular-nums}
+.card .big{position:absolute;right:10px;bottom:10px;font-size:11px;padding:3px 8px}
+kbd{background:var(--panel2);border:1px solid var(--line);border-radius:3px;padding:0 4px;font-size:11px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>LövGlöd <span>· Matchljuslabbet</span></h1>
+    <p>Förslag på hur listen kan använda det lampan redan vet under match — ställning, klocka, paus och övertid.
+      Spela upp ÖRE–IFB från 24 september — med riktiga mål, skott och fördröjningar — eller hoppa till ett läge.
+      Tidslinjen räknas i speltid; lampan ser bara det SHL:s ström faktiskt skickar. Klicka ett kort för att välja det förslaget
+      för sin situation; <b>Stort</b> visar det ensamt i huvudlisten. <kbd>Mellanslag</kbd> spela/pausa ·
+      <kbd>G</kbd> Löven-mål · <kbd>O</kbd> motståndarmål.</p>
+  </header>
+
+  <section class="stage">
+    <div class="solo-banner" id="soloBanner"><span id="soloName"></span><button id="soloOff">Tillbaka till matchen</button></div>
+    <div class="lamp"><canvas id="main"></canvas></div>
+    <div class="hud">
+      <div class="score">
+        <span class="team" id="homeName">ÖRE</span><span class="num" id="homeScore">0</span>
+        <span class="dash">–</span>
+        <span class="num" id="awayScore">0</span><span class="team" id="awayName">IFB</span>
+        <div class="clock"><span class="badge" id="phaseBadge">FÖRE</span><span class="time" id="clock">20:00</span></div>
+      </div>
+      <div class="meter">
+        <div class="row"><span>Intensitet</span><span id="iVal">0 %</span></div>
+        <div class="bar"><i id="iBar"></i><b id="iThr"></b></div>
+        <div class="why" id="iWhy"></div>
+      </div>
+      <div class="active"><span class="lbl">Listen visar</span><b id="activeName">—</b><span class="ma" id="ma"></span></div>
+      <div class="truth" id="truthLine"></div>
+    </div>
+  </section>
+
+  <section class="timeline">
+    <div class="tl-ctrl">
+      <button id="play">▶ Spela</button>
+      <span class="lbl">Fart</span>
+      <select id="speed">
+        <option value="1">1× (verklig)</option><option value="5">5×</option><option value="20">20×</option>
+        <option value="60" selected>60×</option><option value="180">180×</option>
+      </select>
+      <span class="sep"></span>
+      <span class="lbl">Hoppa till</span>
+      <span id="jumps" class="btns" style="margin:0"></span>
+    </div>
+    <div class="track" id="track"><div class="segs" id="segs"></div><div id="pins"></div><input type="range" id="pos" min="0" max="1000" step="1" value="0"></div>
+  </section>
+
+  <div class="cols">
+    <aside>
+      <div class="panel">
+        <h2>Match</h2>
+        <div class="row2"><select id="scen"></select></div>
+        <label class="chk"><input type="checkbox" id="lovenHome"> Löven spelar hemma (vänster halva är hemmalagets)</label>
+        <div class="btns">
+          <button id="goalL">+ Löven-mål nu</button>
+          <button id="goalO">+ Motståndarmål</button>
+          <button id="undo">Ångra mål</button>
+        </div>
+        <label class="chk"><input type="checkbox" id="freeze" checked> Frys klockan medan målet firas</label>
+        <div class="row2"><span style="font-size:13px">Straffar vinns av</span>
+          <select id="soWinner"><option value="L">Löven</option><option value="O">Motståndaren</option></select></div>
+      </div>
+
+      <div class="panel">
+        <h2>Data</h2>
+        <p class="hint">Ställningen och klockan överst är det <i>lampan</i> vet. Med realistisk data kommer klockan i hopp var 2–77:e spelsekund och aldrig de sista sekunderna, periodbyten 18 s sent, skott 36 s och mål 54–77 s efter att de hänt.</p>
+        <label class="chk"><input type="checkbox" id="real"> Realistisk data (som i ÖRE–IFB)</label>
+        <label class="chk"><input type="checkbox" id="shotFlash"> Glimt vid Löven-skott</label>
+        <div id="ctlData"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Intensitet</h2>
+        <p class="hint">Hur spännande lampan tycker att det är, 0–100 %. Styr alla slutspurtsförslag.</p>
+        <label class="chk"><input type="checkbox" id="manual"> Styr intensiteten för hand</label>
+        <div id="ctlI"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Känsla</h2>
+        <div id="ctlFeel"></div>
+        <div class="row2"><span style="font-size:13px">Motståndarens färg</span><input type="color" id="oppColor" value="#a8c4ff"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Lampan</h2>
+        <div id="ctlLamp"></div>
+        <label class="chk"><input type="checkbox" id="diffuse"> Visa genom diffusor (mjukt, som bakom skylten)</label>
+        <div class="btns">
+          <button id="copy">Kopiera val som JSON</button>
+          <button id="reset">Återställ</button>
+        </div>
+      </div>
+    </aside>
+
+    <main id="gallery"></main>
+  </div>
+</div>
+
+<script>
+'use strict';
+// ─────────────────────────────────────────────────────────────
+//  Hjälpare
+// ─────────────────────────────────────────────────────────────
+const TAU = Math.PI * 2;
+const clamp = (x, a = 0, b = 1) => x < a ? a : x > b ? b : x;
+const lerp = (a, b, t) => a + (b - a) * t;
+const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a)); return t * t * (3 - 2 * t); };
+const sq = x => x * x;
+const mixC = (a, b, t) => [lerp(a[0], b[0], t), lerp(a[1], b[1], t), lerp(a[2], b[2], t)];
+function hash(i) { let x = Math.imul(i ^ 0x9e3779b9, 0x85ebca6b); x ^= x >>> 13; x = Math.imul(x, 0xc2b2ae35); x ^= x >>> 16; return (x >>> 0) / 4294967296; }
+const hash2 = (a, b) => hash(Math.imul(a | 0, 73856093) ^ Math.imul(b | 0, 19349663));
+function noise1(x) { const i = Math.floor(x), f = x - i, u = f * f * (3 - 2 * f); return lerp(hash(i), hash(i + 1), u); }
+function noise2(x, y) {
+  const i = Math.floor(x), j = Math.floor(y), fx = x - i, fy = y - j;
+  const u = fx * fx * (3 - 2 * fx), v = fy * fy * (3 - 2 * fy);
+  return lerp(lerp(hash2(i, j), hash2(i + 1, j), u), lerp(hash2(i, j + 1), hash2(i + 1, j + 1), u), v);
+}
+const tri = u => 1 - Math.abs(((u % 1) + 1) % 1 * 2 - 1);   // 0→1→0 per varv
+const hexRgb = h => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+
+// Färger som i firmwaren (config.h)
+const C = {
+  yellow: [255, 224, 0], amber: [255, 165, 0], gold: [255, 190, 0], green: [0, 255, 20],
+  white: [255, 250, 225], red: [255, 18, 0], ember: [255, 70, 0], warmWhite: [255, 170, 80],
+};
+function heatColor(h) {           // 0 gult → 0,5 orange → 1 rött
+  h = clamp(h);
+  return h < 0.5 ? mixC([255, 200, 0], [255, 110, 0], h * 2) : mixC([255, 110, 0], [255, 22, 0], (h - 0.5) * 2);
+}
+function fireRGB(h) {             // glödpalett: mörkrött → orange → gult → vitt
+  h = clamp(h);
+  if (h < 0.4) return [15 + h / 0.4 * 185, 0, 0];
+  if (h < 0.75) { const k = (h - 0.4) / 0.35; return [200 + 55 * k, 170 * k, 0]; }
+  const k = (h - 0.75) / 0.25; return [255, 170 + 85 * k, 150 * k];
+}
+
+class Buf {
+  constructor(n) { this.n = n; this.d = new Float32Array(n * 3); }
+  clear() { this.d.fill(0); }
+  set(i, c, v) { if (i < 0 || i >= this.n) return; const k = v / 255, o = i * 3; this.d[o] = c[0] * k; this.d[o + 1] = c[1] * k; this.d[o + 2] = c[2] * k; }
+  rgb(i, c) { this.set(i, c, 255); }
+  add(i, c, v) { i = Math.round(i); if (i < 0 || i >= this.n) return; const k = v / 255, o = i * 3; this.d[o] += c[0] * k; this.d[o + 1] += c[1] * k; this.d[o + 2] += c[2] * k; }
+  splat(x, c, v, w) {
+    const a = Math.floor(x - 3 * w), b = Math.ceil(x + 3 * w);
+    for (let i = a; i <= b; i++) { if (i < 0 || i >= this.n) continue; const g = Math.exp(-sq((i - x) / w)); const k = v * g / 255, o = i * 3; this.d[o] += c[0] * k; this.d[o + 1] += c[1] * k; this.d[o + 2] += c[2] * k; }
+  }
+  mix(o, w) { const d = this.d, e = o.d; for (let j = 0; j < d.length; j++) d[j] = d[j] * (1 - w) + e[j] * w; }
+  mul(m) { const d = this.d; for (let j = 0; j < d.length; j++) d[j] *= m; }
+}
+
+// Gnistor utan tillstånd: varje tidslucka slumpar om den tänder en diod.
+function sparkles(b, t, rate, col = C.white, seed = 1, decay = 14, peak = 255) {
+  if (rate <= 0) return;
+  const slot = 0.02, cur = Math.floor(t / slot), look = Math.ceil(0.45 / slot), p = rate * slot;
+  for (let s = cur - look; s <= cur; s++) {
+    if (hash2(s, seed) < p) {
+      const i = Math.floor(hash2(s, seed + 7) * b.n), age = t - s * slot;
+      if (age >= 0) b.add(i, col, peak * Math.exp(-age * decay));
+    }
+  }
+}
+const breath = (ph, lo, hi) => { const s = (Math.sin(ph * TAU) + 1) / 2; return lo + (hi - lo) * s * s; };
+function glow(b, t, col, v, amt = 0.36, floor = 15) {
+  for (let i = 0; i < b.n; i++) b.set(i, col, Math.max(floor, v * (1 + amt * (noise1(i * 0.18 + t * 0.25) - 0.5))));
+}
+// Index för block som räknas utåt från mitten, på vänster eller höger halva.
+const sideIdx = (n, o, left) => left ? Math.floor((n - 1) / 2) - 1 - o : Math.ceil((n - 1) / 2) + 1 + o;
+// Inga effekter räknar sekunder mot en slutsignal: matchklockan kommer var 20–60:e
+// sekund, visar tid i aktivt spel och säger aldrig om den står still.
+
+// ─────────────────────────────────────────────────────────────
+//  Grundlägen som finns i firmwaren idag
+// ─────────────────────────────────────────────────────────────
+function fxLive(b, t) { glow(b, t, C.amber, breath(t * 18 / 60, 30, 156), 0.36, 23); }
+function fxStandby(b, t) { glow(b, t, C.yellow, breath(t * 9 / 60, 22, 140), 0.36, 15); }
+function fxVictory(b, t) {  // nuvarande segerläge: lugn glöd + kometer från mitten + gnistor
+  glow(b, t, C.yellow, breath(t * 7 / 60, 26, 90), 0.3, 15);
+  const c = (b.n - 1) / 2;
+  for (let k = 0; k < 3; k++) {
+    const u = ((t / 1.8) + k / 3) % 1, d = u * (b.n / 2 + 2);
+    for (const s of [-1, 1]) { b.splat(c + s * d, C.white, 170, 0.7); b.splat(c + s * (d - 1), C.yellow, 60, 0.7); }
+  }
+  sparkles(b, t, 1.4, C.white, 3);
+}
+
+// ─────────────────────────────────────────────────────────────
+//  Förslag
+// ─────────────────────────────────────────────────────────────
+function heartbeat(b, t, st, P, R, o = {}) {
+  const I = o.I ?? st.I;
+  const bpm = o.bpm ?? lerp(55, P.maxBpm, I);
+  const ph = R.acc(o.key || 'hb', bpm / 60) % 1;
+  const col = o.col || heatColor(o.heat ?? lerp(0.1, P.heat, I));
+  const c = (b.n - 1) / 2;
+  for (let i = 0; i < b.n; i++) {
+    const d = Math.abs(i - c) / (b.n / 2);
+    const f = (ph - d * 0.15 + 1) % 1;
+    const pulse = Math.exp(-sq((f - 0.03) / 0.035)) + 0.55 * Math.exp(-sq((f - 0.2) / 0.045));
+    b.set(i, col, (o.base ?? lerp(22, 34, I)) + pulse * (o.peak ?? lerp(110, 240, I)) * (1 - 0.35 * d));
+  }
+}
+
+function scoreBlocks(b, t, st, P, o = {}) {
+  const n = b.n, bw = Math.max(2, Math.round(n / 22)), s = (Math.sin(t * TAU * 8 / 60) + 1) / 2, k = 0.75 + 0.25 * s;
+  const opp = hexRgb(P.oppColor), left = st.lovenHome;
+  for (let i = 0; i < n; i++) b.set(i, C.amber, 6);
+  const draw = (count, isL, val, col, blinkLast) => {
+    for (let j = 0; j < count; j++) {
+      let v = val * k;
+      if (blinkLast && j === count - 1) v = (Math.floor(t * 4) % 2) ? 255 : 40;
+      for (let q = 0; q < bw; q++) b.set(sideIdx(n, j * (bw + 1) + q, isL ? left : !left), col, v);
+    }
+  };
+  const shownL = o.reveal != null ? Math.min(st.sL, o.reveal) : st.sL;
+  draw(shownL, true, st.sL > st.sO ? 170 : 140, C.gold, o.blinkLast && shownL === st.sL);
+  draw(st.sO, false, 45, opp, false);
+}
+
+function goalFx(b, t, st, P, R, cfg) {
+  const age = st.goalAge, n = b.n, c = (n - 1) / 2;
+  if (age < cfg.strobe) {
+    for (let i = 0; i < n; i++) b.set(i, C.yellow, 50);
+    if (Math.floor(age * 28) % 2 === 0) { const col = Math.floor(age * 14) % 2 ? C.yellow : [255, 255, 255]; for (let i = 0; i < n; i++) b.set(i, col, 255); }
+    return;
+  }
+  for (let i = 0; i < n; i++) b.set(i, C.yellow, 55);
+  const a2 = age - cfg.strobe, kmax = Math.floor(a2 / cfg.interval), speed = n * 0.8;
+  for (let k = kmax; k >= 0; k--) {
+    const d = (a2 - k * cfg.interval) * speed;
+    if (d > n / 2 + 3) break;
+    const head = cfg.team && k % 2 ? [120, 255, 120] : [255, 255, 255], tail = cfg.team && k % 2 ? C.green : C.yellow;
+    for (const s of [-1, 1]) { b.splat(c + s * d, head, 255, 0.6); b.splat(c + s * (d - 1), tail, 200, 0.6); b.splat(c + s * (d - 2), tail, 110, 0.6); }
+  }
+  sparkles(b, t, 30, C.white, 11);
+}
+const goalCfg = imp => ({ strobe: lerp(1.2, 4, imp), interval: lerp(0.2, 0.06, imp), dur: lerp(7, 22, imp), team: imp > 0.8 });
+
+const FX = {
+  paus: {
+    title: 'Paus', when: 'Mellan perioderna och före övertid. Lampan vet ställningen och hur mycket av pausen som är kvar.',
+    list: [
+      { id: 'score', name: 'Ställningstavla', desc: 'Löven-målen som guldblock från mitten ut mot Lövens sida, motståndarens som svaga block åt andra hållet. Läs matchen från soffan.',
+        fn(b, t, st, P) { scoreBlocks(b, t, st, P); } },
+      { id: 'hourglass', name: 'Timglas', desc: 'En bärnstensstapel krymper mot mitten över pausens antagna längd, korn faller ut mot kanterna. Pausens längd står inte i datan — när glaset runnit ut andas listen lugnt "snart igång" tills nedsläppet faktiskt rapporteras.',
+        fn(b, t, st) {
+          const n = b.n, c = (n - 1) / 2, lampEl = st.intLampEl ?? 0, est = st.intEst || 1020;
+          const left = est - lampEl, half = clamp(left / est) * n / 2;
+          if (left <= 0) {   // glaset är tomt, men perioden har inte börjat än
+            const s = (Math.sin(TAU * t * 20 / 60) + 1) / 2;
+            for (let i = 0; i < n; i++) b.set(i, C.amber, 25 + 45 * s * s);
+            return;
+          }
+          const soon = left < 60, pulse = soon ? (Math.sin(TAU * t * 40 / 60) + 1) / 2 : (Math.sin(TAU * t * 6 / 60) + 1) / 2 * 0.3;
+          const v = soon ? 55 + 70 * pulse : 45 + 25 * pulse;
+          for (let i = 0; i < n; i++) { const d = Math.abs(i - c); b.set(i, C.amber, d < half ? v : d < half + 1 ? v * (half + 1 - d) : 4); }
+          const gp = 1.4, age = (t % gp) / 0.9;
+          if (age < 1 && half < n / 2 - 1) { const x = half + age * age * (n / 2 - half); b.splat(c + x, C.white, 200 * (1 - age * 0.5), 0.7); b.splat(c - x, C.white, 200 * (1 - age * 0.5), 0.7); }
+        } },
+      { id: 'locker', name: 'Omklädningsrum', desc: 'Långsamma, dämpade vågor i grönt och guld — lagets färger i vila. Tydligt "inte spel" utan att ta plats i rummet.',
+        fn(b, t) {
+          for (let i = 0; i < b.n; i++) {
+            const x = i / b.n, g = (Math.sin(TAU * (x * 1.3 + t * 0.05)) + 1) / 2, h = (Math.sin(TAU * (x * 0.7 - t * 0.03) + 1.3) + 1) / 2;
+            b.set(i, mixC([0, 200, 30], C.gold, g), 18 + 55 * h);
+          }
+        } },
+      { id: 'mood', name: 'Stämningsglöd', desc: 'Lugnt andetag vars färg säger läget: guld med gnistor om Löven leder, bärnsten vid lika, glödande orange i underläge.',
+        fn(b, t, st) {
+          const d = st.sL - st.sO, col = d > 0 ? [255, 200, 0] : d === 0 ? [255, 150, 0] : C.ember;
+          glow(b, t, col, breath(t * 6 / 60, 20, 110), 0.3, 12);
+          if (d > 0) sparkles(b, t, 1.2, C.white, 5);
+        } },
+    ],
+  },
+  late: {
+    title: 'Slutspurt', when: 'Tredje perioden när det är jämnt. Tonas in över matchglöden när intensiteten passerar tröskeln och växer ju närmare slutet och ju tajtare det är.',
+    list: [
+      { id: 'heart', name: 'Hjärtslag', desc: 'Dubbelslag som sprider sig från mitten. Pulsen går från vilopuls till max-bpm och färgen värms mot rött — rummet hör sitt eget hjärta.',
+        fn(b, t, st, P, R) { heartbeat(b, t, st, P, R); } },
+      { id: 'fire', name: 'Het glöd', desc: 'Listen blir en eld. Låg intensitet är glödande kol, hög är lågor som slår upp mot vitt.',
+        fn(b, t, st) {
+          const I = st.I, sp = lerp(0.6, 2.6, I);
+          for (let i = 0; i < b.n; i++) {
+            const h1 = noise2(i * 0.22, t * sp), h2 = noise2(i * 0.6 + 50, t * sp * 2.7);
+            b.rgb(i, fireRGB(clamp((0.2 + 0.55 * h1 * (0.6 + 0.4 * I) + 0.4 * h2 * h1 * I) * lerp(0.75, 1.12, I))));
+          }
+        } },
+      { id: 'breath', name: 'Andfådd', desc: 'Dagens matchglöd, men andetaget blir snabbare, djupare och varmare. Försiktigast av förslagen.',
+        fn(b, t, st, P, R) {
+          const I = st.I, ph = R.acc('br', lerp(18, P.maxBreath, I) / 60);
+          glow(b, t, [255, lerp(165, lerp(165, 50, P.heat), I), 0], breath(ph, lerp(30, 50, I), lerp(156, 235, I)), 0.36, 23);
+          sparkles(b, t, I * I * 18 * P.sparkle, C.white, 9);
+        } },
+      { id: 'runners', name: 'Puckjakt', desc: 'Pucklika ljus studsar fram och tillbaka. Fler och snabbare ju mer som står på spel.',
+        fn(b, t, st, P, R) {
+          const I = st.I, k = 1 + Math.round(I * 3), a = R.acc('run', lerp(10, 80, I)), L = 2 * (b.n - 1), col = heatColor(lerp(0, P.heat, I));
+          for (let i = 0; i < b.n; i++) b.set(i, C.amber, 22);
+          for (let j = 0; j < k; j++) for (let q = 0; q < 7; q++) {
+            const p = (((a - q * 1.2 + j * L / k) % L) + L) % L, x = p < b.n - 1 ? p : L - p;
+            b.splat(x, q ? col : [255, 235, 170], q ? 180 * Math.pow(0.6, q) : 255, 0.8);
+          }
+        } },
+    ],
+  },
+  lead: {
+    title: 'Löven leder sent', when: 'Samma läge som slutspurten men Löven leder. Kan ha ett eget uttryck — "håll ut" i stället för "nu gäller det".',
+    list: [
+      { id: 'same', name: 'Samma som slutspurt', desc: 'Inget eget läge, slutspurtens förslag gäller även vid ledning.', fn: null },
+      { id: 'goldrain', name: 'Guldregn', desc: 'Guldglöd där gnistorna tätnar i takt med intensiteten. Ingen slutnedräkning — den skulle gissa på en klocka lampan inte har.',
+        fn(b, t, st, P) {
+          const I = st.I;
+          glow(b, t, C.gold, breath(t * 20 / 60, 40, lerp(110, 150, I)), 0.3, 20);
+          sparkles(b, t, lerp(1, 40, I) * P.sparkle, C.white, 13);
+        } },
+    ],
+  },
+  trail: {
+    title: 'Löven i underläge sent', when: 'Slutspurt när Löven ligger under. Driv på — ljuset rör sig mot motståndarens mål.',
+    list: [
+      { id: 'same', name: 'Samma som slutspurt', desc: 'Inget eget läge, slutspurtens förslag gäller även i underläge.', fn: null },
+      { id: 'attack', name: 'Anfallsvåg', desc: 'Vågor rullar från Lövens sida mot motståndarens, allt snabbare — och ännu snabbare när Löven faktiskt skjuter mest.',
+        fn(b, t, st, P, R) {
+          const I = st.I, a = R.acc('atk', lerp(0.4, 2.2, I) * (1 + 0.8 * Math.max(0, st.bal || 0))), col = heatColor(lerp(0.3, P.heat, I));
+          for (let i = 0; i < b.n; i++) {
+            const x = i / (b.n - 1), xx = st.lovenHome ? x : 1 - x;
+            b.set(i, col, 18 + Math.pow((Math.sin(TAU * (xx * 2.5 - a)) + 1) / 2, 5) * lerp(120, 240, I));
+          }
+        } },
+      { id: 'alarm', name: 'Tom bur', desc: 'Två roterande ljuskäglor som ett blåljus. För de sista minuterna när målvakten åker ut.',
+        fn(b, t, st, P, R) {
+          const I = st.I, n = b.n, a = R.acc('alm', lerp(0.4, 2.0, I));
+          for (let i = 0; i < n; i++) {
+            let v = 10;
+            for (let j = 0; j < 2; j++) { const p = ((a * n + j * n / 2) % n); const d = Math.min(Math.abs(i - p), n - Math.abs(i - p)); v += 245 * Math.exp(-sq(d / (n / 14))); }
+            b.set(i, [255, 40, 0], v);
+          }
+        } },
+    ],
+  },
+  ot: {
+    title: 'Övertid & straffar', when: 'Sudden death. Nästa mål avgör, så listen står på helspänn hela tiden.',
+    list: [
+      { id: 'scanner', name: 'Sudden death', desc: 'Mörk list där en vitglödande strålkastare sveper fram och tillbaka, allt snabbare genom övertiden. Svagt rött hjärtslag under.',
+        fn(b, t, st, P, R) {
+          const n = b.n, ph = R.acc('hb2', 70 / 60) % 1, pulse = Math.exp(-sq((ph - 0.03) / 0.04)) + 0.5 * Math.exp(-sq((ph - 0.2) / 0.05));
+          for (let i = 0; i < n; i++) b.set(i, C.red, 6 + 22 * pulse);
+          const a = R.acc('scan', 1 / lerp(3.2, 1.0, st.otProgress || 0));
+          for (let q = 8; q >= 0; q--) b.splat(tri(a - q * 0.012) * (n - 1), q ? C.gold : [255, 230, 160], q ? 200 * Math.pow(0.7, q) : 255, q ? 0.9 : 1.2);
+        } },
+      { id: 'redheart', name: 'Rött hjärta', desc: 'Hjärtslaget på maxpuls i djupt rött hela övertiden.',
+        fn(b, t, st, P, R) { heartbeat(b, t, st, P, R, { I: 1, heat: 1, bpm: P.maxBpm * 0.85, key: 'hb3' }); } },
+      { id: 'tug', name: 'Dragkamp', desc: 'Guld från Lövens sida, motståndarens färg från andra. Skottrycket flyttar gränsen — skjuter Löven mest tar guldet mark — och den darrar och gnistrar.',
+        fn(b, t, st, P) {
+          const n = b.n, opp = hexRgb(P.oppColor), dirL = st.lovenHome ? 1 : -1;
+          const bd = n / 2 + dirL * (st.bal || 0) * n * 0.32 + (noise1(t * 0.35) - 0.5) * n * 0.25 + (noise1(t * 2.1 + 9) - 0.5) * n * 0.08;
+          const L = st.lovenHome ? C.gold : opp, Rr = st.lovenHome ? opp : C.gold;
+          for (let i = 0; i < n; i++) { b.set(i, mixC(L, Rr, clamp((i - bd) / 1.5 + 0.5)), 100); b.add(i, C.white, 230 * Math.exp(-sq((i - bd) / 0.9))); }
+        } },
+      { id: 'filament', name: 'Glödtråd', desc: 'Varmvit glödtråd som flimrar och laddar upp sig i stötar — som om den kan brinna av vilken sekund som helst.',
+        fn(b, t) {
+          const surge = Math.pow(noise1(t * 0.6), 5) * 220;
+          for (let i = 0; i < b.n; i++) b.set(i, C.warmWhite, 18 + Math.pow(noise2(i * 0.9, t * 7), 4) * 200 + surge);
+        } },
+    ],
+  },
+  goal: {
+    title: 'Löven-mål', when: 'Tar över allt annat i några sekunder, sedan tillbaka till det som gällde.',
+    list: [
+      { id: 'standard', name: 'Nuvarande fyrverkeri', tag: 'idag', desc: '12 s: stroboskop och kometer från mitten. Samma för alla mål.',
+        dur: () => 12, fn(b, t, st, P, R) { goalFx(b, t, st, P, R, { strobe: 2.5, interval: 0.11, dur: 12 }); } },
+      { id: 'withscore', name: 'Fyrverkeri + ställning', desc: 'Samma fyrverkeri, sedan ritas ställningen upp block för block och det nya målet blinkar.',
+        dur: () => 16, fn(b, t, st, P, R) {
+          if (st.goalAge < 11.5) goalFx(b, t, st, P, R, { strobe: 2.5, interval: 0.11, dur: 12 });
+          else scoreBlocks(b, t, st, P, { reveal: Math.floor((st.goalAge - 11.5) / 0.3) + 1, blinkLast: true });
+        } },
+      { id: 'weighted', name: 'Viktigare mål, större fyrverkeri', desc: 'Längd, stroboskop och kometer skalar med hur mycket målet betydde. Kvittering eller ledning sent och övertidsmål får lagfärger och dubbel längd.',
+        dur: st => goalCfg(st.goalImp ?? 0.5).dur, fn(b, t, st, P, R) { goalFx(b, t, st, P, R, goalCfg(st.goalImp ?? 0.5)); } },
+    ],
+  },
+  opp: {
+    title: 'Motståndarmål', when: 'Idag rör lampan sig inte alls — den hejar inte på fel lag. Men den kan sucka.',
+    list: [
+      { id: 'none', name: 'Ingenting', tag: 'idag', desc: 'Listen fortsätter som om inget hänt.', dur: 0, post: null },
+      { id: 'sigh', name: 'Suck', desc: 'Listen faller ihop mot nästan mörker och hämtar sig långsamt på några sekunder.',
+        dur: 4, post(b, t, st) { const a = st.oppGoalAge; b.mul(a < 0.4 ? lerp(1, 0.05, a / 0.4) : lerp(0.05, 1, smooth(0, 1, (a - 0.4) / 3.6))); } },
+      { id: 'cold', name: 'Kall vind', desc: 'En blåvit våg drar över listen från motståndarens sida och tar värmen med sig en stund.',
+        dur: 2.2, post(b, t, st, P) {
+          const a = st.oppGoalAge, n = b.n, front = a / 1.8 * (n + 8) - 4;
+          b.mul(lerp(0.4, 1, smooth(0.6, 2.2, a)));
+          for (let i = 0; i < n; i++) { const x = st.lovenHome ? n - 1 - i : i; b.add(i, hexRgb(P.oppColor), 200 * Math.exp(-sq((x - front) / 2.2))); }
+        } },
+    ],
+  },
+  final: {
+    title: 'Slutsignal — seger', when: 'Löven vann. (Vid förlust går listen tillbaka till standby.)',
+    list: [
+      { id: 'victory', name: 'Nuvarande segerglöd', tag: 'idag', desc: 'Lugn gul glöd med kometer från mitten och gnistor, i tre timmar.',
+        fn(b, t) { fxVictory(b, t); } },
+      { id: 'dance', name: 'Segerdans', desc: 'Första 45 sekunderna jagar guld- och gröna block utåt från mitten medan laget tackar publiken, sedan landar det i segerglöden.',
+        fn(b, t, st) {
+          const age = st.finalAgeReal ?? 0, n = b.n, c = (n - 1) / 2;
+          if (age < 45) {
+            for (let i = 0; i < n; i++) { const ph = Math.floor((Math.abs(i - c) - age * 12) / 4); b.set(i, ((ph % 2) + 2) % 2 ? C.gold : C.green, 170); }
+            sparkles(b, t, 20, C.white, 21);
+            if (age > 40) { const tmp = new Buf(n); fxVictory(tmp, t); b.mix(tmp, (age - 40) / 5); }
+          } else fxVictory(b, t);
+        } },
+    ],
+  },
+};
+const GROUPS = Object.keys(FX);
+const fxById = (g, id) => FX[g].list.find(f => f.id === id) || FX[g].list[0];
+
+// ─────────────────────────────────────────────────────────────
+//  Inställningar
+// ─────────────────────────────────────────────────────────────
+const SLIDERS = {
+  ctlData: [
+    { k: 'pausEst', label: 'Pausens antagna längd', min: 12, max: 20, step: 0.5, v: 17, fmt: v => v + ' min', hint: 'Står inte i datan. ÖRE–IFB: 17:40 och 18:19 — pausen före övertid 80 s. Timglaset rinner ut på den här tiden och väntar sedan på nedsläppet.' },
+    { k: 'shotW', label: 'Skottryckets vikt i intensiteten', min: 0, max: 1, step: 0.05, v: 0.3, fmt: v => v.toFixed(2), hint: 'Många skott i en tajt match höjer intensiteten, även innan slutminuterna.' },
+    { k: 'shotWin', label: 'Skottrycket minns', min: 1, max: 8, step: 0.5, v: 3, fmt: v => v + ' min', hint: 'Halveringstid i speltid. Kortare = rycker mer, längre = lugnare.' },
+  ],
+  ctlI: [
+    { k: 'manualI', label: 'Manuell intensitet', min: 0, max: 1, step: 0.01, v: 0.7, fmt: v => Math.round(v * 100) + ' %', hint: 'Gäller när rutan ovan är ikryssad.' },
+    { k: 'rampMin', label: 'Börja trappa upp, min kvar', min: 1, max: 30, step: 1, v: 8, fmt: v => v + ' min', hint: 'Mäts på lampans klocka, som alltid ligger 0–60 s efter. Duger för minuter, inte sekunder.' },
+    { k: 'curve', label: 'Kurva', min: 0.4, max: 3, step: 0.1, v: 1.6, fmt: v => v.toFixed(1), hint: 'Över 1: det mesta händer på slutet. Under 1: tidig uppbyggnad.' },
+    { k: 'closeW', label: 'Vikt för tajt match', min: 0, max: 1.5, step: 0.05, v: 1, fmt: v => v.toFixed(2), hint: 'Lika = 1, ett måls skillnad = 0,8, två = 0,35, mer = 0,08, gånger vikten.' },
+    { k: 'leadW', label: 'Tillägg när Löven leder med 1', min: 0, max: 0.6, step: 0.05, v: 0.2, fmt: v => '+' + v.toFixed(2) },
+    { k: 'trailW', label: 'Tillägg när Löven ligger under med 1', min: 0, max: 0.6, step: 0.05, v: 0.1, fmt: v => '+' + v.toFixed(2) },
+    { k: 'thr', label: 'Tröskel för slutspurt', min: 0, max: 0.8, step: 0.01, v: 0.2, fmt: v => Math.round(v * 100) + ' %', hint: 'Under tröskeln syns vanlig matchglöd; slutspurten tonas in över ~25 procentenheter.' },
+    { k: 'otI', label: 'Intensitet i övertid', min: 0, max: 1, step: 0.01, v: 1, fmt: v => Math.round(v * 100) + ' %' },
+  ],
+  ctlFeel: [
+    { k: 'maxBpm', label: 'Max hjärtslag', min: 60, max: 190, step: 1, v: 140, fmt: v => v + ' bpm' },
+    { k: 'maxBreath', label: 'Max andningstakt', min: 20, max: 100, step: 1, v: 60, fmt: v => v + '/min' },
+    { k: 'heat', label: 'Hetta — hur rött det blir', min: 0, max: 1, step: 0.01, v: 0.75, fmt: v => Math.round(v * 100) + ' %' },
+    { k: 'sparkle', label: 'Gnisttäthet', min: 0, max: 3, step: 0.05, v: 1, fmt: v => v.toFixed(2) + '×' },
+  ],
+  ctlLamp: [
+    { k: 'bright', label: 'Ljusstyrka', min: 10, max: 255, step: 1, v: 160, fmt: v => v },
+    { k: 'n', label: 'Antal dioder', min: 8, max: 150, step: 1, v: 30, fmt: v => v },
+    { k: 'maxmA', label: 'Strömtak', min: 500, max: 6000, step: 100, v: 3000, fmt: v => v + ' mA', hint: 'FastLED dimmar hela bilden så att taket hålls — precis som på riktigt.' },
+  ],
+};
+const DEFAULT_CHOICE = { paus: 'hourglass', late: 'fire', lead: 'goldrain', trail: 'attack', ot: 'tug', goal: 'weighted', opp: 'sigh', final: 'dance' };
+const P = { manual: false, real: true, shotFlash: false, oppColor: '#a8c4ff', diffuse: false, choice: { ...DEFAULT_CHOICE } };
+for (const g of Object.values(SLIDERS)) for (const s of g) P[s.k] = s.v;
+try { const saved = JSON.parse(localStorage.getItem('lovglod-labb') || 'null'); if (saved) { Object.assign(P, saved, { choice: { ...DEFAULT_CHOICE, ...saved.choice } }); delete P.window; } } catch (e) {}
+const save = () => localStorage.setItem('lovglod-labb', JSON.stringify(P));
+
+// ─────────────────────────────────────────────────────────────
+//  Matchen
+// ─────────────────────────────────────────────────────────────
+// Fördröjningar uppmätta i inspelningen av ÖRE–IFB (mock/recordings/2026-09-24-OHK-IFB):
+// liveState byter ~18 s efter signalen i hallen, skott når strömmen efter ~36 s
+// (median), mål efter 54–77 s.
+const LAG = { phase: 18, shot: 36 };
+const G = (seg, t, team, delay) => ({ seg, t, team, delay });
+const REAL_SHOTS = [['OT',48,'O'],['OT',95,'O'],['OT',155,'L'],['OT',180,'L'],['P1',22,'L'],['P1',22,'L'],['P1',35,'L'],['P1',94,'O'],['P1',110,'L'],['P1',129,'L'],['P1',136,'L'],['P1',143,'L'],['P1',153,'L'],['P1',191,'O'],['P1',261,'L'],['P1',283,'L'],['P1',364,'L'],['P1',413,'O'],['P1',413,'O'],['P1',429,'O'],['P1',429,'O'],['P1',453,'O'],['P1',473,'O'],['P1',480,'L'],['P1',529,'O'],['P1',529,'O'],['P1',537,'L'],['P1',576,'O'],['P1',681,'O'],['P1',892,'L'],['P1',894,'L'],['P1',944,'L'],['P1',952,'L'],['P1',976,'O'],['P1',985,'L'],['P1',1032,'O'],['P1',1034,'O'],['P1',1088,'L'],['P1',1100,'L'],['P1',1132,'O'],['P2',39,'O'],['P2',49,'O'],['P2',49,'O'],['P2',64,'O'],['P2',106,'O'],['P2',172,'O'],['P2',243,'L'],['P2',318,'O'],['P2',334,'O'],['P2',349,'O'],['P2',395,'O'],['P2',406,'O'],['P2',443,'L'],['P2',450,'L'],['P2',456,'L'],['P2',511,'O'],['P2',511,'O'],['P2',517,'O'],['P2',541,'O'],['P2',549,'O'],['P2',580,'O'],['P2',580,'O'],['P2',584,'O'],['P2',584,'O'],['P2',630,'O'],['P2',679,'L'],['P2',689,'O'],['P2',689,'O'],['P2',774,'O'],['P2',800,'O'],['P2',808,'O'],['P2',827,'O'],['P2',856,'L'],['P2',968,'O'],['P2',985,'O'],['P2',985,'O'],['P2',1051,'O'],['P2',1063,'O'],['P2',1080,'O'],['P2',1157,'L'],['P2',1180,'L'],['P2',1185,'L'],['P2',1185,'L'],['P3',47,'O'],['P3',88,'O'],['P3',96,'L'],['P3',173,'L'],['P3',214,'O'],['P3',268,'L'],['P3',327,'O'],['P3',356,'O'],['P3',463,'O'],['P3',490,'O'],['P3',524,'O'],['P3',531,'O'],['P3',564,'O'],['P3',577,'O'],['P3',584,'O'],['P3',594,'O'],['P3',594,'O'],['P3',606,'O'],['P3',683,'O'],['P3',708,'O'],['P3',712,'O'],['P3',712,'O'],['P3',722,'O'],['P3',764,'O'],['P3',838,'L'],['P3',854,'O'],['P3',878,'L'],['P3',878,'L'],['P3',892,'L'],['P3',912,'O'],['P3',917,'O'],['P3',917,'O'],['P3',1006,'O'],['P3',1026,'L'],['P3',1045,'O'],['P3',1045,'O'],['P3',1051,'O'],['P3',1065,'L'],['P3',1079,'L'],['P3',1166,'O'],['P3',1174,'O'],['P3',1187,'O']];
+const SCEN = [
+  { id: 'real', name: 'ÖRE–IFB 24/9 · 3–4 efter förlängning', home: 'ÖRE', away: 'IFB', lovenHome: false, shots: REAL_SHOTS,
+    goals: [G('P1', 154, 'L', 68), G('P1', 986, 'L', 57), G('P2', 622, 'O', 72), G('P2', 809, 'O', 54), G('P3', 174, 'L', 73), G('P3', 216, 'O', 67), G('OT', 181, 'L', 77)], start: ['P1', 0] },
+  { id: 'tight', name: 'Rysare: 2–2 med 4 min kvar', home: 'IFB', away: 'LHF', lovenHome: true,
+    goals: [G('P1', 300, 'L'), G('P2', 200, 'O'), G('P2', 700, 'O'), G('P3', 400, 'L')], start: ['P3', 960] },
+  { id: 'lead', name: 'Löven leder 3–2, 2 min kvar', home: 'IFB', away: 'FBK', lovenHome: true,
+    goals: [G('P1', 120, 'L'), G('P1', 800, 'O'), G('P2', 300, 'L'), G('P3', 200, 'O'), G('P3', 700, 'L')], start: ['P3', 1080] },
+  { id: 'trail', name: 'Löven under 1–2, 2 min kvar', home: 'HV71', away: 'IFB', lovenHome: false,
+    goals: [G('P1', 500, 'O'), G('P2', 900, 'L'), G('P3', 300, 'O')], start: ['P3', 1080] },
+  { id: 'blowout', name: 'Löven leder 5–1, 5 min kvar (inget drama)', home: 'IFB', away: 'MIF', lovenHome: true,
+    goals: [G('P1', 100, 'L'), G('P1', 700, 'L'), G('P2', 300, 'O'), G('P2', 500, 'L'), G('P2', 1100, 'L'), G('P3', 400, 'L')], start: ['P3', 900] },
+  { id: 'ot', name: 'Mållöst till övertid', home: 'IFB', away: 'SAIK', lovenHome: true, goals: [], start: ['OT', 0] },
+  { id: 'paus', name: 'Första paus, Löven leder 2–0', home: 'RBK', away: 'IFB', lovenHome: false,
+    goals: [G('P1', 400, 'L'), G('P1', 1000, 'L')], start: ['I1', 30] },
+];
+const S = { sc: null, goals: [], shots: [], segs: [], total: 1, pos: 0, playing: false, speed: 60,
+  goalT: -1e9, goalImp: 0.5, oppT: -1e9, shotT: -1e9, freezeUntil: 0, finalT: null, solo: null, Is: 0 };
+
+// Syntetiska skott för scenarier utan inspelning: ~1 per minut och lag,
+// och laget som ligger under trycker på i slutet av tredje.
+const ORD = { P1: 1, P2: 2, P3: 3, OT: 4 };
+function synthShots() {
+  const out = [], rate = { L: 1.0, O: 0.9 };
+  ['P1', 'P2', 'P3', 'OT'].forEach((seg, si) => {
+    const len = seg === 'OT' ? 300 : 1200;
+    for (let t = 0; t < len; t++) {
+      let l = 0, o = 0;
+      for (const g of S.goals) if (ORD[g.seg] < ORD[seg] || (g.seg === seg && g.t < t)) g.team === 'L' ? l++ : o++;
+      for (const team of ['L', 'O']) {
+        let r = rate[team];
+        if (seg === 'P3' && t > 900 && ((team === 'L' && l < o) || (team === 'O' && o < l))) r = 2.4;
+        if (seg === 'OT') r = 1.6;
+        if (hash2(si * 5000 + t, team === 'L' ? 3 : 4) < r / 60) out.push([seg, t, team]);
+      }
+    }
+  });
+  return out;
+}
+
+// Klockramarna lampan får: var 2–77:e spelsekund, aldrig själva slutsekunden.
+function clockSamples(seg, idx) {
+  const out = [0]; let t = 0;
+  for (let k = 0; ; k++) { const h = hash2(idx * 1000 + k, 99); t += 2 + Math.round(75 * h * h); if (t >= seg.len) break; out.push(t); }
+  return out;
+}
+
+function buildSegments() {
+  const segs = [
+    { id: 'pre', kind: 'pre', len: 300, label: 'Före' },
+    { id: 'P1', kind: 'period', period: 1, len: 1200, label: 'P1' },
+    { id: 'I1', kind: 'intermission', len: 1060, label: 'Paus' },
+    { id: 'P2', kind: 'period', period: 2, len: 1200, label: 'P2' },
+    { id: 'I2', kind: 'intermission', len: 1099, label: 'Paus' },
+    { id: 'P3', kind: 'period', period: 3, len: 1200, label: 'P3' },
+  ];
+  let l = 0, o = 0;
+  for (const g of S.goals) if (/^P[123]$/.test(g.seg)) g.team === 'L' ? l++ : o++;
+  if (l === o) {
+    segs.push({ id: 'I3', kind: 'intermission', len: 80, label: '' });
+    const otGoal = S.goals.filter(g => g.seg === 'OT').sort((a, b) => a.t - b.t)[0];
+    segs.push({ id: 'OT', kind: 'ot', len: otGoal ? otGoal.t : 300, label: 'ÖT' });
+    if (!otGoal) segs.push({ id: 'SO', kind: 'so', len: 240, label: 'Str' });
+  }
+  segs.push({ id: 'final', kind: 'final', len: 900, label: 'Slut' });
+  let acc = 0;
+  segs.forEach((s, i) => { s.start = acc; acc += s.len; if (s.kind === 'period' || s.kind === 'ot') s.samples = clockSamples(s, i + 1); });
+  S.segs = segs; S.total = acc;
+  const absOf = (seg, t) => { const s = segs.find(x => x.id === seg); return s && t <= s.len ? s.start + t : Infinity; };
+  for (const g of S.goals) {
+    g.abs = absOf(g.seg, g.t);
+    if (g.delay == null) g.delay = Math.round(50 + 25 * hash2(g.t, g.seg.charCodeAt(1)));
+  }
+  let seenOT = false;   // bara första övertidsmålet räknas
+  for (const g of S.goals.filter(g => g.seg === 'OT').sort((a, b) => a.t - b.t)) { if (seenOT) g.abs = Infinity; seenOT = true; }
+  S.shots = (S.sc.shots || synthShots()).map(([seg, t, team]) => ({ seg, t, team, abs: absOf(seg, t) })).filter(s => isFinite(s.abs)).sort((a, b) => a.abs - b.abs);
+  S.pos = Math.min(S.pos, S.total);
+  drawTrack();
+}
+
+// Sanningen: vad som händer i hallen.
+function stateAt(pos) {
+  let seg = S.segs[S.segs.length - 1];
+  for (const s of S.segs) if (pos < s.start + s.len) { seg = s; break; }
+  const el = clamp(pos - seg.start, 0, seg.len);
+  let sL = 0, sO = 0;
+  for (const g of S.goals) if (g.abs <= pos) g.team === 'L' ? sL++ : sO++;
+  const st = { phase: seg.kind, seg, period: seg.period || 0, elapsed: el, remaining: seg.len - el, sL, sO, lovenHome: S.sc.lovenHome, clockAge: 0 };
+  finishState(st);
+  if (seg.kind === 'intermission') { st.intLampEl = el; st.intEst = seg.len; }
+  return st;
+}
+function finishState(st) {
+  const seg = st.seg;
+  if (seg.kind === 'ot') st.remaining = 300 - st.elapsed;
+  st.regRemaining = seg.kind === 'period' ? (3 - seg.period) * 1200 + st.remaining : seg.kind === 'pre' ? 3600 + st.remaining : seg.kind === 'intermission' ? 99999 : 0;
+  st.otProgress = seg.kind === 'ot' ? st.elapsed / 300 : 0;
+  if (seg.kind === 'final') st.win = st.sL > st.sO || (st.sL === st.sO && S.sc.soWinner === 'L');
+}
+
+// Det lampan vet. Med "realistisk data" av är det samma som sanningen.
+function lampState(pos) {
+  if (!P.real) { const st = stateAt(pos); addShots(st, pos, 0); return st; }
+  const st = stateAt(Math.max(0, pos - LAG.phase));
+  if (st.phase !== 'final') {   // decided-ramen bär slutresultatet; innan dess får varje mål vänta på sin egen fördröjning
+    st.sL = st.sO = 0;
+    for (const g of S.goals) if (g.abs + g.delay <= pos) g.team === 'L' ? st.sL++ : st.sO++;
+  }
+  const seg = st.seg;
+  if (seg.samples) {
+    const trueEl = clamp(pos - seg.start, 0, seg.len);
+    let el = 0; for (const s of seg.samples) { if (s <= trueEl) el = s; else break; }
+    st.elapsed = el; st.remaining = seg.len - el; st.clockAge = trueEl - el;
+  }
+  if (seg.kind === 'intermission') { st.intLampEl = st.elapsed; st.intEst = seg.id === 'I3' ? 90 : P.pausEst * 60; }
+  finishState(st);
+  addShots(st, pos, LAG.shot);
+  return st;
+}
+
+// Skottryck: exponentiellt avklingande summa per lag, i speltid.
+function addShots(st, pos, lag) {
+  st.act = 0; st.bal = 0; st.rate = 0;
+  if (st.phase !== 'period' && st.phase !== 'ot') return;
+  const tau = P.shotWin * 60 / Math.LN2, now = pos - lag; let wL = 0, wO = 0;
+  for (const s of S.shots) {
+    if (s.abs > now) break;
+    const age = now - s.abs; if (age > 5 * tau) continue;
+    const w = Math.exp(-age / tau); s.team === 'L' ? wL += w : wO += w;
+  }
+  st.rate = (wL + wO) / (tau / 60);            // skott per minut, båda lagen
+  st.act = clamp((st.rate - 1) / 2.5);         // ~2/min är normalt, 3,5/min är högt tempo
+  st.bal = (wL - wO) / Math.max(1.5, wL + wO); // +1 = bara Löven skjuter
+}
+
+function intensityOf(st) {
+  const r = { I: 0, tf: 0, close: 0, bonus: 0, shot: 0 };
+  if (st.phase === 'ot' || st.phase === 'so') { r.I = P.manual ? P.manualI : P.otI; r.tf = 1; return r; }
+  if (st.phase !== 'period') return r;
+  r.tf = Math.pow(clamp(1 - st.regRemaining / (P.rampMin * 60)), P.curve);
+  const d = st.sL - st.sO, ad = Math.abs(d), closeN = ad === 0 ? 1 : ad === 1 ? 0.8 : ad === 2 ? 0.35 : 0.08;
+  r.close = closeN * P.closeW;
+  r.bonus = d === 1 ? P.leadW : d === -1 ? P.trailW : 0;
+  r.shot = P.shotW * (st.act || 0) * closeN * lerp(0.3, 1, r.tf);
+  r.I = P.manual ? P.manualI : clamp(r.tf * (r.close + r.bonus) + r.shot);
+  return r;
+}
+
+function lateFx(st) {
+  const d = st.sL - st.sO;
+  if (d > 0 && P.choice.lead !== 'same') return fxById('lead', P.choice.lead);
+  if (d < 0 && P.choice.trail !== 'same') return fxById('trail', P.choice.trail);
+  return fxById('late', P.choice.late);
+}
+
+// Regissören: väljer vad listen visar just nu
+function director(R, t, st) {
+  const b = R.A, tmp = R.B; b.clear();
+  let label = '';
+  switch (st.phase) {
+    case 'pre': fxLive(b, t); label = 'Matchglöd (fönstret öppet)'; break;
+    case 'period': {
+      fxLive(b, t); label = 'Matchglöd';
+      const w = smooth(P.thr, P.thr + 0.25, st.I);
+      if (w > 0.002) { const fx = lateFx(st); tmp.clear(); fx.fn(tmp, t, st, P, R); b.mix(tmp, w); label = w > 0.98 ? fx.name : `Matchglöd → ${fx.name} ${Math.round(w * 100)} %`; }
+      break;
+    }
+    case 'intermission': { const fx = fxById('paus', P.choice.paus); fx.fn(b, t, st, P, R); label = 'Paus: ' + fx.name; break; }
+    case 'ot': case 'so': { const fx = fxById('ot', P.choice.ot); fx.fn(b, t, st, P, R); label = (st.phase === 'so' ? 'Straffar: ' : 'Övertid: ') + fx.name; break; }
+    case 'final':
+      if (st.win) { const fx = fxById('final', P.choice.final); fx.fn(b, t, st, P, R); label = 'Seger: ' + fx.name; }
+      else { fxStandby(b, t); label = 'Förlust — standby'; }
+      break;
+  }
+  if (P.shotFlash && st.shotAge >= 0 && st.shotAge < 0.6 && (st.phase === 'period' || st.phase === 'ot')) {
+    const k = 1 - st.shotAge / 0.6, end = st.lovenHome ? b.n - 1 : 0, dir = st.lovenHome ? -1 : 1;
+    b.splat(end + dir * (1 - k) * 3, C.white, 255 * k, 1.6);
+  }
+  const g = fxById('goal', P.choice.goal), dur = g.dur(st);
+  if (st.goalAge >= 0 && st.goalAge < dur) {
+    tmp.clear(); g.fn(tmp, t, st, P, R);
+    b.mix(tmp, st.goalAge > dur - 1.2 ? (dur - st.goalAge) / 1.2 : 1); label = 'MÅL! ' + g.name;
+  }
+  const o = fxById('opp', P.choice.opp);
+  if (o.post && st.oppGoalAge >= 0 && st.oppGoalAge < o.dur) { o.post(b, t, st, P, R); label += ' · ' + o.name; }
+  return { buf: b, label };
+}
+
+// Demo-läge för galleriets kort: tvinga fram situationen och låt tiden rulla.
+// Med realistisk data hoppar demoklockan i steg, som lampans gör.
+function demoState(group, t, base) {
+  const st = { ...base, goalAge: -1, oppGoalAge: -1, shotAge: -1, act: 0.5 + 0.45 * Math.sin(t * 0.37), bal: 0.75 * Math.sin(t * 0.23) };
+  const score = (l, o) => { st.sL = l; st.sO = o; };
+  const step = e => P.real ? Math.floor(e / 30) * 30 : e;
+  switch (group) {
+    case 'paus': {
+      const est = P.pausEst * 60, p = (t % 28) / 28;
+      st.phase = 'intermission'; st.seg = { id: 'I1', kind: 'intermission' }; st.intEst = est; st.intLampEl = p * est * 1.12;
+      if (base.sL + base.sO === 0) score(2, 1); break;
+    }
+    case 'late': case 'lead': case 'trail': {
+      const p = (t % 30) / 30; st.phase = 'period'; st.period = 3; st.remaining = st.regRemaining = 300 - step(300 * p);
+      if (group === 'late') score(2, 2); if (group === 'lead') score(3, 2); if (group === 'trail') score(1, 2); break;
+    }
+    case 'ot': { const p = (t % 30) / 30; st.phase = 'ot'; st.elapsed = step(300 * p); st.otProgress = st.elapsed / 300; score(2, 2); break; }
+    case 'goal': { st.phase = 'period'; st.period = 2; st.regRemaining = 1800; st.goalAge = t % 24; st.goalImp = Math.floor(t / 24) % 2 ? 1 : 0.3; if (base.sL === 0) score(2, 1); break; }
+    case 'opp': { st.phase = 'period'; st.period = 2; st.regRemaining = 1800; st.oppGoalAge = t % 6; break; }
+    case 'final': { st.phase = 'final'; st.win = true; st.finalAgeReal = t % 70; break; }
+  }
+  st.I = intensityOf(st).I;
+  return st;
+}
+function withChoice(group, id, fn) {
+  const prev = P.choice[group]; P.choice[group] = id;
+  try { return fn(); } finally { P.choice[group] = prev; }
+}
+
+// ─────────────────────────────────────────────────────────────
+//  Ritning
+// ─────────────────────────────────────────────────────────────
+function makeRenderer(canvas) {
+  const R = { canvas, ctx: canvas.getContext('2d'), off: document.createElement('canvas'), accs: {}, dt: 0, lastT: null, A: null, B: null, avg: [0, 0, 0], mA: 0, capped: false };
+  R.acc = (k, rate) => (R.accs[k] = (R.accs[k] || 0) + rate * R.dt);
+  return R;
+}
+function ensure(R, n) {
+  if (!R.A || R.A.n !== n) { R.A = new Buf(n); R.B = new Buf(n); R.off.width = n; R.off.height = 1; R.img = R.off.getContext('2d').createImageData(n, 1); }
+  const dpr = window.devicePixelRatio || 1, w = Math.round(R.canvas.clientWidth * dpr), h = Math.round(R.canvas.clientHeight * dpr);
+  if (R.canvas.width !== w || R.canvas.height !== h) { R.canvas.width = w; R.canvas.height = h; }
+}
+function tickR(R, t) { R.dt = R.lastT == null ? 0 : Math.min(0.1, t - R.lastT); R.lastT = t; }
+
+function draw(R, buf, diffuse) {
+  const { ctx, canvas } = R, W = canvas.width, H = canvas.height, n = buf.n, d = buf.d;
+  // FastLED: global ljusstyrka och strömtak
+  let mw = 0;
+  for (let i = 0; i < n; i++) mw += (clamp(d[i * 3], 0, 255) * 16 + clamp(d[i * 3 + 1], 0, 255) * 11 + clamp(d[i * 3 + 2], 0, 255) * 15) / 255;
+  let scale = P.bright / 255; let mA = mw * scale + n;
+  R.capped = mA > P.maxmA;
+  if (R.capped) { scale *= (P.maxmA - n) / (mA - n); mA = P.maxmA; }
+  R.mA = mA;
+  const px = R.img.data; let ar = 0, ag = 0, ab = 0;
+  for (let i = 0; i < n; i++) {
+    for (let c = 0; c < 3; c++) {
+      const lin = clamp(d[i * 3 + c] * scale / 255);
+      px[i * 4 + c] = 255 * Math.pow(lin, 1 / 2.2);   // lysdioden är linjär, skärmen är det inte
+    }
+    px[i * 4 + 3] = 255; ar += px[i * 4]; ag += px[i * 4 + 1]; ab += px[i * 4 + 2];
+  }
+  R.avg = [ar / n, ag / n, ab / n];
+  R.off.getContext('2d').putImageData(R.img, 0, 0);
+  ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+  ctx.fillStyle = '#040706'; ctx.fillRect(0, 0, W, H);
+  ctx.imageSmoothingEnabled = true;
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.globalAlpha = diffuse ? 1 : 0.3;
+  const pitch = W / n;
+  ctx.drawImage(R.off, 0, 0, n, 1, -pitch / 2, 0, W + pitch, H);
+  if (diffuse) return;
+  ctx.globalAlpha = 1;
+  const r = Math.min(pitch * 0.3, H * 0.28), cy = H / 2;
+  for (let i = 0; i < n; i++) {
+    const pr = px[i * 4], pg = px[i * 4 + 1], pb = px[i * 4 + 2], cx = (i + 0.5) * pitch;
+    ctx.fillStyle = `rgba(${pr},${pg},${pb},0.35)`; ctx.beginPath(); ctx.arc(cx, cy, r * 2.2, 0, TAU); ctx.fill();
+    ctx.fillStyle = `rgb(${pr},${pg},${pb})`; ctx.beginPath(); ctx.arc(cx, cy, r, 0, TAU); ctx.fill();
+    const lum = (pr + pg + pb) / 3;
+    if (lum > 150) { ctx.fillStyle = `rgba(255,255,255,${(lum - 150) / 200})`; ctx.beginPath(); ctx.arc(cx, cy, r * 0.5, 0, TAU); ctx.fill(); }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+//  UI
+// ─────────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const mainR = makeRenderer($('main'));
+const cards = [];
+
+function buildControls() {
+  for (const [box, list] of Object.entries(SLIDERS)) {
+    const el = $(box); el.innerHTML = '';
+    for (const s of list) {
+      const w = document.createElement('div'); w.className = 'ctl';
+      w.innerHTML = `<label>${s.label}</label><output></output><input type="range" min="${s.min}" max="${s.max}" step="${s.step}">${s.hint ? `<small>${s.hint}</small>` : ''}`;
+      const inp = w.querySelector('input'), out = w.querySelector('output');
+      inp.value = P[s.k]; out.textContent = s.fmt(+P[s.k]);
+      inp.addEventListener('input', () => { P[s.k] = +inp.value; out.textContent = s.fmt(P[s.k]); save(); });
+      el.appendChild(w);
+    }
+  }
+  $('real').checked = P.real; $('real').onchange = e => { P.real = e.target.checked; S.snap = true; save(); };
+  $('shotFlash').checked = P.shotFlash; $('shotFlash').onchange = e => { P.shotFlash = e.target.checked; save(); };
+  $('manual').checked = P.manual; $('manual').onchange = e => { P.manual = e.target.checked; save(); };
+  $('diffuse').checked = P.diffuse; $('diffuse').onchange = e => { P.diffuse = e.target.checked; $('main').classList.toggle('diffuse', P.diffuse); save(); };
+  $('main').classList.toggle('diffuse', P.diffuse);
+  $('oppColor').value = P.oppColor; $('oppColor').oninput = e => { P.oppColor = e.target.value; save(); };
+}
+
+function buildGallery() {
+  const root = $('gallery'); root.innerHTML = ''; cards.length = 0;
+  for (const g of GROUPS) {
+    const sec = document.createElement('section'); sec.className = 'group';
+    sec.innerHTML = `<div class="group-h"><h2>${FX[g].title}</h2><span class="when">${FX[g].when}</span></div><div class="cards"></div>`;
+    const box = sec.querySelector('.cards');
+    for (const f of FX[g].list) {
+      const c = document.createElement('div'); c.className = 'card';
+      c.innerHTML = `<canvas></canvas><div class="meta"><b>${f.name}</b>${f.tag ? `<span class="tag">${f.tag}</span>` : ''}<p>${f.desc}</p><div class="ci"></div></div><button class="big">Stort</button>`;
+      const card = { g, f, el: c, R: makeRenderer(c.querySelector('canvas')), ci: c.querySelector('.ci') };
+      c.onclick = () => { P.choice[g] = f.id; save(); markSel(); };
+      c.querySelector('.big').onclick = e => { e.stopPropagation(); P.choice[g] = f.id; save(); markSel(); setSolo(card); };
+      box.appendChild(c); cards.push(card);
+    }
+    root.appendChild(sec);
+  }
+  markSel();
+}
+function markSel() { for (const c of cards) c.el.classList.toggle('sel', P.choice[c.g] === c.f.id); }
+function setSolo(card) {
+  S.solo = card; $('soloBanner').style.display = card ? 'flex' : 'none';
+  if (card) { $('soloName').textContent = `${FX[card.g].title}: ${card.f.name}`; mainR.accs = {}; window.scrollTo({ top: 0, behavior: 'smooth' }); }
+}
+$('soloOff').onclick = () => setSolo(null);
+
+function drawTrack() {
+  const segs = $('segs'); segs.innerHTML = '';
+  for (const s of S.segs) {
+    const d = document.createElement('div'); d.className = 'seg ' + s.kind;
+    d.style.width = (s.len / S.total * 100) + '%'; d.textContent = s.label; segs.appendChild(d);
+  }
+  const pins = $('pins'); pins.innerHTML = '';
+  for (const s of S.shots) {
+    const p = document.createElement('div'); p.className = 'shot ' + s.team; p.style.left = (s.abs / S.total * 100) + '%'; pins.appendChild(p);
+  }
+  for (const g of S.goals) if (isFinite(g.abs)) {
+    const p = document.createElement('div'); p.className = 'pin ' + g.team; p.style.left = (g.abs / S.total * 100) + '%'; pins.appendChild(p);
+  }
+  $('pos').max = S.total;
+  const jumps = [['Nedsläpp', 'P1', 0], ['Paus 1', 'I1', 0], ['Paus 2', 'I2', 0], ['P3 · 5 min kvar', 'P3', 900], ['P3 · 1 min kvar', 'P3', 1140],
+    ['Övertid', 'OT', 0], ['Slutsignal', 'final', 0]];
+  const box = $('jumps'); box.innerHTML = '';
+  for (const [lbl, id, t] of jumps) {
+    const b = document.createElement('button'); b.textContent = lbl;
+    const s = S.segs.find(x => x.id === id); b.disabled = !s;
+    b.onclick = () => jumpTo(id, t); box.appendChild(b);
+  }
+}
+function jumpTo(id, t) {
+  const s = S.segs.find(x => x.id === id); if (!s) return;
+  S.pos = s.start + t; S.goalT = -1e9; S.oppT = -1e9; S.freezeUntil = 0; S.finalT = null; S.snap = true;
+}
+
+function loadScenario(id) {
+  const sc = SCEN.find(s => s.id === id);
+  S.sc = { ...sc, soWinner: $('soWinner').value };
+  S.goals = sc.goals.map(g => ({ ...g }));
+  buildSegments();
+  jumpTo(...sc.start);
+  $('lovenHome').checked = S.sc.lovenHome;
+}
+
+const learnAt = g => g.abs + (P.real ? g.delay : 0);   // när lampan får veta om målet
+function triggerGoal(g, t) {
+  if (g.team === 'L') {
+    const after = stateAt(g.abs + 0.01), I = intensityOf(after).I, d = after.sL - after.sO;
+    S.goalImp = g.seg === 'OT' ? 1 : clamp(0.25 + 0.75 * I + (after.period === 3 && (d === 0 || d === 1) ? 0.15 : 0));
+    S.goalT = t;
+    if ($('freeze').checked) S.freezeUntil = t + fxById('goal', P.choice.goal).dur({ goalImp: S.goalImp });
+  } else S.oppT = t;
+}
+function addGoal(team) {
+  const st = stateAt(S.pos);
+  if (st.phase !== 'period' && st.phase !== 'ot') return;
+  // Knappen tänder direkt, precis som testknappen på statussidan.
+  const g = { seg: st.seg.id, t: st.elapsed, team, delay: 0 };
+  S.goals.push(g); buildSegments();
+  triggerGoal(g, performance.now() / 1000);
+}
+
+$('scen').innerHTML = SCEN.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+$('scen').onchange = e => loadScenario(e.target.value);
+$('lovenHome').onchange = e => { S.sc.lovenHome = e.target.checked; if ((S.sc.home === 'IFB') !== e.target.checked) [S.sc.home, S.sc.away] = [S.sc.away, S.sc.home]; };
+$('soWinner').onchange = e => { S.sc.soWinner = e.target.value; };
+$('goalL').onclick = () => addGoal('L');
+$('goalO').onclick = () => addGoal('O');
+$('undo').onclick = () => { S.goals.pop(); buildSegments(); S.goalT = -1e9; S.oppT = -1e9; };
+$('play').onclick = () => { S.playing = !S.playing; };
+$('speed').onchange = e => { S.speed = +e.target.value; };
+$('pos').addEventListener('input', e => { S.pos = +e.target.value; S.freezeUntil = 0; S.snap = true; });
+$('copy').onclick = () => {
+  const names = Object.fromEntries(GROUPS.map(g => [g, fxById(g, P.choice[g]).name]));
+  navigator.clipboard.writeText(JSON.stringify({ val: names, id: P.choice, installningar: { ...P, choice: undefined } }, null, 2));
+  $('copy').textContent = 'Kopierat!'; setTimeout(() => $('copy').textContent = 'Kopiera val som JSON', 1200);
+};
+$('reset').onclick = () => { localStorage.removeItem('lovglod-labb'); location.reload(); };
+addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' && e.target.type !== 'range' && e.target.type !== 'checkbox') return;
+  if (e.code === 'Space') { e.preventDefault(); S.playing = !S.playing; }
+  if (e.key === 'g' || e.key === 'G') addGoal('L');
+  if (e.key === 'o' || e.key === 'O') addGoal('O');
+});
+
+const fmtClock = s => { s = Math.max(0, Math.ceil(s)); return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0'); };
+const phaseText = st => {
+  switch (st.phase) {
+    case 'pre': return ['NEDSLÄPP OM', '', fmtClock(st.remaining)];
+    case 'period': return [`PERIOD ${st.period} · PÅGÅR`, 'live', fmtClock(st.remaining) + ' kvar'];
+    case 'intermission': return [st.seg.id === 'I3' ? 'PAUS INNAN ÖVERTID' : `PAUS ${st.seg.id.slice(1)}`, 'paus', fmtClock(st.intLampEl) + ' in i pausen'];
+    case 'ot': return ['ÖVERTID · SUDDEN DEATH', 'ot', fmtClock(st.remaining) + ' kvar'];
+    case 'so': return ['STRAFFAR', 'ot', '—'];
+    case 'final': return [st.win ? 'SLUT · SEGER' : 'SLUT · FÖRLUST', 'final', S.segs.some(s => s.id === 'SO') ? 'efter straffar' : S.segs.some(s => s.id === 'OT') ? 'efter övertid' : ''];
+  }
+  return ['', '', ''];
+};
+let lastUi = 0;
+function updateHud(st, truth, ir, label, t) {
+  const home = S.sc.home, away = S.sc.away, lh = S.sc.lovenHome;
+  $('homeName').textContent = home; $('awayName').textContent = away;
+  $('homeName').classList.toggle('loven', lh); $('awayName').classList.toggle('loven', !lh);
+  $('homeScore').textContent = lh ? st.sL : st.sO; $('awayScore').textContent = lh ? st.sO : st.sL;
+  let [txt, cls, clock] = phaseText(st);
+  if (P.real && st.seg.samples && st.phase !== 'final') clock += ` · klockramen är ${Math.round(st.clockAge)} s gammal`;
+  if (t < S.freezeUntil && S.playing) clock += ' · fryst för målet';
+  const badge = $('phaseBadge'); badge.textContent = txt; badge.className = 'badge ' + cls; $('clock').textContent = clock;
+  const [tt, , tc] = phaseText(truth), ts = lh ? `${truth.sL}–${truth.sO}` : `${truth.sO}–${truth.sL}`;
+  $('truthLine').textContent = P.real ? `I hallen just nu: ${ts} · ${tt.toLowerCase()} · ${tc}` : 'Realistisk data av — lampan vet allt direkt';
+  $('iVal').textContent = Math.round(st.I * 100) + ' %';
+  $('iBar').style.width = (st.I * 100) + '%';
+  $('iThr').style.left = (P.thr * 100) + '%';
+  const shotTxt = (st.phase === 'period' || st.phase === 'ot') ? ` · skott ${st.rate.toFixed(1)}/min, ${st.bal >= 0 ? 'Löven' : 'motståndaren'} trycker ${Math.round(Math.abs(st.bal) * 100)} %` : '';
+  $('iWhy').textContent = (P.manual ? 'Manuellt satt' :
+    st.phase === 'ot' || st.phase === 'so' ? 'Övertid: fast nivå' :
+    st.phase === 'period' ? `tid ${ir.tf.toFixed(2)} × (tajt ${ir.close.toFixed(2)} + läge ${ir.bonus >= 0 ? '+' : ''}${ir.bonus.toFixed(2)}) + skott ${ir.shot.toFixed(2)} → mål ${Math.round(ir.I * 100)} %` :
+    'Ingen slutspurt i det här läget') + shotTxt;
+  $('activeName').textContent = S.solo ? `${FX[S.solo.g].title}: ${S.solo.f.name}` : label;
+  const ma = $('ma'); ma.textContent = `≈ ${Math.round(mainR.mA)} mA${mainR.capped ? ' · strömtaket dimmar' : ''}`; ma.classList.toggle('cap', mainR.capped);
+  $('play').textContent = S.playing ? '❚❚ Pausa' : '▶ Spela';
+  $('play').classList.toggle('on', S.playing);
+  if (document.activeElement !== $('pos')) $('pos').value = S.pos;
+  for (const c of cards) {
+    const d = c.st || {};
+    c.ci.textContent = ['late', 'lead', 'trail'].includes(c.g) ? `demo: ${fmtClock(d.regRemaining ?? 0)} kvar · intensitet ${Math.round((d.I ?? 0) * 100)} %`
+      : c.g === 'ot' ? `demo: ${fmtClock(300 - (d.elapsed ?? 0))} kvar · ${d.bal >= 0 ? 'Löven' : 'motståndaren'} trycker`
+      : c.g === 'paus' ? (d.intLampEl > d.intEst ? 'demo: glaset tomt, väntar på nedsläpp' : `demo: ${fmtClock((d.intEst ?? 0) - (d.intLampEl ?? 0))} kvar enligt antagen längd`)
+      : c.g === 'goal' ? (c.f.id === 'weighted' ? `demo: ${d.goalImp > 0.5 ? 'avgörande mål' : 'vanligt mål'}` : '')
+      : '';
+  }
+}
+
+// Intensiteten glider mot sitt mål i stället för att hoppa när en ny klockram kommer.
+function smoothI(cur, target, dGame, dReal) { return cur + (target - cur) * (1 - Math.exp(-(dGame / 15 + dReal / 0.6))); }
+
+function frame(now) {
+  const t = now / 1000;
+  const dtReal = mainR.lastT == null ? 0 : Math.min(0.1, t - mainR.lastT);
+  const prevPos = S.pos;
+  if (S.playing && t >= S.freezeUntil && S.pos < S.total) {
+    let np = Math.min(S.total, S.pos + dtReal * S.speed);
+    const freeze = $('freeze').checked;
+    for (const g of [...S.goals].sort((a, b) => learnAt(a) - learnAt(b))) {
+      const la = learnAt(g);
+      if (la > S.pos && la <= np) {
+        if (g.team === 'L' && freeze) np = la;
+        triggerGoal(g, t);
+        if (g.team === 'L' && freeze) break;
+      }
+    }
+    const lag = P.real ? LAG.shot : 0;
+    for (const s of S.shots) if (s.team === 'L' && s.abs + lag > S.pos && s.abs + lag <= np) S.shotT = t;
+    S.pos = np;
+  }
+  const truth = stateAt(S.pos), st = lampState(S.pos);
+  st.goalAge = t - S.goalT; st.goalImp = S.goalImp; st.oppGoalAge = t - S.oppT; st.shotAge = t - S.shotT;
+  if (st.phase === 'final') { if (S.finalT == null) S.finalT = t; st.finalAgeReal = t - S.finalT; } else S.finalT = null;
+  const ir = intensityOf(st);
+  S.Is = (!P.real || S.snap) ? ir.I : smoothI(S.Is, ir.I, Math.abs(S.pos - prevPos), dtReal);
+  S.snap = false;
+  st.I = S.Is;
+
+  const n = P.n;
+  ensure(mainR, n); tickR(mainR, t);
+  let out;
+  if (S.solo) {
+    const c = S.solo, dst = demoState(c.g, t, st);
+    if (P.real) dst.I = mainR.Is = smoothI(mainR.Is ?? dst.I, dst.I, 0, dtReal);
+    out = withChoice(c.g, c.f.id, () => director(mainR, t, dst));
+  } else out = director(mainR, t, st);
+  draw(mainR, out.buf, P.diffuse);
+  const a = mainR.avg; document.documentElement.style.setProperty('--glow', `${a[0] | 0},${a[1] | 0},${a[2] | 0}`);
+
+  for (const c of cards) {
+    ensure(c.R, n); tickR(c.R, t);
+    const dst = demoState(c.g, t, st);
+    if (P.real) dst.I = c.R.Is = smoothI(c.R.Is ?? dst.I, dst.I, 0, c.R.dt);
+    c.st = dst;
+    const o = withChoice(c.g, c.f.id, () => director(c.R, t, dst));
+    draw(c.R, o.buf, P.diffuse);
+  }
+  if (now - lastUi > 100) { updateHud(st, truth, ir, out.label, t); lastUi = now; }
+  requestAnimationFrame(frame);
+}
+
+buildControls();
+buildGallery();
+loadScenario('real');
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
