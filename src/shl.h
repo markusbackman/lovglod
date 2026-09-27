@@ -1,5 +1,6 @@
 #pragma once
 #include <Arduino.h>
+#include <ArduinoJson.h>
 
 struct NextGame {
     bool    valid    = false;
@@ -67,6 +68,14 @@ bool ssePump(LiveScore &out);
 
 // Matchläget enligt strömmen. Nollställs när strömmen startas för en ny match.
 const LiveInfo &liveInfo();
+
+// En ram utifrån, i samma format som strömmen, genom samma tolkning som
+// strömmens ramar: liveState, gameTime och skott. Sant om ramen bar en
+// ställning. För uppspelning av inspelade matcher via POST /push.
+bool injectFrame(JsonVariantConst frame, LiveScore &out);
+
+// Nollställer matchläget och skotten, som när strömmen startar för en ny match.
+void resetLive();
 
 // Skottryck just nu: skott per minut (båda lagen, avklingande) och balansen
 // mellan lagen, -1–1 där +1 är att bara Björklöven skjuter.

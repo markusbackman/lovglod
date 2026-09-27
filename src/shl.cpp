@@ -232,7 +232,7 @@ GameState parseGameState(const char *s) {
 }
 
 // Läser det matchljuset behöver ur en ram. Ställningen tas separat.
-void readLiveInfo(JsonDocument &doc, time_t eventUtc) {
+void readLiveInfo(JsonVariantConst doc, time_t eventUtc) {
     // liveState: en ram per byte, sedan samma värde om och om igen.
     if (const char *ls = doc["liveState"]["liveState"] | (const char *)nullptr) {
         const GameState st = parseGameState(ls);
@@ -372,7 +372,7 @@ bool sseDispatch(LiveScore &out) {
                   first ? " (referens)" : lag > 90 ? " — FÖR SENT" : "");
         }
 
-        readLiveInfo(doc, ut);
+        readLiveInfo(doc.as<JsonVariantConst>(), ut);
 
         int h = -1, a = -1;
         if (findScorePair(doc.as<JsonVariantConst>(), h, a)) {
@@ -629,6 +629,18 @@ void sseStop() {
 }
 
 const LiveInfo &liveInfo() { return gInfo; }
+
+bool injectFrame(JsonVariantConst frame, LiveScore &out) {
+    // Ingen tidsstämpel: en uppspelad match är timmar gammal, och skotten
+    // skulle annars sorteras bort som för gamla för skottrycket.
+    readLiveInfo(frame, 0);
+    int h = -1, a = -1;
+    if (!findScorePair(frame, h, a)) return false;
+    out.valid = true; out.home = h; out.away = a;
+    return true;
+}
+
+void resetLive() { resetLiveInfo(); }
 
 void shotPressure(float &perMin, float &balance) {
     decayShots();

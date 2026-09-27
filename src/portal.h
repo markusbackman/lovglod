@@ -35,6 +35,11 @@ struct PushState {
     bool   wonLast      = false;   // vann senaste matchen → gnistor
 
     String lastResult;
+
+    // Uppspelning: ramar i strömmens format, som JSON-array. Tolkas i loopen
+    // av Shl::injectFrame(), inte i webbhanteraren.
+    bool   hasFrames    = false;
+    String frames;
 };
 
 extern StatusInfo status;

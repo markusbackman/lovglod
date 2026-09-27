@@ -65,6 +65,8 @@ static bool      gOtaOnTrial        = false;
 static bool      gWifiEverUp        = false;
 
 static uint32_t  gPushUntil         = 0;      // push-läget lever tills hit
+static bool      gPushReplay        = false;  // pushen bär ramar: matchljuset går som live
+static bool      gReplayDanced      = false;  // segerdansen tagen i uppspelningen
 static bool      gDataOk            = true;   // false när SHL inte svarar alls
 static bool      gFirstFetchPending = false;  // första hämtningen visar förlopp
 static uint32_t  gNextResultPoll    = 0;      // tät koll efter matchens slut
@@ -682,6 +684,18 @@ static void maybeDance() {
     Leds::dance();
 }
 
+// Segerdansen i en uppspelad match. Samma villkor som maybeDance(), men
+// ingenting sparas: en gammal vinst ska inte tända segerläget på riktigt.
+static void maybeReplayDance() {
+    if (gReplayDanced || shownState(Shl::liveInfo()) != GameState::Decided) return;
+    if (gShownOurs <= gShownTheirs) return;
+    if (Leds::mode() == LED_GOAL || Leds::pendingGoals()) return;
+    gReplayDanced = true;
+    Serial.printf("[uppspelning] slutsignal %d–%d — segerdans, sparas inte\n",
+                  gShownOurs, gShownTheirs);
+    Leds::dance();
+}
+
 static const char *moodStateText(LedMode m) {
     switch (m) {
         case LED_INTERMISSION: return "Paus";
@@ -837,6 +851,9 @@ static void applyPush(const PushState &p) {
         Shl::sseStop();
         status.sseLive = false;
         gScore = LiveScore();          // ny källa: kalibrera om innan mål räknas
+        gPushReplay   = false;
+        gReplayDanced = false;
+        resetMood();
     }
     gPushUntil      = millis() + PUSH_LEASE_MS;
     status.pushMode = true;
@@ -845,8 +862,12 @@ static void applyPush(const PushState &p) {
     if (p.hasNext) {
         // Byte av lag räknas som ny match — annars ser en omställd ställning
         // ut som ett mål.
-        if (p.homeCode != gNext.homeCode || p.awayCode != gNext.awayCode)
+        if (p.homeCode != gNext.homeCode || p.awayCode != gNext.awayCode) {
             gScore = LiveScore();
+            Shl::resetLive();
+            resetMood();
+            gReplayDanced = false;
+        }
         gNext.valid     = true;
         gNext.homeCode  = p.homeCode;
         gNext.awayCode  = p.awayCode;
@@ -869,6 +890,10 @@ static void applyPush(const PushState &p) {
         if (!p.live) {
             gScore = LiveScore();
             status.liveScore = "—";
+            Shl::resetLive();
+            resetMood();
+            gReplayDanced = false;
+            Leds::clearPendingGoals();
         }
     }
 
@@ -878,6 +903,23 @@ static void applyPush(const PushState &p) {
         fresh.home  = p.home;
         fresh.away  = p.away;
         applyScore(fresh);             // härifrån triggas målfyrverkeriet
+    }
+
+    // Uppspelning: ramarna går genom samma tolkning som strömmens, och varje
+    // ställning genom samma applyScore() — omsändningar och allt. Varje push
+    // avgör själv: uppspelningen skickar frames även i hjärtslagen, och tar
+    // mockservern över igen ska listen tillbaka till vanlig push.
+    gPushReplay = p.hasFrames;
+    if (p.hasFrames) {
+        JsonDocument doc;
+        if (const DeserializationError err = deserializeJson(doc, p.frames)) {
+            Serial.printf("[uppspelning] ramarna gick inte att tolka: %s\n", err.c_str());
+            return;
+        }
+        for (JsonVariantConst f : doc.as<JsonArrayConst>()) {
+            LiveScore fresh;
+            if (Shl::injectFrame(f, fresh) && p.live) applyScore(fresh, "uppspelning");
+        }
     }
 }
 
@@ -892,6 +934,10 @@ static void endPushMode() {
     status.liveScore   = "—";
     gNext              = NextGame();
     gFetchNow          = true;
+    gPushReplay        = false;
+    Shl::resetLive();
+    resetMood();
+    Leds::clearPendingGoals();
 }
 
 // ── WiFi ────────────────────────────────────────────────────────────────────
@@ -1192,6 +1238,7 @@ void loop() {
 
             if (pushActive()) {
                 // Allt kommer via POST /push — ingen SSE, ingen pollning.
+                if (gPushReplay && gInLiveWindow) maybeReplayDance();
             } else {
                 if (status.pushMode) endPushMode();
                 serviceLive();
@@ -1241,7 +1288,9 @@ void loop() {
                     Leds::setMode(LED_ERROR);
                     status.state = "Ingen kontakt med SHL";
                 } else if (gInLiveWindow) {
-                    const LedMode m = pushActive() ? LED_LIVE : serviceMood();
+                    // Vanlig push styr bara ställningen; en uppspelning bär
+                    // matchläget också och får hela matchljuset.
+                    const LedMode m = pushActive() && !gPushReplay ? LED_LIVE : serviceMood();
                     Leds::setMode(m);
                     status.state = moodStateText(m);
                     if (m == LED_LIVE && gMoodI >= MOOD_THRESHOLD)

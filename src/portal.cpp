@@ -619,6 +619,12 @@ void handlePush() {
         p.lastResult   = la["text"].as<const char *>() ? la["text"].as<const char *>() : "";
     }
 
+    const JsonArrayConst fr = doc["frames"].as<JsonArrayConst>();
+    if (!fr.isNull()) {
+        p.hasFrames = true;
+        serializeJson(fr, p.frames);
+    }
+
     // Målfyrverkeriet får inte starta här inne — loopen plockar upp det.
     gPush        = p;
     gPushPending = true;

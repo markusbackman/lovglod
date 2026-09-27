@@ -27,6 +27,11 @@ pio run -t upload       # flasha via USB — håll in BOOT, kortet har trasig au
 pio device monitor      # seriell logg, 115200 baud
 ```
 
+I seriemonitorn styr en bokstav lampan: `i` status, `n` nätverkstest,
+`w` glöm WiFi, `r` starta om. `d` listar matchljusets demolägen, med en tangent
+var — samma som knapparna på `/ljus` — och `x` avslutar demoläget. `g`, `b` och
+`s` spelar ett vanligt mål, ett avgörande mål och en suck.
+
 Lokala byggen får versionen `1.0.0-dev`, se
 [Versionshantering](#versionshantering).
 
@@ -57,7 +62,7 @@ Vad varje värde gör förklaras i [Ljusspråket](GLODEN.md#justera-beteendet).
 platformio.ini          byggkonfiguration: firmware + kopplingstest
 include/config.h        all justerbar konfiguration
 src/main.cpp            tillståndsmaskin, schemaläggning
-src/leds.cpp            effekterna (glöd, gnistor, målfyrverkeri)
+src/leds.cpp            effekterna (glöd, gnistor, matchljus, målfyrverkeri)
 src/shl.cpp             SHL-API: HTTP(S)-poll + SSE-klient, val av datakälla
 src/portal.cpp          captive portal + statussida
 src/settings.cpp        NVS-lagring
@@ -66,7 +71,12 @@ src/updater.cpp         signerad self-update från GitHub Releases
 src/wiring_test.cpp     kopplingstest för listen, egen miljö (esp32dev_wiring)
 include/ota_pubkey.h    publik nyckel för OTA-signaturen
 tools/generate-ota-key.sh  skapar nyckelparet
+tools/live.py           följ SHL:s live-ström i terminalen
+tools/spela_in.py       spela in en match till mock/recordings/
+tools/forbehandla.py    städa en inspelning till det lampan läser (lampa.jsonl)
+tools/spela_upp.py      spela upp en inspelad match på en lampa
 mock/server.py          mockserver för labbtest, styrsida på /
+mock/recordings/        inspelade matcher, en mapp per match med README
 docs/                   guiderna: montera, glöden, installera, bygga
 hardware/v2/            STL-filer per utskriftsplatta, plus limfixturen
 site/                   webbplatsen med utskriftsguide
@@ -142,7 +152,7 @@ ingen SSE-ström.
 | **Push till lampan** | Lampans adress och på/av — allt annat kräver att den är på *och* att lampans felsökningsläge är på |
 | Nästa match + nedsläpp | När matchfönstret öppnas (`LED_LIVE` istället för standby) |
 | **Starta nu** | Lägger nedsläppet en minut bakåt → fönstret öppnas direkt |
-| Mål Björklöven / motståndaren | Målfyrverkeriet |
+| Mål Björklöven / motståndaren | Målfyrverkeriet / sucken |
 | **Spela upp match** | Servern matar ut mål automatiskt tills matchen är slut |
 | Vi vann senast / förlorade senast | Gnistorna ovanpå glöden, fram till nästa nedsläpp |
 | **Avsluta match** | Skriver ställningen som senaste resultat och flyttar fram nästa match |
@@ -168,8 +178,44 @@ mockservern gnistorna helt: firmwaren räknar inte ut något eget fönster utan
 gör exakt vad `last.won` säger, så `false` släcker dem även mellan matcher. Första pushen efter
 ett lägesbyte kalibrerar bara — annars hade en ny ställning sett ut som ett mål.
 
+Vanlig push styr bara ställningen: listen står i `LED_LIVE` utan slutspurt,
+paus eller övertid, eftersom matchläget saknas. Hela matchljuset får du med
+`frames` nedan, genom att [spela upp en inspelad
+match](#spela-in-och-spela-upp-matcher), eller med knapparna på `/ljus`.
+
+`frames` är till för uppspelning av inspelade matcher. Varje ram har samma
+format som SSE-strömmen och går genom samma tolkning som strömmens ramar i
+`src/shl.cpp`: `liveState`, `gameTime`, skotten och ställningen. Så länge
+pushen bär `frames` — även en tom lista — styrs listen av hela matchljuset,
+som under en riktig match, i stället för att stå i `LED_LIVE`. Segerdansen
+körs vid vinst, men sparas inte som seger.
+
+```json
+{"next": {…}, "live": true,
+ "frames": [{"liveState": {"liveState": "ongoing"}},
+            {"liveEvent": {"type": "goal", "eventId": 7, "eventTeam": {"teamCode": "FBK"},
+                           "homeTeam": {"score": 0}, "awayTeam": {"score": 1}}}]}
+```
+
 Endpointen har ingen autentisering, precis som resten av portalen. Den hör
 hemma på ett labbnät, inte på ett öppet nät.
+
+## Spela in och spela upp matcher
+
+Matcherna i `mock/recordings/` är inspelade med `tools/spela_in.py` och kan
+spelas upp på en lampa i efterhand, med hela matchljuset.
+
+```
+python3 tools/spela_in.py                                  # matcher på gång, med gameUuid
+python3 tools/spela_in.py <gameUuid>                       # 45 min före nedsläpp till 40 min efter slutsignal
+python3 tools/forbehandla.py mock/recordings/<match>       # rådata → lampa.jsonl
+python3 tools/spela_upp.py <lampans ip> mock/recordings/<match> [--från 17:05] [--fart 2]
+```
+
+`forbehandla.py` behåller bara det firmwaren läser, en rad per ram, med
+omsändningarna kvar och markerade. `spela_upp.py` trycker ramarna till
+`/push` i samma takt som de kom, och game-overview som lampans reservpollning
+skulle ha sett den. Felsökningsläget slås på och av av skriptet.
 
 ---
 
