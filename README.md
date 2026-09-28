@@ -72,7 +72,7 @@ Varje läge, och varför det ser ut som det gör, finns i
 |---|---|
 | Mått (b × d × h) | 182,6 × 84 × 250,5 mm |
 | Material | PLA i grönt, vitt, gult och transparent gult, gul PETG i bakluckan, 309 g |
-| Ljus | WS2812B eller APA102, 5 V, ~55 cm |
+| Ljus | WS2812B eller APA102, 5 V, 50 cm (30 dioder) |
 | Styrenhet | ESP32 med WiFi (2,4 GHz) |
 | Ström | USB-C i sockelns baksida, 5 V / 3 A |
 | Matchdata | SHL:s publika API, live via SSE |

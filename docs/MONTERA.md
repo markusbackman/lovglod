@@ -172,7 +172,7 @@ limfixturen kommer utöver.
 |---|---|---|
 | Insexskruv M3 × 8 (ISO 4762) | **tio st**, självgängande i utskrivna 2,5 mm-hål | 4 bakstycke, 4 bottenplatta, 2 lövets spets |
 | USB-C-uttag för panelmontering | gänga M11 × 1,0, 16,5 mm bakom flänsen, 20 V/3 A, fyra 24 AWG-ledare, med mutter och dammskydd | sockelns bakvägg |
-| Adresserbar LED-list, 5 V | **8 mm bred**, ~55 cm, kapad vid en lödpunkt. WS2812B eller APA102 (se [Koppling i detalj](#6-koppling-i-detalj)) | spåret bakom det gula bandet |
+| Adresserbar LED-list, 5 V | **8 mm bred**, 50 cm (30 dioder vid 60/m), kapad vid en lödpunkt. En meter räcker till två lampor. WS2812B eller APA102 (se [Koppling i detalj](#6-koppling-i-detalj)) | spåret bakom det gula bandet |
 | ESP32 DevKit | högst 57,5 × 30,5 × 15 mm | facket under sockelns golv |
 | 330–470 Ω-motstånd | bara för WS2812B | på datatråden |
 | 1000 µF / 6,3 V+ kondensator | | över 5 V och GND vid listens början |
@@ -203,7 +203,7 @@ smalaste och öppet bakåt. **Ställ listen på högkant**, stående på lövets
 framsida, med tejpsidan mot kärnans yttervägg — då lyser den åt sidan, tvärs
 över spåret, in i det gula bandet.
 
-Väggen är 488 mm lång, så 55 cm list räcker med lite att kapa. Den böjer aldrig
+Väggen är 488 mm lång, så 50 cm list går precis runt. Den böjer aldrig
 snävare än 20 mm radie, vilket är hela anledningen till att kärnan
 finns. Väggen saknar avsiktligt fas — den är listens säte.
 
