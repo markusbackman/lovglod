@@ -49,11 +49,12 @@ LJUS = [
 # FYLL är nyckel- och takljuset som visar själva lampan, KANT de smala
 # motljusen som ritar upp konturen. Filmen börjar med bara konturen, fyllet
 # kommer upp när lampan visas hel, allt släcks i andhämtningen och efter målet
-# är det lampan som lyser upp rummet.
-FYLL = [(0.0, 0.0), (4.6, 0.0), (7.6, 1.0), (16.15, 1.0), (16.2, 0.0),
-        (16.6, 0.0), (16.7, 0.15), (30.6, 0.15), (32.8, 0.6)]
-KANT = [(0.0, 0.5), (4.6, 0.6), (7.6, 1.0), (16.15, 1.0), (16.2, 0.0),
-        (16.6, 0.0), (16.7, 0.35), (30.6, 0.35), (32.8, 1.0)]
+# är det lampan som lyser upp rummet. Under matchen (klippet på 8,6 s) går
+# fyllet ner, annars bleker det ut bärnstenen och hjärtslagen i listen.
+FYLL = [(0.0, 0.0), (4.6, 0.0), (7.6, 1.0), (8.55, 1.0), (8.6, 0.35), (16.15, 0.35),
+        (16.2, 0.0), (16.6, 0.0), (16.7, 0.15), (30.6, 0.15), (32.8, 0.6)]
+KANT = [(0.0, 0.5), (4.6, 0.6), (7.6, 1.0), (8.55, 1.0), (8.6, 0.7), (16.15, 0.7),
+        (16.2, 0.0), (16.6, 0.0), (16.7, 0.35), (30.6, 0.35), (32.8, 1.0)]
 
 # Kamerarörelser. `fran`/`till` = (kamerans position, punkten den tittar på).
 # `bland` är bländartal (lägre = grundare skärpedjup), `lins` i mm. Lampan är
