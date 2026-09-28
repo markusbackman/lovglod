@@ -164,10 +164,11 @@ dl[style*="width: 1280px"], ul[style*="width: 1280px"], ol[style*="width: 1280px
         <img src="assets/logo-dark.svg" alt="LövGlöd" style="height: 30px; width: auto;">
       </a>
       <nav aria-label="Huvudmeny" style="display: flex; gap: 32px; flex-grow: 1; font-size: 15px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em;">
-        <a class="navlink" href="#film">Film</a>
+        <a class="navlink" href="#produktfilm">Film</a>
         <a class="navlink" href="#lagen">Lägen</a>
         <a class="navlink" href="#detaljer">Detaljer</a>
         <a class="navlink" href="#specifikation">Specifikation</a>
+        <a class="navlink" href="anvand.html">Kom igång</a>
       </nav>
       <a class="btn btn-gold" href="skriv-ut.html" style="min-height: 40px; padding: 8px 20px; font-size: 14px;">Skriv ut själv</a>
     </div>
@@ -178,7 +179,7 @@ dl[style*="width: 1280px"], ul[style*="width: 1280px"], ol[style*="width: 1280px
     <div aria-hidden="true" style="position: absolute; left: calc(50% - 520px); top: 120px; width: 1040px; height: 1040px; border-radius: 50%; background: radial-gradient(closest-side, rgba(248, 209, 43, 0.24), rgba(248, 209, 43, 0));"></div>
     <div style="position: relative; display: flex; flex-direction: column; align-items: center; gap: 20px; text-align: center;">
       <p style="font-size: 15px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.16em; color: #f8d12b;">Björklöven, i ljus</p>
-      <h1 style="font-family: Antonio, sans-serif; font-weight: 700; font-size: 200px; line-height: 0.85; text-transform: uppercase;">LövGlöd</h1>
+      <h1 style="margin: 0; line-height: 0;"><img src="assets/logo-dark.svg" alt="LövGlöd" style="width: 640px; height: auto;"></h1>
       <p style="font-size: 26px; line-height: 1.35; font-weight: 500; max-width: 720px; color: rgba(255,255,255,0.88);">Lövet som följer Löven. Det glöder lugnt en vanlig tisdag, vaknar när pucken släpps, får hjärtklappning i slutminuterna och exploderar när vi gör mål.</p>
     </div>
     <img src="assets/hero.webp" alt="LövGlöd tänd: grönt löv med lysande gult band och vit text, i en grön sockel märkt SM Guld 1987" style="position: relative; width: 600px; height: auto; margin-top: 8px;">
@@ -187,7 +188,7 @@ dl[style*="width: 1280px"], ul[style*="width: 1280px"], ol[style*="width: 1280px
         Skriv ut själv
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
       </a>
-      <a class="btn btn-white" href="#film" style="padding: 18px 32px; font-size: 18px; min-height: 64px;">
+      <a class="btn btn-white" href="#produktfilm" style="padding: 18px 32px; font-size: 18px; min-height: 64px;">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M10 8l6 4-6 4z" fill="currentColor"/></svg>
         Se den lysa
       </a>
@@ -198,6 +199,23 @@ dl[style*="width: 1280px"], ul[style*="width: 1280px"], ol[style*="width: 1280px
         <li style="display: flex; flex-direction: column; gap: 6px;"><span style="font-family: Antonio, sans-serif; font-weight: 700; font-size: 34px; text-transform: uppercase;">Lever med matchen</span><span style="font-size: 16px; color: rgba(255,255,255,0.78);">Hjärtslag i slutminuterna och mål som växer med matchen, i takt med tv-sändningen.</span></li>
         <li style="display: flex; flex-direction: column; gap: 6px;"><span style="font-family: Antonio, sans-serif; font-weight: 700; font-size: 34px; text-transform: uppercase;">Sköter sig själv</span><span style="font-size: 16px; color: rgba(255,255,255,0.78);">Koppla in med USB-C, ställ in med mobilen. Uppdaterar sig över WiFi.</span></li>
       </ul>
+    </div>
+  </section>
+
+  <!-- SEGERFILMEN -->
+  <section id="produktfilm" class="dark" style="background: #000000; color: #ffffff; display: flex; justify-content: center; padding: 104px 0;">
+    <div style="width: 1280px; display: flex; flex-direction: column; gap: 32px;">
+      <div style="display: flex; flex-direction: column; gap: 16px;">
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <span style="width: 6px; height: 26px; background: #f8d12b;"></span>
+          <h2 style="font-family: Antonio, sans-serif; font-weight: 700; font-size: 56px; line-height: 1; text-transform: uppercase;">När Löven vinner, vet hela rummet</h2>
+        </div>
+        <p style="font-size: 20px; line-height: 1.45; max-width: 720px; color: rgba(255,255,255,0.85);">Tyst glöd en vanlig kväll. Hjärtklappning i slutminuterna. Och när pucken går in, ett fyrverkeri som ingen i rummet kan missa. Höj ljudet och tryck play.</p>
+      </div>
+      <div style="position: relative; width: 1280px; height: 720px; background: #000000; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+        <video class="film" src="assets/film-produkt.mp4" poster="assets/film-produkt.webp" controls playsinline preload="metadata" aria-label="Produktfilm: LövGlöd vaknar, glöder, följer matchen, exploderar i målfyrverkeri och segerdans. Med musik. Innehåller blinkande ljus."></video>
+      </div>
+      <p style="font-size: 14px; color: rgba(255,255,255,0.6);">Innehåller blinkande ljus.</p>
     </div>
   </section>
 
@@ -398,10 +416,11 @@ dl[style*="width: 1280px"], ul[style*="width: 1280px"], ol[style*="width: 1280px
     <div style="width: 1280px; display: flex; align-items: center; gap: 20px;">
       <img src="assets/logo-icon.svg" alt="LövGlöd" style="width: 52px; height: 52px;">
       <div style="display: flex; flex-direction: column; gap: 4px; flex-grow: 1;">
-        <span style="font-family: Antonio, sans-serif; font-weight: 700; font-size: 24px;">LövGlöd</span>
+        <img src="assets/logo-dark.svg" alt="LövGlöd" style="height: 36px; width: auto; margin-left: -3px; align-self: flex-start;">
         <span style="font-size: 14px; color: rgba(255,255,255,0.72);">Ett fanprojekt. Umeå. 2026</span>
       </div>
       <nav aria-label="Sidfot" style="display: flex; gap: 28px; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em;">
+        <a class="navlink" href="anvand.html">Kom igång</a>
         <a class="navlink" href="skriv-ut.html">Skriv ut själv</a>
         <a class="navlink" href="https://github.com/markusbackman/lovglod">GitHub</a>
       </nav>

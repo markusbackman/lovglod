@@ -1,0 +1,411 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kom igång – LövGlöd</title>
+<link rel="icon" href="assets/logo-icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Antonio:wght@400;700&amp;family=Barlow:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+  <style>
+    body { margin: 0; background: #071912; font-family: Barlow, "Arial Narrow", Arial, sans-serif; color: #000000; -webkit-font-smoothing: antialiased; }
+    h1, h2, h3, h4, p { margin: 0; }
+    p { text-wrap: pretty; }
+    a { color: #124734; text-decoration: none; }
+    a:hover { color: #1c5f45; }
+    a:focus-visible { outline: 2px solid #124734; outline-offset: 2px; }
+    .dark a:focus-visible { outline-color: #ffffff; }
+    img { display: block; }
+    code { font-family: ui-monospace, Menlo, monospace; font-size: 0.92em; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 48px; box-sizing: border-box; font-family: Barlow, sans-serif; font-weight: 700; text-transform: uppercase; letter-spacing: 0.02em; transition: background-color .3s cubic-bezier(.4,0,.2,1), color .3s cubic-bezier(.4,0,.2,1); }
+    .btn-gold { background: #f8d12b; color: #000000; }
+    .btn-gold:hover { background: #f1d458; color: #000000; }
+    .btn-white { border: 1px solid #ffffff; color: #ffffff; }
+    .btn-white:hover { background: #ffffff; color: #000000; }
+    .btn-outline { border: 1px solid #124734; color: #124734; }
+    .btn-outline:hover { background: #124734; color: #ffffff; }
+    .navlink { color: #ffffff; }
+    .navlink:hover { color: #f8d12b; }
+    .chip { color: #ffffff; }
+    .chip:hover { background: #1c5f45; color: #ffffff; }
+  </style>
+<style>html { scroll-behavior: smooth; } section[id], [id] { scroll-margin-top: 64px; }</style>
+<style>/* Responsiv överbyggnad. Sidorna är formgivna för 1440 px och all layout
+   ligger i style-attribut, så det här lagret skriver över de fasta måtten
+   med !important. Ordning: flytande typografi, sedan surfplatta, sedan mobil. */
+
+img, svg { max-width: 100%; height: auto; }
+pre { overflow-x: auto; }
+p, ul, ol, dl, table { max-width: 100%; }
+
+/* Roten och mittspalten */
+body > div[style*="min-width: 1440px"] { min-width: 0 !important; }
+div[style*="width: 1280px"]:not([style*="height"]) {
+  width: 100% !important; max-width: 1280px !important;
+  padding-left: 24px; padding-right: 24px; box-sizing: border-box;
+}
+dl[style*="width: 1280px"], ul[style*="width: 1280px"], ol[style*="width: 1280px"] {
+  width: 100% !important; max-width: 1280px !important;
+  padding-left: 24px !important; padding-right: 24px !important; box-sizing: border-box;
+}
+
+/* Filmrutan: 16:9 i stället för fasta 1280 × 720 */
+[style*="width: 1280px"][style*="height: 720px"] {
+  width: 100% !important; height: auto !important; aspect-ratio: 16 / 9;
+}
+[style*="height: 226px"] { height: auto !important; aspect-ratio: 16 / 9; }
+[style*="height: 640px"] { height: auto !important; max-height: 70%; }
+
+/* Flytande rubriker */
+[style*="font-size: 200px"] { font-size: clamp(56px, 14vw, 200px) !important; }
+[style*="font-size: 132px"] { font-size: clamp(44px, 9.5vw, 132px) !important; }
+[style*="font-size: 96px"] { font-size: clamp(40px, 7vw, 96px) !important; }
+[style*="font-size: 84px"] { font-size: clamp(38px, 6vw, 84px) !important; }
+[style*="font-size: 76px"] { font-size: clamp(36px, 5.5vw, 76px) !important; }
+[style*="font-size: 64px"] { font-size: clamp(34px, 4.6vw, 64px) !important; }
+[style*="font-size: 56px"] { font-size: clamp(32px, 4vw, 56px) !important; }
+[style*="font-size: 52px"] { font-size: clamp(30px, 3.7vw, 52px) !important; }
+[style*="font-size: 44px"] { font-size: clamp(28px, 3.2vw, 44px) !important; }
+[style*="font-size: 36px"] { font-size: clamp(26px, 2.6vw, 36px) !important; }
+[style*="font-size: 34px"] { font-size: clamp(24px, 2.4vw, 34px) !important; }
+[style*="font-size: 32px"] { font-size: clamp(24px, 2.3vw, 32px) !important; }
+[style*="font-size: 26px"] { font-size: clamp(18px, 1.9vw, 26px) !important; }
+
+/* ---------- Surfplatta ---------- */
+@media (max-width: 1100px) {
+  section[style*="padding: 120px 0"] { padding-top: 80px !important; padding-bottom: 80px !important; }
+  section[style*="padding: 104px 0"] { padding-top: 72px !important; padding-bottom: 72px !important; }
+
+  /* Tvåspaltiga uppslag med en fast bildspalt blir en spalt */
+  [style*="grid-template-columns: 640px"],
+  [style*="grid-template-columns: 680px"],
+  [style*="grid-template-columns: 520px"],
+  [style*="grid-template-columns: minmax(0, 1fr) 520px"],
+  [style*="grid-template-columns: minmax(0, 1fr) 380px"] {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 40px !important;
+  }
+  [style*="grid-template-columns: repeat(4"] { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  [style*="grid-template-columns: repeat(5"],
+  [style*="grid-template-columns: repeat(6"] { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+
+  /* Bilder som satts i fast bredd centreras i sin spalt */
+  img[style*="width: 640px"], img[style*="width: 600px"], img[style*="width: 520px"],
+  img[style*="width: 420px"], img[style*="width: 380px"] { margin-inline: auto; }
+}
+
+/* ---------- Mobil ---------- */
+@media (max-width: 780px) {
+  div[style*="width: 1280px"]:not([style*="height"]),
+  dl[style*="width: 1280px"], ul[style*="width: 1280px"], ol[style*="width: 1280px"] {
+    padding-left: 20px !important; padding-right: 20px !important;
+  }
+  section[style*="padding: 120px 0"] { padding-top: 56px !important; padding-bottom: 56px !important; }
+  section[style*="padding: 104px 0"] { padding-top: 56px !important; padding-bottom: 56px !important; }
+
+  /* Menyn: logotyp och knapp, länkarna ryms inte */
+  header nav { display: none !important; }
+  header div[style*="gap: 40px"] { gap: 16px !important; }
+
+  /* Allt rutnät blir en spalt */
+  [style*="grid-template-columns: repeat("],
+  [style*="grid-template-columns: minmax(0, 1fr) minmax(0, 1fr)"] { grid-template-columns: minmax(0, 1fr) !important; }
+  [style*="grid-template-columns: minmax(0, 1fr) auto"] { grid-template-columns: minmax(0, 1fr) !important; }
+  [style*="grid-template-columns: 240px"],
+  [style*="grid-template-columns: 160px"] { grid-template-columns: minmax(0, 1fr) !important; row-gap: 0 !important; }
+  /* Specifikationen: etikett över värde, en linje per rad */
+  dt[style*="border-bottom"] { border-bottom: 0 !important; padding-bottom: 0 !important; }
+  dd[style*="border-bottom"] { padding-top: 4px !important; }
+
+  /* Dellistan: nummer och färgprick på en rad, texten under */
+  [style*="grid-template-columns: 40px 20px minmax(0, 1fr) auto"] {
+    grid-template-columns: 30px 18px minmax(0, 1fr) !important;
+    column-gap: 10px !important; row-gap: 4px !important; align-items: center !important;
+  }
+  [style*="grid-template-columns: 40px 20px minmax(0, 1fr) auto"] > span:last-child {
+    grid-column: 1 / -1 !important; padding-bottom: 2px;
+  }
+
+  /* Rader som låg sida vid sida får radbrytas */
+  div[style*="display: flex"][style*="justify-content: space-between"]:not([style*="flex-direction: column"]) { flex-wrap: wrap !important; }
+  footer div[style*="display: flex"]:not([style*="flex-direction: column"]) { flex-wrap: wrap !important; row-gap: 20px !important; }
+  [style*="margin-left: auto"] { margin-left: 0 !important; }
+
+  /* Knappar tar hela bredden så de går att träffa */
+  a[style*="min-height: 64px"], a[style*="min-height: 68px"], a[style*="min-height: 60px"] {
+    width: 100%; justify-content: center;
+  }
+  div[style*="display: flex"][style*="gap: 16px"]:not([style*="flex-direction: column"]) { flex-wrap: wrap !important; }
+  div[style*="display: flex"][style*="gap: 16px"]:not([style*="flex-direction: column"]) > a[class*="btn"] { flex: 1 1 100%; }
+
+  /* Filmrutans spelknapp och etikett */
+  [style*="width: 112px"][style*="height: 112px"] { width: 72px !important; height: 72px !important; }
+}</style>
+<style>/* Den här sidans egna spalter: felsökningens rubrikspalt till vänster. */
+@media (max-width: 1100px) {
+  [style*="grid-template-columns: 380px minmax(0, 1fr)"] { grid-template-columns: minmax(0, 1fr) !important; gap: 40px !important; }
+}
+</style>
+</head>
+<body>
+<div style="width: 100%; min-width: 1440px; display: flex; flex-direction: column; background: #071912;">
+
+  <!-- NAV -->
+  <header class="dark" style="position: sticky; top: 0; z-index: 10; background: #154734; height: 64px; display: flex; justify-content: center;">
+    <div style="width: 1280px; display: flex; align-items: center; gap: 40px;">
+      <a href="index.html" style="display: flex; align-items: center; gap: 12px; color: #ffffff;">
+        <img src="assets/logo-dark.svg" alt="LövGlöd" style="height: 30px; width: auto;">
+      </a>
+      <nav aria-label="Användarguide" style="display: flex; gap: 32px; flex-grow: 1; font-size: 15px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em;">
+        <a class="navlink" href="index.html">Produkten</a>
+        <a class="navlink" href="#anslut">Anslut</a>
+        <a class="navlink" href="#installningar">Inställningar</a>
+        <a class="navlink" href="#ljuset">Ljuset</a>
+        <a class="navlink" href="#felsok">Felsökning</a>
+      </nav>
+      <a class="btn btn-white" href="https://github.com/markusbackman/lovglod" style="min-height: 40px; padding: 8px 18px; font-size: 14px;">
+        GitHub
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v6H4V6h6"/></svg>
+      </a>
+    </div>
+  </header>
+
+  <!-- HERO -->
+  <section class="dark" style="background: #071912; color: #ffffff; display: flex; justify-content: center; padding: 96px 0 88px;">
+    <div style="width: 1280px; display: flex; flex-direction: column; gap: 56px;">
+      <div style="display: flex; flex-direction: column; gap: 28px;">
+        <a href="index.html" style="display: inline-flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #f8d12b;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+          Tillbaka till produkten
+        </a>
+        <h1 style="font-family: Antonio, sans-serif; font-weight: 700; font-size: 132px; line-height: 0.9; text-transform: uppercase;">Kom igång</h1>
+        <p style="font-size: 24px; line-height: 1.4; font-weight: 500; max-width: 760px; color: rgba(255,255,255,0.88);">Koppla in, anslut med mobilen, klart. Här står också vad inställningarna gör, hur du läser av ljuset och vad du gör när något inte stämmer.</p>
+      </div>
+      <ol style="list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 2px;">
+        <li style="display: flex;"><a class="chip" href="#anslut" style="flex-grow: 1; background: #0c2a1f; padding: 24px; display: flex; flex-direction: column; gap: 8px;">
+          <span style="font-family: Antonio, sans-serif; font-weight: 700; font-size: 20px; color: #f8d12b;">01</span>
+          <span style="font-family: Antonio, sans-serif; font-weight: 700; font-size: 34px; text-transform: uppercase;">Anslut</span>
+          <span style="font-size: 15px; color: rgba(255,255,255,0.78);">USB-C och mobilen · två minuter</span>
+        </a></li>
+        <li style="display: flex;"><a class="chip" href="#installningar" style="flex-grow: 1; background: #0c2a1f; padding: 24px; display: flex; flex-direction: column; gap: 8px;">
+          <span style="font-family: Antonio, sans-serif; font-weight: 700; font-size: 20px; color: #f8d12b;">02</span>
+          <span style="font-family: Antonio, sans-serif; font-weight: 700; font-size: 34px; text-transform: uppercase;">Ställ in</span>
+          <span style="font-size: 15px; color: rgba(255,255,255,0.78);">Statussidan i webbläsaren</span>
+        </a></li>
+        <li style="display: flex;"><a class="chip" href="#ljuset" style="flex-grow: 1; background: #0c2a1f; padding: 24px; display: flex; flex-direction: column; gap: 8px;">
+          <span style="font-family: Antonio, sans-serif; font-weight: 700; font-size: 20px; color: #f8d12b;">03</span>
+          <span style="font-family: Antonio, sans-serif; font-weight: 700; font-size: 34px; text-transform: uppercase;">Läs ljuset</span>
+          <span style="font-size: 15px; color: rgba(255,255,255,0.78);">Vad lampan säger just nu</span>
+        </a></li>
+        <li style="display: flex;"><a class="chip" href="#felsok" style="flex-grow: 1; background: #0c2a1f; padding: 24px; display: flex; flex-direction: column; gap: 8px;">
+          <span style="font-family: Antonio, sans-serif; font-weight: 700; font-size: 20px; color: #f8d12b;">04</span>
+          <span style="font-family: Antonio, sans-serif; font-weight: 700; font-size: 34px; text-transform: uppercase;">Felsök</span>
+          <span style="font-size: 15px; color: rgba(255,255,255,0.78);">När något inte stämmer</span>
+        </a></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ANSLUT -->
+  <section id="anslut" style="background: #ffffff; display: flex; justify-content: center; padding: 120px 0;">
+    <div style="width: 1280px; display: grid; grid-template-columns: minmax(0, 1fr) 520px; gap: 80px; align-items: start;">
+      <div style="display: flex; flex-direction: column; gap: 32px;">
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <span style="width: 6px; height: 26px; background: #124734;"></span>
+          <h2 style="font-family: Antonio, sans-serif; font-weight: 700; font-size: 56px; line-height: 1; text-transform: uppercase;">1. Anslut till WiFi</h2>
+        </div>
+        <p style="font-size: 20px; line-height: 1.5; color: #242424;">Lampan har ingen app och inget konto. Den startar ett eget litet nät, du ansluter med mobilen och berättar vilket WiFi den ska använda.</p>
+        <ol style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 20px;">
+          <li style="border-top: 1px solid #cecece; padding-top: 16px; display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 12px;">
+            <span style="font-family: Antonio, sans-serif; font-weight: 700; font-size: 36px; line-height: 1; color: #124734;">01</span>
+            <div style="display: flex; flex-direction: column; gap: 4px;"><h3 style="font-size: 20px; font-weight: 700;">Koppla in USB-C</h3><p style="font-size: 16px; line-height: 1.45; color: #484848;">Uttaget sitter i sockelns baksida. En vanlig USB-C-laddare på 5 V och minst 2 A räcker. Listen flödar in i gult och börjar sedan pulsa <b>grönt</b>.</p></div>
+          </li>
+          <li style="border-top: 1px solid #cecece; padding-top: 16px; display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 12px;">
+            <span style="font-family: Antonio, sans-serif; font-weight: 700; font-size: 36px; line-height: 1; color: #124734;">02</span>
+            <div style="display: flex; flex-direction: column; gap: 4px;"><h3 style="font-size: 20px; font-weight: 700;">Anslut mobilen till lampans nät</h3><p style="font-size: 16px; line-height: 1.45; color: #484848;">Välj nätet <code>LövGlöd-Setup-XXXX</code> i mobilens WiFi-inställningar. Det är öppet, utan lösenord. Inställningssidan dyker upp av sig själv; gör den inte det, gå till <code>http://192.168.4.1</code>.</p></div>
+          </li>
+          <li style="border-top: 1px solid #cecece; padding-top: 16px; display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 12px;">
+            <span style="font-family: Antonio, sans-serif; font-weight: 700; font-size: 36px; line-height: 1; color: #124734;">03</span>
+            <div style="display: flex; flex-direction: column; gap: 4px;"><h3 style="font-size: 20px; font-weight: 700;">Välj ditt WiFi och skriv lösenordet</h3><p style="font-size: 16px; line-height: 1.45; color: #484848;">Lampan pratar bara <b>2,4 GHz</b>. Har routern separata nät för 2,4 och 5 GHz, välj 2,4-nätet. Tryck <i>Spara och anslut</i>.</p></div>
+          </li>
+          <li style="border-top: 1px solid #cecece; padding-top: 16px; display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 12px;">
+            <span style="font-family: Antonio, sans-serif; font-weight: 700; font-size: 36px; line-height: 1; color: #124734;">04</span>
+            <div style="display: flex; flex-direction: column; gap: 4px;"><h3 style="font-size: 20px; font-weight: 700;">Vänta på gul glöd</h3><p style="font-size: 16px; line-height: 1.45; color: #484848;">En gul punkt jagar runt medan lampan ansluter, en gul stapel medan den hämtar matchdata. När listen andas lugnt i gult är den klar. Blir det <b>röd puls</b> gick anslutningen inte igenom, se <a href="#felsok" style="text-decoration: underline;">Felsökning</a>.</p></div>
+          </li>
+        </ol>
+      </div>
+      <div style="background: #f7f7f7; padding: 40px; display: flex; flex-direction: column; gap: 20px; border-left: 6px solid #124734;">
+        <h3 style="font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #124734;">Har du byggt den själv?</h3>
+        <p style="font-size: 17px; line-height: 1.5; color: #242424;">Första gången efter flashning visar portalen bara <b>listvalet</b>. Välj den LED-list du lödde in, <b>WS2812B</b> eller <b>APA102</b>, och <b>antal dioder</b>, och tryck <i>Spara list</i>.</p>
+        <p style="font-size: 17px; line-height: 1.5; color: #242424;">Pulsen flyttar direkt till den valda listen. Syns den inte är valet fel. Dra sedan ur strömmen, koppla in igen och fortsätt med WiFi som i stegen här bredvid.</p>
+        <p style="font-size: 15px; line-height: 1.5; color: #484848;">Listvalet sitter kvar genom omstarter, uppdateringar och <i>Glöm WiFi</i>. Hur du flashar kortet står i <a href="skriv-ut.html#flasha" style="text-decoration: underline;">Skriv ut själv</a>.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- INSTÄLLNINGAR -->
+  <section id="installningar" class="dark" style="background: #124734; color: #ffffff; display: flex; justify-content: center; padding: 120px 0;">
+    <div style="width: 1280px; display: flex; flex-direction: column; gap: 48px;">
+      <div style="display: grid; grid-template-columns: minmax(0, 1fr) 520px; gap: 80px; align-items: end;">
+        <div style="display: flex; flex-direction: column; gap: 24px;">
+          <div style="display: flex; align-items: center; gap: 14px;">
+            <span style="width: 6px; height: 26px; background: #f8d12b;"></span>
+            <h2 style="font-family: Antonio, sans-serif; font-weight: 700; font-size: 56px; line-height: 1; text-transform: uppercase;">2. Statussidan</h2>
+          </div>
+          <p style="font-size: 20px; line-height: 1.5; color: rgba(255,255,255,0.88);">När lampan är på ditt WiFi har den en egen sida i webbläsaren. Där syns nästa match, senaste resultat och ställningen, och där ställer du in allt. Du måste vara på samma nät som lampan.</p>
+        </div>
+        <div style="background: #071912; padding: 28px 32px; display: flex; flex-direction: column; gap: 12px;">
+          <span style="font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #f8d12b;">Öppna i webbläsaren</span>
+          <span style="font-family: ui-monospace, Menlo, monospace; font-size: 26px;">http://lovglod.local</span>
+          <span style="font-size: 15px; line-height: 1.45; color: rgba(255,255,255,0.78);">Fungerar inte adressen, använd lampans IP-adress i stället. Den står i routerns lista över anslutna enheter.</span>
+        </div>
+      </div>
+
+      <dl style="margin: 0; display: grid; grid-template-columns: 240px minmax(0, 1fr); font-size: 17px; background: #0c2a1f; padding: 8px 32px;">
+        <dt style="padding: 18px 0; border-bottom: 1px solid rgba(255,255,255,0.18); font-weight: 700;">Lampa</dt>
+        <dd style="margin: 0; padding: 18px 0; border-bottom: 1px solid rgba(255,255,255,0.18); line-height: 1.5; color: rgba(255,255,255,0.85);"><b>Alltid på</b> glöder dygnet runt, och är standard. <b>Bara match</b> är släckt mellan matcherna och tänds före nedsläpp. <b>Av</b> är helt släckt. Lampan följer matcherna i bakgrunden även när den är släckt, så den är i fas direkt när den tänds.</dd>
+        <dt style="padding: 18px 0; border-bottom: 1px solid rgba(255,255,255,0.18); font-weight: 700;">Bara match: tänd före nedsläpp</dt>
+        <dd style="margin: 0; padding: 18px 0; border-bottom: 1px solid rgba(255,255,255,0.18); line-height: 1.5; color: rgba(255,255,255,0.85);">15 eller 30 minuter. Gäller bara läget <i>Bara match</i>. Listen släcks igen vid slutsignalen.</dd>
+        <dt style="padding: 18px 0; border-bottom: 1px solid rgba(255,255,255,0.18); font-weight: 700;">Ljusstyrka</dt>
+        <dd style="margin: 0; padding: 18px 0; border-bottom: 1px solid rgba(255,255,255,0.18); line-height: 1.5; color: rgba(255,255,255,0.85);">5–255, standard 160. Gäller allt lampan visar, även målfyrverkeriet.</dd>
+        <dt style="padding: 18px 0; border-bottom: 1px solid rgba(255,255,255,0.18); font-weight: 700;">Fördröjning på mål</dt>
+        <dd style="margin: 0; padding: 18px 0; border-bottom: 1px solid rgba(255,255,255,0.18); line-height: 1.5; color: rgba(255,255,255,0.85);">0–180 sekunder, standard 15. Matchdatan kommer före tv-bilden, så utan fördröjning avslöjar lampan målet innan du sett det. <b>Ställ in den efter din tv:</b> se hur många sekunder det går mellan att <i>Ställning nu</i> tickar upp på statussidan och att pucken går in på skärmen, och skriv in den siffran. 0 stänger av fördröjningen.</dd>
+        <dt style="padding: 18px 0; border-bottom: 1px solid rgba(255,255,255,0.18); font-weight: 700;">Uppdateringskanal</dt>
+        <dd style="margin: 0; padding: 18px 0; border-bottom: 1px solid rgba(255,255,255,0.18); line-height: 1.5; color: rgba(255,255,255,0.85);"><b>Stabil</b> är standard. <b>Beta</b> får nya versioner före alla andra och kollar var tredje timme. Lampan uppdaterar sig själv var tolfte timme, aldrig under en match.</dd>
+        <dt style="padding: 18px 0; border-bottom: 1px solid rgba(255,255,255,0.18); font-weight: 700;">Uppdateringskälla</dt>
+        <dd style="margin: 0; padding: 18px 0; border-bottom: 1px solid rgba(255,255,255,0.18); line-height: 1.5; color: rgba(255,255,255,0.85);">Låt stå på <code>markusbackman/lovglod</code>. Tomt fält stänger av uppdateringarna.</dd>
+        <dt style="padding: 18px 0; border-bottom: 0 solid transparent; font-weight: 700;">Felsökningsläge</dt>
+        <dd style="margin: 0; padding: 18px 0; border-bottom: 0 solid transparent; line-height: 1.5; color: rgba(255,255,255,0.85);">Låt stå på <b>Av</b>. Det är till för utveckling och låter en testserver styra lampan i stället för SHL.</dd>
+      </dl>
+
+      <div style="display: flex; flex-direction: column; gap: 20px;">
+        <h3 style="font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #f1d458;">Knapparna under Åtgärder</h3>
+        <ul style="list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 2px;">
+          <li style="background: #0c2a1f; padding: 20px; display: flex; flex-direction: column; gap: 8px;"><span style="font-size: 17px; font-weight: 700;">Testa målfyrverkeriet</span><span style="font-size: 14px; line-height: 1.4; color: rgba(255,255,255,0.78);">Tänder ett mål direkt, utan fördröjning. Innehåller blinkande ljus.</span></li>
+          <li style="background: #0c2a1f; padding: 20px; display: flex; flex-direction: column; gap: 8px;"><span style="font-size: 17px; font-weight: 700;">Testa matchljuset</span><span style="font-size: 14px; line-height: 1.4; color: rgba(255,255,255,0.78);">En knapp per läge: slutspurt, paus, övertid, segerdans, mål och suck. <i>Normal drift</i> avslutar, annars efter tio minuter.</span></li>
+          <li style="background: #0c2a1f; padding: 20px; display: flex; flex-direction: column; gap: 8px;"><span style="font-size: 17px; font-weight: 700;">Hämta matchdata nu</span><span style="font-size: 14px; line-height: 1.4; color: rgba(255,255,255,0.78);">Frågar SHL direkt i stället för att vänta på nästa hämtning.</span></li>
+          <li style="background: #0c2a1f; padding: 20px; display: flex; flex-direction: column; gap: 8px;"><span style="font-size: 17px; font-weight: 700;">Sök efter uppdatering nu</span><span style="font-size: 14px; line-height: 1.4; color: rgba(255,255,255,0.78);">Kollar efter ny firmware direkt och installerar om det finns.</span></li>
+          <li style="background: #0c2a1f; padding: 20px; display: flex; flex-direction: column; gap: 8px;"><span style="font-size: 17px; font-weight: 700;">Glöm WiFi</span><span style="font-size: 14px; line-height: 1.4; color: rgba(255,255,255,0.78);">Raderar det sparade nätet och startar setup-nätet igen. Använd när du byter router.</span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- LJUSET -->
+  <section id="ljuset" style="background: #f7f7f7; display: flex; justify-content: center; padding: 120px 0;">
+    <div style="width: 1280px; display: flex; flex-direction: column; gap: 40px;">
+      <div style="display: flex; flex-direction: column; gap: 16px;">
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <span style="width: 6px; height: 26px; background: #124734;"></span>
+          <h2 style="font-family: Antonio, sans-serif; font-weight: 700; font-size: 56px; line-height: 1; text-transform: uppercase;">3. Läs av ljuset</h2>
+        </div>
+        <p style="font-size: 20px; line-height: 1.5; max-width: 760px; color: #242424;">Lampan har ingen skärm. Allt den vill säga, säger den med ljuset. Matchlägena finns på <a href="index.html#lagen" style="text-decoration: underline;">produktsidan</a>. Här är det lampan visar om sig själv.</p>
+      </div>
+      <ul style="list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 2px;">
+        <li style="background: #ffffff; padding: 24px; display: flex; flex-direction: column; gap: 10px;"><span style="width: 14px; height: 14px; border-radius: 50%; background: #ffe000; box-shadow: 0 0 12px #ffe000;"></span><span style="font-size: 18px; font-weight: 700;">Gult flödar in</span><span style="font-size: 15px; line-height: 1.4; color: #484848;">Lampan startar. Hela listen lyser ett ögonblick, och en släckt diod syns direkt.</span></li>
+        <li style="background: #ffffff; padding: 24px; display: flex; flex-direction: column; gap: 10px;"><span style="width: 14px; height: 14px; border-radius: 50%; background: #1c8f45; box-shadow: 0 0 12px #1c8f45;"></span><span style="font-size: 18px; font-weight: 700;">Grön puls</span><span style="font-size: 15px; line-height: 1.4; color: #484848;">Inget WiFi sparat. Anslut mobilen till <code>LövGlöd-Setup-XXXX</code>.</span></li>
+        <li style="background: #ffffff; padding: 24px; display: flex; flex-direction: column; gap: 10px;"><span style="width: 14px; height: 14px; border-radius: 50%; background: #e8452c; box-shadow: 0 0 12px #e8452c;"></span><span style="font-size: 18px; font-weight: 700;">Röd puls</span><span style="font-size: 15px; line-height: 1.4; color: #484848;">Sparat WiFi går inte att nå. Setup-nätet är öppet igen, och lampan provar på nytt var femte minut.</span></li>
+        <li style="background: #ffffff; padding: 24px; display: flex; flex-direction: column; gap: 10px;"><span style="width: 14px; height: 14px; border-radius: 50%; background: #ffe000; box-shadow: 0 0 12px #ffe000;"></span><span style="font-size: 18px; font-weight: 700;">Gul punkt jagar runt</span><span style="font-size: 15px; line-height: 1.4; color: #484848;">Ansluter till WiFi.</span></li>
+        <li style="background: #ffffff; padding: 24px; display: flex; flex-direction: column; gap: 10px;"><span style="width: 14px; height: 14px; border-radius: 50%; background: #ffe000; box-shadow: 0 0 12px #ffe000;"></span><span style="font-size: 18px; font-weight: 700;">Gul stapel står still</span><span style="font-size: 15px; line-height: 1.4; color: #484848;">Testar nätet och hämtar första matchdatan. Den hoppar i stora steg, det är normalt.</span></li>
+        <li style="background: #ffffff; padding: 24px; display: flex; flex-direction: column; gap: 10px;"><span style="width: 14px; height: 14px; border-radius: 50%; background: #ffe000; box-shadow: 0 0 12px #ffe000;"></span><span style="font-size: 18px; font-weight: 700;">Gul stapel fylls</span><span style="font-size: 15px; line-height: 1.4; color: #484848;">Uppdaterar sig. Dra inte ur strömmen, den startar om själv när den är klar.</span></li>
+        <li style="background: #ffffff; padding: 24px; display: flex; flex-direction: column; gap: 10px;"><span style="width: 14px; height: 14px; border-radius: 50%; background: #ffe000; box-shadow: 0 0 12px #ffe000;"></span><span style="font-size: 18px; font-weight: 700;">Långsamt gult andetag</span><span style="font-size: 15px; line-height: 1.4; color: #484848;">Allt fungerar. Här står lampan nästan all tid.</span></li>
+        <li style="background: #ffffff; padding: 24px; display: flex; flex-direction: column; gap: 10px;"><span style="width: 14px; height: 14px; border-radius: 50%; background: #7a2a22; box-shadow: 0 0 12px #7a2a22;"></span><span style="font-size: 18px; font-weight: 700;">Svagt rött andetag</span><span style="font-size: 15px; line-height: 1.4; color: #484848;">På WiFi, men SHL svarar inte. Löser sig oftast av sig själv när shl.se är tillbaka.</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- FELSÖKNING -->
+  <section id="felsok" style="background: #ffffff; display: flex; justify-content: center; padding: 120px 0;">
+    <div style="width: 1280px; display: grid; grid-template-columns: 380px minmax(0, 1fr); gap: 80px; align-items: start;">
+      <div style="display: flex; flex-direction: column; gap: 20px;">
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <span style="width: 6px; height: 26px; background: #124734;"></span>
+          <h2 style="font-family: Antonio, sans-serif; font-weight: 700; font-size: 56px; line-height: 1; text-transform: uppercase;">4. Felsökning</h2>
+        </div>
+        <p style="font-size: 18px; line-height: 1.5; color: #242424;">Det mesta syns på statussidan. Kolla raderna <i>Läge</i>, <i>Lampa</i>, <i>Klocka</i> och <i>Omstarter</i> först.</p>
+        <p style="font-size: 15px; line-height: 1.5; color: #484848;">Längst ner på statussidan finns <i>Felsökning</i> med nätverkstest, datakällorna och LED-listen, för den som vill gräva djupare.</p>
+      </div>
+      <div style="display: flex; flex-direction: column;">
+        <div style="border-top: 2px solid #124734; padding: 20px 0 24px; display: flex; flex-direction: column; gap: 8px;">
+          <h3 style="font-size: 21px; font-weight: 700;">Listen lyser inte alls</h3>
+          <p style="font-size: 16px; line-height: 1.5; color: #484848;">Kolla <i>Lampa</i> på statussidan: i läget <b>Bara match</b> är den släckt mellan matcherna, och <b>Av</b> är alltid släckt. Står den på <i>Alltid på</i>, prova en annan USB-C-laddare och kabel, och kontrollera att ljusstyrkan inte står på 5.</p>
+        </div>
+        <div style="border-top: 1px solid #cecece; padding: 20px 0 24px; display: flex; flex-direction: column; gap: 8px;">
+          <h3 style="font-size: 21px; font-weight: 700;">Den pulsar rött</h3>
+          <p style="font-size: 16px; line-height: 1.5; color: #484848;">Lampan når inte det sparade nätet: routern är nere, lösenordet ändrat, nätet är bara 5 GHz, eller lampan står för långt bort. Löser det sig av sig själv slocknar det röda inom fem minuter. Annars: anslut mobilen till <code>LövGlöd-Setup-XXXX</code> igen och ange nätet på nytt.</p>
+        </div>
+        <div style="border-top: 1px solid #cecece; padding: 20px 0 24px; display: flex; flex-direction: column; gap: 8px;">
+          <h3 style="font-size: 21px; font-weight: 700;">Setup-sidan dyker inte upp på mobilen</h3>
+          <p style="font-size: 16px; line-height: 1.5; color: #484848;">Gå till <code>http://192.168.4.1</code> med mobilen ansluten till setup-nätet. Stäng av mobildata under tiden om mobilen vill hoppa tillbaka till 4G.</p>
+        </div>
+        <div style="border-top: 1px solid #cecece; padding: 20px 0 24px; display: flex; flex-direction: column; gap: 8px;">
+          <h3 style="font-size: 21px; font-weight: 700;"><code>lovglod.local</code> går inte att öppna</h3>
+          <p style="font-size: 16px; line-height: 1.5; color: #484848;">Vissa nät, till exempel gäst- och företagsnät, släpper inte igenom namnet. Använd lampans IP-adress från routerns lista över anslutna enheter. Datorn eller mobilen måste vara på samma nät som lampan.</p>
+        </div>
+        <div style="border-top: 1px solid #cecece; padding: 20px 0 24px; display: flex; flex-direction: column; gap: 8px;">
+          <h3 style="font-size: 21px; font-weight: 700;">Svagt rött andetag</h3>
+          <p style="font-size: 16px; line-height: 1.5; color: #484848;">Lampan är på nätet men får inget svar från SHL. Oftast ligger shl.se nere en stund, och lampan kommer tillbaka själv. <i>Hämta matchdata nu</i> provar direkt.</p>
+        </div>
+        <div style="border-top: 1px solid #cecece; padding: 20px 0 24px; display: flex; flex-direction: column; gap: 8px;">
+          <h3 style="font-size: 21px; font-weight: 700;">Målet kommer före eller efter tv:n</h3>
+          <p style="font-size: 16px; line-height: 1.5; color: #484848;">Justera <i>Fördröjning på mål</i>. Kommer lampan före, öka värdet; kommer den efter, sänk. Strömmande tjänster ligger ofta längre efter än marksänd tv. Medan ett mål väntar visar statussidan <i>Mål på gång</i> med nedräkning.</p>
+        </div>
+        <div style="border-top: 1px solid #cecece; padding: 20px 0 24px; display: flex; flex-direction: column; gap: 8px;">
+          <h3 style="font-size: 21px; font-weight: 700;">Inget händer under matchen</h3>
+          <p style="font-size: 16px; line-height: 1.5; color: #484848;">Kolla <i>Klocka</i> på statussidan. Står det <i>INTE synkad</i> har lampan inte fått tiden från nätet, och då är matchläge, mål och seger avstängda. Det brukar lösa sig när nätet släpper ut lampan mot internet. Kolla också att <i>Nästa match</i> visar rätt match.</p>
+        </div>
+        <div style="border-top: 1px solid #cecece; padding: 20px 0 24px; display: flex; flex-direction: column; gap: 8px;">
+          <h3 style="font-size: 21px; font-weight: 700;">Bara en del av listen lyser, eller fel färger</h3>
+          <p style="font-size: 16px; line-height: 1.5; color: #484848;">Listtypen eller antalet dioder är fel inställt. Ändra under <i>Felsökning → Ändra LED-list</i> längst ner på statussidan.</p>
+        </div>
+        <div style="border-top: 1px solid #cecece; padding: 20px 0 24px; display: flex; flex-direction: column; gap: 8px;">
+          <h3 style="font-size: 21px; font-weight: 700;">Lampan startar om av sig själv</h3>
+          <p style="font-size: 16px; line-height: 1.5; color: #484848;">Titta på <i>Omstarter</i> och <i>Senaste omstart</i>. Startar den om vid ljusa effekter räcker laddaren inte till. Byt till en på minst 2 A, eller sänk ljusstyrkan.</p>
+        </div>
+        <div style="border-top: 1px solid #cecece; padding: 20px 0 24px; display: flex; flex-direction: column; gap: 8px;">
+          <h3 style="font-size: 21px; font-weight: 700;">Byta WiFi eller börja om</h3>
+          <p style="font-size: 16px; line-height: 1.5; color: #484848;">Nytt nät: <i>Glöm WiFi</i> på statussidan, sedan steg 2–4 under <a href="#anslut" style="text-decoration: underline;">Anslut</a>. Vill du nollställa allt, också listvalet: flasha om kortet enligt <a href="https://github.com/markusbackman/lovglod/blob/main/docs/INSTALLERA.md" style="text-decoration: underline;">installationsguiden</a>.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MER -->
+  <section class="dark" style="position: relative; overflow: hidden; background: #124734; color: #ffffff; display: flex; justify-content: center; padding: 104px 0;">
+    <div style="width: 1280px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 64px; align-items: center;">
+      <div style="display: flex; flex-direction: column; gap: 20px;">
+        <p style="font-size: 15px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.16em; color: #f8d12b;">Vill du veta mer?</p>
+        <h2 style="font-family: Antonio, sans-serif; font-weight: 700; font-size: 84px; line-height: 0.9; text-transform: uppercase;">Varje läge, förklarat</h2>
+        <p style="font-size: 22px; line-height: 1.45; max-width: 680px; color: rgba(255,255,255,0.88);">Hur glöden, målen och slutspurten är ritade, och varför, står i guiden om ljusspråket.</p>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 16px;">
+        <a class="btn btn-gold" href="https://github.com/markusbackman/lovglod/blob/main/docs/GLODEN.md" style="padding: 20px 48px; font-size: 20px; min-height: 68px;">
+          Ljusspråket
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v6H4V6h6"/></svg>
+        </a>
+        <a class="btn btn-white" href="https://github.com/markusbackman/lovglod/blob/main/docs/INSTALLERA.md" style="padding: 14px 32px; font-size: 16px;">
+          Installationsguiden
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v6H4V6h6"/></svg>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="dark" style="background: #04100c; color: #ffffff; display: flex; justify-content: center; padding: 48px 0 56px;">
+    <div style="width: 1280px; display: flex; align-items: center; gap: 20px;">
+      <img src="assets/logo-icon.svg" alt="LövGlöd" style="width: 52px; height: 52px;">
+      <div style="display: flex; flex-direction: column; gap: 4px; flex-grow: 1;">
+        <img src="assets/logo-dark.svg" alt="LövGlöd" style="height: 36px; width: auto; margin-left: -3px; align-self: flex-start;">
+        <span style="font-size: 14px; color: rgba(255,255,255,0.72);">Ett fanprojekt. Umeå. 2026</span>
+      </div>
+      <nav aria-label="Sidfot" style="display: flex; gap: 28px; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em;">
+        <a class="navlink" href="index.html">Produkten</a>
+        <a class="navlink" href="skriv-ut.html">Skriv ut själv</a>
+        <a class="navlink" href="https://github.com/markusbackman/lovglod">GitHub</a>
+      </nav>
+    </div>
+  </footer>
+</div>
+</body>
+</html>
