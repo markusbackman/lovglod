@@ -15,8 +15,8 @@ behöver aldrig röra den.
 - **Lever med matchen.** Hjärtslag när det står lika i slutminuterna, timglas
   i pausen, dragkamp i övertiden och segerdans vid vinst.
 - **Mål som växer med matchen.** Stroboskop och kometer ut från lövets mitt, upp
-  till 22 sekunder för det avgörande målet. Fördröjt så att tv-sändningen hinner
-  ikapp och ingen i rummet får målet avslöjat.
+  till 22 sekunder för det avgörande målet. Kan fördröjas så att tv-sändningen
+  hinner ikapp och ingen i rummet får målet avslöjat.
 - **Sköter sig själv.** Koppla in med USB-C, ställ in med mobilen. Uppdaterar
   sig över WiFi med signerad firmware.
 - **Öppen hela vägen.** Modellerna, byggbeskrivningen och koden ligger här.

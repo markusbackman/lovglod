@@ -19,7 +19,7 @@ avslutas med hur du skruvar på beteendet och ställer in tv-fördröjningen.
 | [Slutspurt](#slutspurten--ovanpå-matchglöden) | Hjärtslag, guldregn eller anfallsvågor ovanpå glöden | Tajt match mot slutet av tredje |
 | [Paus](#led_intermission--timglaset) | Bärnstensstapel som krymper mot mitten | Paus mellan perioderna |
 | [Övertid](#led_overtime--dragkampen) | Guld mot blåvitt, gränsen slits fram och tillbaka | Övertid och straffar |
-| [MÅL](#led_goal--målfyrverkeriet) | 7–22 s stroboskop och kometer | Mål — större ju viktigare, 15 s fördröjt så tv:n hinner ikapp |
+| [MÅL](#led_goal--målfyrverkeriet) | 7–22 s stroboskop och kometer | Mål — större ju viktigare, kan fördröjas så tv:n hinner ikapp |
 | [Motståndarmål](#suck--motståndarmål) | Listen faller ihop och hämtar sig | Motståndaren gjorde mål |
 | [Segerdans](#led_dance--segerdansen) | Guld och grönt jagar utåt från mitten | Slutsignal, Björklöven vann |
 | [Uppdaterar](#led_updating--ota-förlopp) | Gul stapel som fylls | Ny firmware laddas ner |
@@ -307,10 +307,10 @@ Gränserna sitter i `GOAL_MIN_MS`/`GOAL_MAX_MS` och grannarna i
 
 Sista 1,2 sekunderna tonas allt ner mot standby istället för att slockna tvärt.
 
-**Fyrverkeriet är fördröjt 15 sekunder som standard.** SHL:s live-data är
-snabbare än tv-sändningen, så utan fördröjning tänder lampan målet innan det
-syns på skärmen — och alla i rummet vet att det gick in innan de får se det. Se
-[Tv-fördröjning](#tv-fördröjning) nedan.
+**Fyrverkeriet tänds direkt som standard, men kan fördröjas.** SHL:s live-data
+är ofta snabbare än tv-sändningen, så utan fördröjning kan lampan tända målet
+innan det syns på skärmen — och alla i rummet vet att det gick in innan de får
+se det. Se [Tv-fördröjning](#tv-fördröjning) nedan.
 
 **Mål i rad staplar inte om från början.** Ett nytt mål under pågående
 fyrverkeri förlänger bara, och vikten får bara växa — annars hade ett snabbt 2-mål
@@ -423,7 +423,7 @@ Allt sitter i `include/config.h`:
 #define MOOD_THRESHOLD   0.20f         // när den börjar synas
 #define HEART_MAX_BPM    140           // hjärtslagets toppuls
 #define PAUSE_EST_S      (17 * 60)     // timglasets antagna paus
-#define GOAL_DELAY_DEFAULT_S 15        // tv-fördröjning, ändras på statussidan
+#define GOAL_DELAY_DEFAULT_S 0         // tv-fördröjning, ändras på statussidan
 #define SPARKLE_MEAN_INTERVAL_MS 700   // högre = färre gnistor
 #define SPARKLE_MAX_GAME_AGE_S (14UL*24*60*60)  // tak när nästa match saknas
 ```
@@ -447,13 +447,12 @@ efter, oftast någonstans mellan 10 och 60 sekunder. Utan fördröjning tänder
 lampan målet innan det syns på skärmen, och då är målet avslöjat för alla i
 rummet.
 
-Därför köas målfyrverkeriet. Fältet **Fördröjning på mål** på statussidan
+Därför kan målfyrverkeriet köas. Fältet **Fördröjning på mål** på statussidan
 sätter antalet sekunder:
 
 | Värde | Effekt |
 |---|---|
-| `15` | Standard (`GOAL_DELAY_DEFAULT_S` i `include/config.h`) |
-| `0` | Av — lampan tänder i samma stund som SHL rapporterar målet |
+| `0` | Standard (`GOAL_DELAY_DEFAULT_S` i `include/config.h`) — av, lampan tänder i samma stund som SHL rapporterar målet |
 | upp till `180` | Taket, `GOAL_DELAY_MAX_S` |
 
 **Ställ in den efter din egen skärm.** Sitt med matchen igång, notera hur många

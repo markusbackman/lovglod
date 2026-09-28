@@ -338,7 +338,7 @@
 // TV-fördröjning. Live-datan från SHL kommer före tv-bilden — utan fördröjning
 // skulle lampan avslöja målet för alla i rummet innan det syns på skärmen.
 // Sekunder, 0 = av. Ställs om på statussidan; det här är startvärdet.
-#define GOAL_DELAY_DEFAULT_S 15
+#define GOAL_DELAY_DEFAULT_S 0
 #define GOAL_DELAY_MAX_S     180    // taket i formuläret och vid inläsning
 #define GOAL_QUEUE_MAX       6      // köade mål som väntar på att tändas
 

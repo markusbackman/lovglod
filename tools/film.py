@@ -13,8 +13,8 @@ visa, på sekunden, medan kameran rullar.
 Lampan styrs som mockservern gör det: hela matchläget trycks in på POST /push,
 med hjärtslag emellan så att PUSH_LEASE_MS aldrig löper ut. Målet tänds däremot
 med POST /test. Det är samma fyrverkeri, men utan tv-fördröjningen — ett mål
-via ställningen skulle vänta settings.goalDelayS (15 s som standard) och då
-stämmer inte tidslinjen.
+via ställningen skulle vänta settings.goalDelayS (0 s som standard, men
+den kan vara uppskruvad) och då stämmer inte tidslinjen.
 
 Matchljusets filmer — slutspurt, paus, övertid, suck, seger och slutminuter —
 styrs i stället med knapparna på /ljus, samma demolägen som i seriemonitorn.
