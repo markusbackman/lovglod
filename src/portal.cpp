@@ -68,6 +68,8 @@ body{margin:0;background:var(--bg);color:#000;font:16px/1.5 var(--body)}
 .eye{margin:0 0 8px;font-size:13px;font-weight:700;letter-spacing:.12em;
  text-transform:uppercase;color:var(--gold)}
 h1{margin:0;font:700 44px/.95 var(--disp);text-transform:uppercase;overflow-wrap:anywhere}
+h1 .mark{display:block;height:72px;width:auto;margin-left:-3px}
+.gl{color:#F8D12B}
 .lead{margin:12px 0 0;font-size:17px;color:rgba(255,255,255,.88)}
 .lead b{color:#fff}
 main.in{padding-top:24px;padding-bottom:48px}
@@ -268,7 +270,7 @@ void handleStripSave() {
 void handleSetup() {
     if (settings.ledStrip == LED_STRIP_UNSET) { handleStripPage(); return; }
 
-    String p = head("LövGlöd — WiFi", "Välkommen hem", F("Anslut din LövGlöd"),
+    String p = head("LövGlöd — WiFi", "Välkommen hem", F("Anslut din Löv<span class=gl>Glöd</span>"),
                     F("Välj ditt WiFi så börjar lampan följa Björklöven."));
     p += F("<div class=card><form method=POST action=/save>"
            "<label>Nätverk</label><select name=ssid_pick "
@@ -313,7 +315,7 @@ void handleSave() {
 void handleStatus() {
     String p = head("LövGlöd — Admin",
                     ("v" FW_VERSION " · " + WiFi.localIP().toString()).c_str(),
-                    F("LövGlöd"), "Läge: <b>" + htmlEscape(status.state) + "</b>");
+                    F("<img class=mark src=/logo.svg alt='LövGlöd'>"), "Läge: <b>" + htmlEscape(status.state) + "</b>");
     p += F("<h2>Status</h2><div class=card><table>");
 
     auto row = [&](const char *k, const String &v, bool hi = false) {
