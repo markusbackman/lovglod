@@ -115,16 +115,19 @@ TAGNINGAR = [
          till=((195, -1300, 112), (0, 42, 130))),
 ]
 
-# (start, slut, text, stil). Stilarna finns i bygg.py. Text bara i tagningar
-# där lampan står i högra tredjedelen, så att den aldrig täcker lampan.
+# (start, slut, text, stil). Stilarna finns i bygg.py. Text bara där den inte
+# täcker lampan: i tagningar där lampan står i högra tredjedelen, eller i
+# målets helbild, där lampan står i mitten med svart på båda sidor.
+# Stilen "logga" lägger logotypen (logga.png) i stället för texten.
 TEXTER = [
-    (6.0, 8.4, "LövGlöd", "titel"),
+    (6.0, 8.4, "LövGlöd", "logga"),
     (9.2, 12.4, "Vet när det är match.", "rad"),
     (13.0, 16.0, "Känner slutminuterna.", "rad"),
+    (16.7, 19.1, "Mååål!", "mal"),
     (21.2, 24.4, "Och när Löven vinner —", "rad"),
     (25.0, 28.4, "vet hela rummet om det.", "rad"),
-    (34.2, 37.4, "LövGlöd", "titel"),
-    (34.8, 37.4, "Ljuset som följer Björklöven.", "under"),
+    (34.2, 37.4, "LövGlöd", "logga"),
+    (34.8, 37.4, "Glöden från läktaren, hemma hos dig.", "under"),
 ]
 
 # Musiken, och var i låten filmen börjar. Lone Skate Glide går i 120 bpm och

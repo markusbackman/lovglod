@@ -27,6 +27,7 @@ libfreetype: `brew install --cask blender && brew install ffmpeg`.
 | `scen.py` | Sätter ihop lampan i Blender, bygger studion och renderar med Cycles |
 | `bygg.py` | Kör allt och klipper ihop med ffmpeg: titlar, toning in och ut, H.264 |
 | `typsnitt/` | Barlow, samma som webbplatsen (SIL OFL) |
+| `logga.png` | Logotypen till titlarna, `site/assets/logo-dark.svg` renderad till bild (se `bygg.py`) |
 | `musik/` | Ljudspåret, Lone Skate Glide (Suno) |
 
 ## Hur ljuset kommer in i fönstret
