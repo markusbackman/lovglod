@@ -100,6 +100,7 @@ td:first-child{width:40%;padding-right:12px;font-size:13px;font-weight:600;
 .ok{font-weight:700;color:var(--g7)}
 .note{margin:12px 0 0;font-size:14px;color:var(--mut)}
 .card>.note:first-child{margin-top:0}
+.foot{margin:32px 0 0;text-align:center;font-size:14px;font-style:italic;color:var(--mut)}
 pre{margin:0 0 4px;white-space:pre-wrap;word-break:break-all;font:12px/1.45 ui-monospace,Menlo,monospace;
  background:var(--g9);color:#D8E3DD;padding:12px;max-height:260px;overflow:auto}
 a{color:var(--g7);font-weight:700}
@@ -422,7 +423,8 @@ void handleStatus() {
            "Sök efter uppdatering nu</button></form>"
            "<form method=POST action=/forget onsubmit=\"return confirm('Glöm WiFi och starta setup-portalen?')\">"
            "<button class=ghost type=submit>Glöm WiFi</button></form>"
-           "</div><a class=back href=/debug>Felsökning →</a>");
+           "</div><a class=back href=/debug>Felsökning →</a>"
+           "<p class=foot>Vad som än händer står vi här.</p>");
     p += FPSTR(PAGE_END);
 
     server.send(200, "text/html; charset=utf-8", p);
@@ -511,7 +513,7 @@ void handleForget() {
     server.send(200, "text/html; charset=utf-8",
                 head("LövGlöd — Nollställt", "Nollställt", F("WiFi glömt"),
                      F("Lampan startar om i setup-läge. Anslut till nätet "
-                       "LövGlöd-Setup för att välja ett nytt WiFi.")) +
+                       "LövGlöd-Setup för att välja ett nytt WiFi. Vi ska upp igen.")) +
                     FPSTR(PAGE_END));
     delay(600);
     ESP.restart();
