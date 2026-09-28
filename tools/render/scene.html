@@ -140,11 +140,21 @@ if (view === 'hero') parts.push(
   // "Vi är / tillbaka" är vit i hjältebilden, oavsett lövets textfärg.
   ['bjorkloven_puck_letters', WHITE,       PUCK_UP],
 );
+// En andra puck ligger med undersidan uppåt, alltså "Vi är / tillbaka" mot
+// taket, så att båda sidorna syns. Filens text läses rätt från +z med +y bort
+// från läsaren; ett halvt varv kring z vänder den mot kameran. Texten är vit,
+// som i hjältebilden.
+const PUCK_BACK = new THREE.Matrix4().makeTranslation(-112, 92, 0)
+  .multiply(new THREE.Matrix4().makeRotationZ(Math.PI + THREE.MathUtils.degToRad(12)));
 if (view === 'puck') parts.push(
   ['bjorkloven_puck',         BLACK,       PUCK],
   ['bjorkloven_puck_green',   GREEN,       PUCK],
   ['bjorkloven_puck_window',  PUCK_YELLOW, PUCK],
   ['bjorkloven_puck_letters', LETTERS,     PUCK],
+  ['bjorkloven_puck',         BLACK,       PUCK_BACK],
+  ['bjorkloven_puck_green',   GREEN,       PUCK_BACK],
+  ['bjorkloven_puck_window',  PUCK_YELLOW, PUCK_BACK],
+  ['bjorkloven_puck_letters', WHITE,       PUCK_BACK],
 );
 
 const loader = new STLLoader();

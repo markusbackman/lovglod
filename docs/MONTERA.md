@@ -113,7 +113,8 @@ Dra in `bjorkloven_base.stl` och `bjorkloven_base_letters.stl` **samtidigt**, so
 ett objekt med flera delar. Grönt för sockeln, vitt för texten. Vitt finns bara
 i första millimetern, så färgbytena är få.
 
-`bjorkloven_plate.stl` i grönt på samma platta, bredvid. Rotera inte den heller:
+`bjorkloven_plate.stl` i grönt på samma platta, bredvid. Dra in den **för sig**, som
+ett eget objekt, inte som en del av sockeln. Rotera inte den heller:
 "LövGlöd / V2" och skruvhuvudenas försänkningar ska vara uppåt vid utskrift.
 
 ### Valfritt — platta 4, pucken

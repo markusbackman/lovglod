@@ -27,7 +27,7 @@ const VIEWS = {
   back:     { w: 2000, h: 2000, out: 900,  note: 'bakifrån, tänd: bakstyckets kontur och USB-C' },
   'front-vit': { view: 'front', text: 'vit', w: 2200, h: 2600, out: 1000, fov: 20, note: 'rakt framifrån, vit text (nostalgi)' },
   side:     { w: 2000, h: 2400, out: 900,  note: 'från sidan' },
-  puck:     { w: 3000, h: 2400, out: 1200, dist: 1050, note: 'tänd, med pucken liggande bredvid' },
+  puck:     { w: 3000, h: 2400, out: 1200, dist: 1050, note: 'tänd, med två puckar bredvid, en med vardera sidan upp' },
 };
 
 const args = process.argv.slice(2);
