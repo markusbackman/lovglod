@@ -54,20 +54,24 @@ Varje läge, och varför det ser ut som det gör, finns i
 <p>
   <img src="site/assets/front.webp" width="32%" alt="Lövet framifrån">
   <img src="site/assets/exploded.webp" width="32%" alt="Sprängskiss av lampans delar">
-  <img src="site/assets/back.webp" width="32%" alt="Lövet bakifrån">
+  <img src="site/assets/back.webp" width="32%" alt="Lövet bakifrån, med bakluckans gula kontur">
 </p>
 
 - **Färgen sitter i ytan.** Det gula bandet och texten är inlagda i
   flerfärgsutskriften, inte målade. Framsidan är helt plan.
+- **Gul eller vit text.** BJÖRKLÖVEN / UMEÅ skrivs ut i gult som i dagens
+  märke, eller i vitt som det såg ut innan klubben bytte tillbaka 2022.
 - **Jämnt ljus runt om.** LED-listen står på högkant och lyser från sidan in i
   bandet, så det glöder jämnt utan synliga prickar.
+- **Lövet på väggen bakom.** Bakluckan har lövets kontur ingjuten i gul PETG.
+  Listen lyser igenom den och ritar lövet i full storlek på väggen.
 - **Inga synliga skruvar.** Elektroniken bor i sockeln. Framifrån syns bara
   lövet och *SM Guld 1987*.
 
 | | |
 |---|---|
 | Mått (b × d × h) | 182,6 × 84 × 250,5 mm |
-| Material | PLA i grönt, vitt och transparent gult, 307 g |
+| Material | PLA i grönt, vitt, gult och transparent gult, gul PETG i bakluckan, 309 g |
 | Ljus | WS2812B eller APA102, 5 V, ~55 cm |
 | Styrenhet | ESP32 med WiFi (2,4 GHz) |
 | Ström | USB-C i sockelns baksida, 5 V / 3 A |

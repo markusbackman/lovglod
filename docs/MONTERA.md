@@ -4,19 +4,20 @@
 
 Den fysiska lampan: Björklövens löv, 220 mm högt, stående i en sockel. Lövet är
 en 2 mm grön framsida där klubbmärkets gula band är ingjutet som ett
-genomskinligt fönster och "BJÖRKLÖVEN / UMEÅ" ligger i vitt. Bakom bandet står
+genomskinligt fönster och "BJÖRKLÖVEN / UMEÅ" ligger i gult eller vitt. Bakom bandet står
 LED-listen på högkant, så bandet lyser. Lövets spets går ner i en sockel med
 "SM Guld 1987" i vitt, ett fack för ESP32:n under golvet och ett USB-C-uttag i
 ryggen.
 
-Färdigt mått **182,6 × 84 × 250,5 mm**, cirka **307 g** filament och **7 h 59 min**
+Färdigt mått **182,6 × 84 × 250,5 mm**, cirka **309 g** filament och **8 h 12 min**
 utskrift före purge (Bambu X2D, 0,2 mm, PLA Basic).
 
 ```
 hardware/v2/
   plate-1/   bjorkloven_sign, _core, _window, _letters   lövet, flerfärg
-  plate-2/   bjorkloven_back                             bakstycket
+  plate-2/   bjorkloven_back, _back_glow                 bakstycket med gul kontur, flerfärg
   plate-3/   bjorkloven_base, _base_letters, _plate      sockeln, flerfärg + bottenplattan
+  plate-4/   bjorkloven_puck, _green, _window, _letters  pucken, flerfärg, valfri
   tools/     bjorkloven_glue_jig                         limfixtur, valfri
 ```
 
@@ -29,22 +30,33 @@ hardware/v2/
 | `bjorkloven_sign` | grön | Lövets skal: framsida, kant, öppen baksida |
 | `bjorkloven_core` | grön | Blocket inne i lövet som LED-listen sitter mot |
 | `bjorkloven_window` | gul, genomskinlig | Linsen listen lyser igenom |
-| `bjorkloven_letters` | vit | BJÖRKLÖVEN / UMEÅ, i nivå med framsidan |
+| `bjorkloven_letters` | gul eller vit | BJÖRKLÖVEN / UMEÅ, i nivå med framsidan |
 | `bjorkloven_back` | grön | Löstagbart bakstycke, fyra skruvar |
+| `bjorkloven_back_glow` | gul PETG, genomskinlig | Lövets kontur, ingjuten i bakstycket. Listen lyser igenom den och ritar lövet på väggen bakom |
 | `bjorkloven_base` | grön | Sockeln, med ESP32-fack och hål för USB-C |
 | `bjorkloven_base_letters` | vit | "SM Guld 1987", i nivå med sockelns front |
 | `bjorkloven_plate` | grön | Sockelns botten, det lampan står på |
 | `bjorkloven_glue_jig` | valfri | Verktyg, inte en del av lampan: håller listen mot kärnan medan limmet härdar |
 
+Bredvid lampan, men inte en del av den:
+
+| Fil | Färg | Vad det är |
+|---|---|---|
+| `bjorkloven_puck` | svart | En puck i regelmått, 76,2 × 25,4 mm |
+| `bjorkloven_puck_green` | grön | Lövets kant och fält i puckens logga |
+| `bjorkloven_puck_window` | gul | Loggans gula band |
+| `bjorkloven_puck_letters` | gul eller vit | Loggans text, och "Vi är / tillbaka" i andra sidan |
+
 ## 2. Skriva ut
 
 Tre plattor på en skrivare med AMS laddad med **grön**, **genomskinlig gul**
-och **vit** PLA. Två av plattorna är *ett objekt i flera färger*, inte lösa
-delar: filerna är exporterade i samma koordinatsystem och hamnar rätt
-av sig själva.
+och **vit** PLA, plus **genomskinlig gul PETG** till bakstyckets kontur. Vill
+du ha texten i gult behövs också **täckande gul** PLA på platta 1. Alla
+tre plattorna är *ett objekt i flera färger*, inte lösa delar: filerna är
+exporterade i samma koordinatsystem och hamnar rätt av sig själva.
 
-> **Rotera ingenting i slicern.** Lövet och sockeln är ritade med framsidan
-> nedåt, så att den färgade inläggningen blir första lagret mot plattan.
+> **Rotera ingenting i slicern.** Lövet, bakstycket och sockeln är ritade med
+> den synliga sidan nedåt, så att den blir första lagret mot plattan.
 > Utskriftsriktningen är redan inbyggd i filerna.
 
 ### Platta 1 — lövet (flerfärg)
@@ -58,7 +70,14 @@ these files as a single object with multiple parts"*. Flytta inget.
 | sign | grön |
 | core | grön |
 | window | gul, genomskinlig |
-| letters | vit |
+| letters | täckande gul eller vit |
+
+**Textens färg är ditt val.** Olle Rydfjäll ritade märket 1970 med gul text.
+Under många år var den vit, och i september 2022 bytte klubben tillbaka till
+gult. Gult ger dagens märke och vitt ger nostalgin, med samma fil. Ta inte
+bandets genomskinliga gula till texten: den ligger 1 mm ner i framsidan med 1 mm
+grönt bakom sig, och genomskinligt blir mörkt och grönaktigt. "SM Guld 1987" på
+sockeln är vit oavsett.
 
 Kontrollera att `bjorkloven_core` verkligen kom med. Utan den blir lövet ihåligt,
 utan säte för listen och utan kant för bakstycket att vila på.
@@ -67,10 +86,26 @@ Kärnan skrivs ut i samma gröna filament som skalet, så lagren över kärnans
 höjd är enfärgade och kostar ingenting i purge. Färgbytena som blir kvar
 ligger i det gula bandet och i texten. Lita på slicerns egen uppskattning.
 
-### Platta 2 — bakstycket
+### Platta 2 — bakstycket (flerfärg)
 
-`bjorkloven_back.stl` i grönt, **med brim**. Stor första lageryta och nio vassa
-hörn — den vill släppa i hörnen annars.
+Dra in `bjorkloven_back.stl` och `bjorkloven_back_glow.stl` **samtidigt**, som
+ett objekt med två delar, och skriv ut **med brim**.
+
+| Del | Filament |
+|---|---|
+| back | grön PLA |
+| back_glow | gul PETG, genomskinlig |
+
+Båda är exporterade med utsidan nedåt, så ytan som syns bakifrån blir lika
+plan som byggplattan. Därför ser lövet spegelvänt ut i slicern. **Rotera och
+spegla ingenting**: bakstycket passar bara i lövet åt det här hållet.
+
+Bambu Studio varnar för PLA och PETG i samma utskrift. Det är väntat. De två
+fäster knappt i varandra, så konturen hålls på plats av sin form: den är
+bredare på mitten än vid ytorna. Gul PLA går också, och fäster dessutom.
+
+Brimmen behövs för att första lagret har nio vassa hörn som annars släpper. Det
+gula går genom alla lager, så räkna med ett tiotal färgbyten.
 
 ### Platta 3 — sockeln (flerfärg) och bottenplattan
 
@@ -81,9 +116,35 @@ i första millimetern, så färgbytena är få.
 `bjorkloven_plate.stl` i grönt på samma platta, bredvid. Rotera inte den heller:
 "LövGlöd / V2" och skruvhuvudenas försänkningar ska vara uppåt vid utskrift.
 
+### Valfritt — platta 4, pucken
+
+Inte en del av lampan: en puck i regelmått med samma löv i ena sidan och
+"Vi är / tillbaka" i den andra, att lägga bredvid. Dra in alla fyra filerna i
+`plate-4` **samtidigt** som ett objekt med fyra delar.
+
+| Del | Filament |
+|---|---|
+| puck | svart (grön går också) |
+| puck_green | grön |
+| puck_window | gul |
+| puck_letters | täckande gul eller vit |
+
+Texten väljer du i gult eller vitt, som på lövet. "Vi är / tillbaka" ligger i
+samma fil och får samma färg. Välj täckande filament här också: inläggningarna
+är 1 mm djupa med svart bakom sig.
+
+Laddas filerna en och en blir varje fil ett eget objekt, och slicern ställer ner
+texten från 24,4 mm till plattan, inuti pucken. Har det redan hänt: ta bort den
+filen, högerklicka på pucken och välj **Add part → Load**, så hamnar den på
+sina egna koordinater. Rotera inte: loggan är bottenytan med flit och läses rätt
+när pucken lyfts av.
+
+Ungefär 1 h 15 min och 35 g. Textdelen går inte att slica ensam, eftersom
+texten svävar utan pucken under sig.
+
 ### Valfritt — limfixturen
 
-`tools/bjorkloven_glue_jig.stl`, valfri färg, 1 h 04 min och 41 g.
+`tools/bjorkloven_glue_jig.stl`, valfri färg, 1 h 02 min och 41 g.
 
 ### Tider och vikt
 
@@ -93,11 +154,15 @@ i första millimetern, så färgbytena är få.
 | core | 36 min | 21 g |
 | window | 22 min | 8 g |
 | letters | 26 min | 8 g |
-| back | 1 h 09 min | 49 g |
+| back | 1 h 10 min | 48 g |
+| back_glow | 12 min | 3 g |
 | base | 2 h 22 min | 106 g |
 | base_letters | 8 min | 1 g |
 | plate | 42 min | 26 g |
-| **Totalt** | **7 h 59 min** | **307 g** + purge |
+| **Totalt** | **8 h 12 min** | **309 g** + purge |
+
+Konturens gram gäller PLA-profilen. PETG är några procent tyngre. Pucken och
+limfixturen kommer utöver.
 
 ---
 
@@ -159,7 +224,11 @@ långa nog att nå ner genom sockeln till facket.
 
 Det vilar på toppen av kärnan, som slutar 5 mm under lövets baksida för
 just det, och kantens insida styr det i sidled. Fyra M3 × 8; huvudena hamnar i
-nivå med lövet.
+nivå med lövet. Den gula konturen ligger över spåret, så listen ritar lövet på
+väggen bakom lampan.
+
+Bakstycket är tätt och har inga ventiler. Det behövs inte heller: det är
+listens egen yta som sätter gränsen för värmen, inte luften i lövet.
 
 ### 4. Sätt USB-C-uttaget — innan kortet åker i
 
@@ -241,6 +310,9 @@ Klart. Koppla in laddaren i uttaget på baksidan och fortsätt med
 | Texten på sockeln/lövet är grön | Delarna laddades som separata objekt, eller fel filament tilldelat |
 | Listen mörk men ESP32 lever | Kopplad till listens utgångsände, eller data/klocka skiftade (APA102) |
 | Bakstycket blev skevt i hörnen | Skrevs ut utan brim |
+| Bakstycket passar inte i lövet | Det roterades eller speglades i slicern. Ladda filerna igen och flytta ingenting |
+| Konturen kom ut som en lös bit bredvid bakstycket | Filerna laddades som två objekt i stället för ett objekt med två delar |
+| Texten hamnade inuti pucken | Puckens filer laddades en och en, se platta 4 |
 
 ---
 

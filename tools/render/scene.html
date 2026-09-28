@@ -23,6 +23,10 @@ const W    = +P.get('w') || 1400;
 const H    = +P.get('h') || 1400;
 const glow = P.get('glow') !== '0';          // lyser det gula bandet?
 const ex   = view === 'exploded' ? 1 : 0;    // sprängskiss: delarna glider isär
+// BJÖRKLÖVEN / UMEÅ är gul som i dagens märke (sedan 2022), eller vit som
+// märket såg ut fram till dess. Det är bara ett filamentval för letters-filen,
+// på lövet och på pucken.
+const text = P.get('text') === 'vit' ? 'vit' : 'gul';
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
 renderer.setPixelRatio(1);
@@ -46,6 +50,13 @@ const YELLOW = new THREE.MeshPhysicalMaterial({
   color: 0xf8d12b, roughness: 0.35, emissive: 0xffb400,
   emissiveIntensity: glow ? 1.25 : 0.05, transmission: glow ? 0 : 0.2,
 });
+// Pucken lyser inte: dess gula är vanlig PLA, och kroppen är svart.
+// Täckande gul PLA till texten, inte det genomskinliga bandets gula: texten
+// ligger 1 mm ner i framsidan med grönt bakom sig.
+const GOLD   = new THREE.MeshPhysicalMaterial({ color: 0xf6c80f, roughness: 0.5 });
+const LETTERS = text === 'vit' ? WHITE : GOLD;
+const PUCK_YELLOW = new THREE.MeshPhysicalMaterial({ color: 0xf8d12b, roughness: 0.4 });
+const BLACK  = new THREE.MeshPhysicalMaterial({ color: 0x141515, roughness: 0.6, clearcoat: 0.1 });
 
 // Måtten kommer från system.py i CAD-projektet. Ändras de där måste de ändras här.
 const PLATE_THICKNESS = 4.5;   // bottenplattan
@@ -53,6 +64,7 @@ const BASE_HEIGHT     = 48;    // sockeln utan platta
 const TIE_HEIGHT      = 22;    // hur långt lövets svans går ner i sockeln
 const SIGN_THICKNESS  = 20;    // lövets djup
 const PANEL_RECESS    = 5;     // bakstyckets sits under lövets baksida
+const PANEL_THICKNESS = 2;     // bakstycket
 const BASE_DEPTH      = 84;
 
 const M4 = (a) => new THREE.Matrix4().set(...a);
@@ -75,18 +87,65 @@ function plinth(dy = 0, dz = 0) {
              0, 0, 0, 1]);
 }
 
+// Bakstycket och dess gula kontur exporteras med utsidan nedåt
+// (lay_outward_face_down i system.py): ett halvt varv kring y, så x och z byter
+// tecken. Här vrids de tillbaka och lyfts upp på kärnan i samma steg. Utsidan,
+// filens z = 0, hamnar på SIGN_THICKNESS - PANEL_RECESS + PANEL_THICKNESS.
+const PANEL_SEAT = M4([-1, 0, 0, 0,
+                        0, 1, 0, 0,
+                        0, 0, -1, SIGN_THICKNESS - PANEL_RECESS + PANEL_THICKNESS,
+                        0, 0, 0, 1]);
+
+// Pucken ligger på bordet bredvid sockeln med loggan uppåt. Filen har loggan i
+// bottenytan (z = 0) och den läses rätt underifrån, så ett halvt varv kring x
+// lägger den uppåt med lövets spets bort från kameran.
+const PUCK_THICKNESS = 25.4;
+const puckAt = (x, y, turn) => new THREE.Matrix4()
+  .makeTranslation(x, y, PUCK_THICKNESS)
+  .multiply(new THREE.Matrix4().makeRotationZ(turn))
+  .multiply(M4([1, 0, 0, 0, 0, -1, 0, 0, 0, 0, -1, 0, 0, 0, 0, 1]));
+const PUCK = puckAt(92, 96, THREE.MathUtils.degToRad(-14));
+
 const parts = [
   ['bjorkloven_sign',         GREEN,  stand(0, 70 * ex)],
   ['bjorkloven_core',         GREEN,  stand(-60 * ex, 70 * ex)],
   ['bjorkloven_window',       YELLOW, stand(40 * ex, 70 * ex)],
-  ['bjorkloven_letters',      WHITE,  stand(80 * ex, 70 * ex)],
-  ['bjorkloven_back',         GREEN,  stand(-120 * ex, 70 * ex)
-                                        .multiply(M4([1,0,0,0, 0,1,0,0, 0,0,1,SIGN_THICKNESS - PANEL_RECESS, 0,0,0,1]))],
+  ['bjorkloven_letters',      LETTERS,  stand(80 * ex, 70 * ex)],
+  ['bjorkloven_back',         GREEN,  stand(-120 * ex, 70 * ex).multiply(PANEL_SEAT)],
+  // Konturen sitter i bakstycket. I sprängskissen glider den ut bakom det.
+  ['bjorkloven_back_glow',    YELLOW, stand(-160 * ex, 70 * ex).multiply(PANEL_SEAT)],
   ['bjorkloven_base',         GREEN,  plinth(0, 0)],
   ['bjorkloven_base_letters', WHITE,  plinth(60 * ex, 0)],
   // Plattan monteras upp-och-ner mot hyllan, därför vändningen kring y.
   ['bjorkloven_plate',        GREEN,  M4([-1,0,0,0, 0,1,0,0, 0,0,-1,PLATE_THICKNESS - 40 * ex, 0,0,0,1])],
 ];
+// Pucken hör inte till lampan och ritas bara i sin egen vy och i hjältebilden.
+// I hjältebilden står den på kant bredvid sockeln med "Vi är / tillbaka" mot
+// kameran. Texten läses rätt från filens +z med +y uppåt, så filens axlar
+// läggs på kamerans höger, uppåt och riktningen mot kameran; den halva
+// tjockleken bakåt ställer pucken på sin kant mitt över (x, y).
+function puckFacingCamera(x, y, towards) {
+  const n = new THREE.Vector3(towards[0], towards[1], 0).normalize();
+  const up = new THREE.Vector3(0, 0, 1);
+  const right = new THREE.Vector3().crossVectors(up, n);
+  return new THREE.Matrix4()
+    .makeTranslation(x - n.x * PUCK_THICKNESS / 2, y - n.y * PUCK_THICKNESS / 2, 38.1)
+    .multiply(new THREE.Matrix4().makeBasis(right, up, n));
+}
+const PUCK_UP = puckFacingCamera(-118, 40, [0.75, 1.6]);
+if (view === 'hero') parts.push(
+  ['bjorkloven_puck',         BLACK,       PUCK_UP],
+  ['bjorkloven_puck_green',   GREEN,       PUCK_UP],
+  ['bjorkloven_puck_window',  PUCK_YELLOW, PUCK_UP],
+  // "Vi är / tillbaka" är vit i hjältebilden, oavsett lövets textfärg.
+  ['bjorkloven_puck_letters', WHITE,       PUCK_UP],
+);
+if (view === 'puck') parts.push(
+  ['bjorkloven_puck',         BLACK,       PUCK],
+  ['bjorkloven_puck_green',   GREEN,       PUCK],
+  ['bjorkloven_puck_window',  PUCK_YELLOW, PUCK],
+  ['bjorkloven_puck_letters', LETTERS,     PUCK],
+);
 
 const loader = new STLLoader();
 const group = new THREE.Group();
@@ -269,6 +328,7 @@ const DIRECTIONS = {
   exploded: [1.35, 1.2, 0.55],
   back:     [-0.9, -1.4, 0.4],
   side:     [1, 0.02, 0.1],
+  puck:     [0.45, 1.6, 0.5],
 };
 const dir = new THREE.Vector3(...(DIRECTIONS[view] || DIRECTIONS.hero)).normalize();
 camera.position.copy(centre).addScaledVector(dir, +P.get('dist') || 900);

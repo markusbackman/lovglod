@@ -23,9 +23,11 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const VIEWS = {
   hero:     { w: 2600, h: 2600, out: 1200, note: 'tänd, snett framifrån — startsidans hjältebild' },
   front:    { w: 2200, h: 2600, out: 1000, fov: 20, note: 'rakt framifrån' },
-  exploded: { w: 3000, h: 3000, out: 1400, dist: 1250, note: 'sprängskiss, alla åtta delar' },
-  back:     { w: 2000, h: 2000, out: 900,  glow: 0, note: 'bakifrån: bakstycke och USB-C' },
+  exploded: { w: 3000, h: 3000, out: 1400, dist: 1250, note: 'sprängskiss, alla nio delar' },
+  back:     { w: 2000, h: 2000, out: 900,  note: 'bakifrån, tänd: bakstyckets kontur och USB-C' },
+  'front-vit': { view: 'front', text: 'vit', w: 2200, h: 2600, out: 1000, fov: 20, note: 'rakt framifrån, vit text (nostalgi)' },
   side:     { w: 2000, h: 2400, out: 900,  note: 'från sidan' },
+  puck:     { w: 3000, h: 2400, out: 1200, dist: 1050, note: 'tänd, med pucken liggande bredvid' },
 };
 
 const args = process.argv.slice(2);
@@ -92,7 +94,8 @@ await mkdir(outDir, { recursive: true });
 for (const view of wanted) {
   const v = VIEWS[view];
   const w = Math.round(v.w * scale), h = Math.round(v.h * scale);
-  const q = new URLSearchParams({ view, w, h });
+  const q = new URLSearchParams({ view: v.view || view, w, h });
+  if (v.text) q.set('text', v.text);
   if (v.fov)  q.set('fov', v.fov);
   if (v.dist) q.set('dist', v.dist);
   if (v.glow === 0) q.set('glow', '0');

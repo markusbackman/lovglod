@@ -87,8 +87,11 @@ def mm(m):
 # är en ren rotation, inte en spegling, så texten läses rätt.
 LOV = mm([[-1, 0, 0, 0], [0, 0, 1, LOV_IN], [0, 1, 0, LOV_UPP], [0, 0, 0, 1]])
 SOCKEL = mm([[-1, 0, 0, 0], [0, 0, 1, 0], [0, 1, 0, 0], [0, 0, 0, 1]])
-# Bakstycket vilar på kärnan (z = 15) med utsidan bakåt.
-BAK = LOV @ Matrix([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, -1, 17], [0, 0, 0, 1]])
+# Bakstycket och dess gula kontur exporteras med utsidan nedåt: ett halvt
+# varv kring y, så filens z = 0 är ytan som vetter bakåt ut ur lampan. Här vrids
+# de tillbaka — x och z byter tecken — och läggs på kärnan: insidan på z = 15,
+# utsidan på 17, 3 mm under lövets baksida.
+BAK = LOV @ Matrix([[-1, 0, 0, 0], [0, 1, 0, 0], [0, 0, -1, 17], [0, 0, 0, 1]])
 # Bottenplattan är utskriven upp och ner: det som var uppåt är lampans botten.
 PLATTA = mm([[-1, 0, 0, 0], [0, 1, 0, 42], [0, 0, -1, 0], [0, 0, 0, 1]])
 
@@ -504,6 +507,9 @@ def bygg():
     vit, _ = principled("vit", VIT, 0.42, **{"Subsurface Weight": 0.15,
                                              "Subsurface Scale": 0.001})
     fonster = fonster_material(upp_img, ruta, ljus_img, n)
+    # Bakstyckets kontur är gul PETG. Den syns inte framifrån, men den finns
+    # med så att lampan är hel från alla håll.
+    petg, _ = principled("kontur", GUL, 0.35, **{"Transmission Weight": 0.5})
 
     p1, p3 = HW / "plate-1", HW / "plate-3"
     importera(p1 / "bjorkloven_sign.stl", LOV, gron, "skal")
@@ -511,6 +517,7 @@ def bygg():
     importera(p1 / "bjorkloven_window.stl", LOV, fonster, "fonster")
     importera(p1 / "bjorkloven_letters.stl", LOV, vit, "bokstaver")
     importera(HW / "plate-2" / "bjorkloven_back.stl", BAK, gron, "bak")
+    importera(HW / "plate-2" / "bjorkloven_back_glow.stl", BAK, petg, "kontur")
     importera(p3 / "bjorkloven_base.stl", SOCKEL, gron, "sockel")
     importera(p3 / "bjorkloven_base_letters.stl", SOCKEL, vit, "sockeltext")
     importera(p3 / "bjorkloven_plate.stl", PLATTA, gron, "platta")

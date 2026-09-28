@@ -80,7 +80,7 @@ tools/produktfilm/      renderad produktfilm ur STL-filerna, se README där
 mock/server.py          mockserver för labbtest, styrsida på /
 mock/recordings/        inspelade matcher, en mapp per match med README
 docs/                   guiderna: montera, glöden, installera, bygga
-hardware/v2/            STL-filer per utskriftsplatta, plus limfixturen
+hardware/v2/            STL-filer per utskriftsplatta, plus limfixturen och pucken
 site/                   webbplatsen med utskriftsguide
 .github/workflows/
   release.yml           tagg v* -> bygg -> publicera release

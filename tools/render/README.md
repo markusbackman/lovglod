@@ -10,8 +10,8 @@ npm install          # hämtar three, sharp, playwright + Chromium
 npm run render       # hardware/v2  →  site/assets
 ```
 
-Det tar ungefär en minut och skriver `hero.webp`, `front.webp`, `exploded.webp`
-och `back.webp`.
+Det tar ungefär en halv minut och skriver `hero.webp`, `front.webp`,
+`exploded.webp`, `back.webp`, `front-vit.webp` och `puck.webp`.
 
 ## Vyerna
 
@@ -19,11 +19,16 @@ och `back.webp`.
 |---|---|---|---|
 | `hero` | 1200 px | Tänd, snett framifrån | Startsidans hjältebild |
 | `front` | 1000 px | Rakt framifrån | Avsnittet *Formgiven in i detalj*, och bakom filmrutan |
-| `exploded` | 1400 px | Sprängskiss med alla åtta delar | *Åtta delar, en produkt* i byggguiden |
-| `back` | 900 px | Bakifrån, släckt | Specifikationen |
+| `exploded` | 1400 px | Sprängskiss med alla nio delar | *Nio delar, en produkt* i byggguiden |
+| `back` | 900 px | Bakifrån, tänd, så bakluckans gula kontur lyser | Specifikationen |
+| `puck` | 1200 px | Tänd, med pucken liggande bredvid sockeln, båda med gul text | *Och en puck bredvid* i byggguiden |
+| `front-vit` | 1000 px | Rakt framifrån med vit text | *Gul eller vit text* i byggguiden |
 | `side` | 900 px | Från sidan | Används inte i dag |
 
 Alla utom `side` renderas som standard.
+
+Texten på lövet renderas gul, som i dagens märke. `front-vit` är samma vy
+med vit text; scenen tar `text=vit` i adressen.
 
 ## Flaggor
 
@@ -37,10 +42,10 @@ node render.mjs --quality 92                 # webp-kvalitet, standard 88
 node render.mjs --help
 ```
 
-STL-mappen letas igenom rekursivt, så `hardware/v2` med sina `plate-1`,
-`plate-2`, `plate-3` och `tools` fungerar som den är. Filerna hittas på namn
-(`bjorkloven_sign.stl` och de andra sju); saknas någon ritas resten ändå och
-namnet skrivs ut som en varning.
+STL-mappen letas igenom rekursivt, så `hardware/v2` med sina `plate-1` till
+`plate-4` och `tools` fungerar som den är. Filerna hittas på namn
+(`bjorkloven_sign.stl` och de andra åtta, plus puckens fyra i `puck`-vyn);
+saknas någon ritas resten ändå och namnet skrivs ut som en varning.
 
 ## Så fungerar det
 
@@ -54,18 +59,22 @@ ljussättningen och materialen. Några saker där är värda att veta:
 
 - **Bilden är genomskinlig.** Bara skuggan ligger kvar under lampan, så samma
   bild fungerar mot mörkgrönt, vitt eller ett foto.
-- **Det gula bandet lyser med `emissive`, inte med en lampa inuti lövet.** En
-  punktljuskälla ger en het fläck mitt i bandet; emissive lyser jämnt.
-  `--views back` renderas släckt, för där syns inget band ändå.
+- **Det gula lyser med `emissive`, inte med en lampa inuti lövet.** En
+  punktljuskälla ger en het fläck mitt i bandet; emissive lyser jämnt. Samma
+  material ligger på bakluckans kontur, så `back` renderas tänd för att visa
+  den. Puckens gula är vanlig PLA och lyser inte.
 - **Tonemappingen är `Neutral`, inte ACES.** ACES drar gulet mot beige och
   grönt mot grått, och då slutar färgerna likna PLA-rullarna.
 - **Monteringen står i koden.** Lövet är modellerat med framsidan i z = 0 och
   byggt bakåt, sockeln ligger på framsidan och bottenplattan monteras vänd —
-  precis som i `bjorkloven_shelf.py`. Måtten (`PLATE_THICKNESS`, `BASE_HEIGHT`,
-  `TIE_HEIGHT`, `SIGN_THICKNESS`, `PANEL_RECESS`, `BASE_DEPTH`) är kopior av
-  konstanterna i CAD-projektets `system.py`. **Ändras de där måste de ändras
-  här**, annars svävar delarna isär i sprängskissen eller lövet sjunker ner i
-  sockeln.
+  precis som i `bjorkloven_shelf.py`. Bakluckan och dess kontur exporteras med
+  utsidan nedåt (`lay_outward_face_down`, ett halvt varv kring y), så
+  `PANEL_SEAT` vänder tillbaka dem innan de läggs på kärnan. Pucken ligger med
+  loggan uppåt, vänd ett halvt varv kring x. Måtten (`PLATE_THICKNESS`,
+  `BASE_HEIGHT`, `TIE_HEIGHT`, `SIGN_THICKNESS`, `PANEL_RECESS`,
+  `PANEL_THICKNESS`, `BASE_DEPTH`) är kopior av konstanterna i CAD-projektets
+  `system.py`. **Ändras de där måste de ändras här**, annars svävar delarna isär
+  i sprängskissen eller lövet sjunker ner i sockeln.
 
 - **USB-C-uttaget är ingen STL.** Det är en köpt panelkontakt, så den ritas i
   kod. Var den sitter mäts fram ur sockeln: `findHole` plockar ut bakväggens
