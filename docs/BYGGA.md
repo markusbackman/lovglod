@@ -76,6 +76,7 @@ tools/spela_in.py       spela in en match till mock/recordings/
 tools/forbehandla.py    städa en inspelning till det lampan läser (lampa.jsonl)
 tools/spela_upp.py      spela upp en inspelad match på en lampa
 tools/film.py           filmmanus: spelar upp webbplatsens filmer på lampan, på sekunden
+tools/produktfilm/      renderad produktfilm ur STL-filerna, se README där
 mock/server.py          mockserver för labbtest, styrsida på /
 mock/recordings/        inspelade matcher, en mapp per match med README
 docs/                   guiderna: montera, glöden, installera, bygga
