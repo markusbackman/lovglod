@@ -1,6 +1,6 @@
 # LövGlöd 🍃
 
-**Lövet som följer Löven.** Det glöder lugnt en vanlig tisdag, vaknar när
+**Lövet som följer Löven.** Det glöder lugnt en vanlig måndag, vaknar när
 pucken släpps och exploderar när Björklöven gör mål.
 
 ![LövGlöd — Björklövens löv i ljus](site/assets/hero.webp)
