@@ -230,11 +230,14 @@ dl[style*="width: 1280px"], ul[style*="width: 1280px"], ol[style*="width: 1280px
           </li>
         </ol>
       </div>
+      <div style="display: flex; flex-direction: column; gap: 48px;">
+        <figure style="margin: 0; display: flex; flex-direction: column; align-items: center; gap: 14px;"><img src="assets/portal-setup.webp" alt="Setup-sidan i mobilen: rubriken Anslut din LövGlöd, en lista med nätverk, fält för nätverksnamn och lösenord och knappen Spara och anslut." width="300" height="538" loading="lazy" style="width: 300px; height: auto; border: 10px solid #0c2a1f; border-radius: 30px; box-shadow: 0 24px 48px rgba(0,0,0,0.22);"><figcaption style="font-size: 14px; line-height: 1.45; text-align: center; color: #484848;">Så ser setup-sidan ut i mobilen. Välj nät, skriv lösenordet, klart.</figcaption></figure>
       <div style="background: #f7f7f7; padding: 40px; display: flex; flex-direction: column; gap: 20px; border-left: 6px solid #124734;">
         <h3 style="font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #124734;">Har du byggt den själv?</h3>
         <p style="font-size: 17px; line-height: 1.5; color: #242424;">Första gången efter flashning visar portalen bara <b>listvalet</b>. Välj den LED-list du lödde in, <b>WS2812B</b> eller <b>APA102</b>, och <b>antal dioder</b>, och tryck <i>Spara list</i>.</p>
         <p style="font-size: 17px; line-height: 1.5; color: #242424;">Pulsen flyttar direkt till den valda listen. Syns den inte är valet fel. Dra sedan ur strömmen, koppla in igen och fortsätt med WiFi som i stegen här bredvid.</p>
         <p style="font-size: 15px; line-height: 1.5; color: #484848;">Listvalet sitter kvar genom omstarter, uppdateringar och <i>Glöm WiFi</i>. Hur du flashar kortet står i <a href="skriv-ut.html#flasha" style="text-decoration: underline;">Skriv ut själv</a>.</p>
+      </div>
       </div>
     </div>
   </section>
@@ -257,6 +260,7 @@ dl[style*="width: 1280px"], ul[style*="width: 1280px"], ol[style*="width: 1280px
         </div>
       </div>
 
+      <div style="display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 64px; align-items: start;">
       <dl style="margin: 0; display: grid; grid-template-columns: 240px minmax(0, 1fr); font-size: 17px; background: #0c2a1f; padding: 8px 32px;">
         <dt style="padding: 18px 0; border-bottom: 1px solid rgba(255,255,255,0.18); font-weight: 700;">Lampa</dt>
         <dd style="margin: 0; padding: 18px 0; border-bottom: 1px solid rgba(255,255,255,0.18); line-height: 1.5; color: rgba(255,255,255,0.85);"><b>Alltid på</b> glöder dygnet runt, och är standard. <b>Bara match</b> är släckt mellan matcherna och tänds före nedsläpp. <b>Av</b> är helt släckt. Lampan följer matcherna i bakgrunden även när den är släckt, så den är i fas direkt när den tänds.</dd>
@@ -273,6 +277,8 @@ dl[style*="width: 1280px"], ul[style*="width: 1280px"], ol[style*="width: 1280px
         <dt style="padding: 18px 0; border-bottom: 0 solid transparent; font-weight: 700;">Felsökningsläge</dt>
         <dd style="margin: 0; padding: 18px 0; border-bottom: 0 solid transparent; line-height: 1.5; color: rgba(255,255,255,0.85);">Låt stå på <b>Av</b>. Det är till för utveckling och låter en testserver styra lampan i stället för SHL.</dd>
       </dl>
+        <figure style="margin: 0; display: flex; flex-direction: column; align-items: center; gap: 14px;"><img src="assets/portal-status.webp" alt="Statussidan i mobilen: LövGlöd-logotypen, läget Standby och en tabell med nästa match, senaste resultat, måldröjning och klocka." width="300" height="538" loading="lazy" style="width: 300px; height: auto; border: 10px solid #0c2a1f; border-radius: 30px; box-shadow: 0 24px 48px rgba(0,0,0,0.22);"><figcaption style="font-size: 14px; line-height: 1.45; text-align: center; color: rgba(255,255,255,0.7);">Statussidan i mobilen. Överst syns läget och nästa match, längre ner inställningarna.</figcaption></figure>
+      </div>
 
       <div style="display: flex; flex-direction: column; gap: 20px;">
         <h3 style="font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #f1d458;">Knapparna under Åtgärder</h3>
