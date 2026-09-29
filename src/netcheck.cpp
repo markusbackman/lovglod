@@ -74,6 +74,7 @@ const String &run(StepCb onStep) {
     dnsProbe(SHL_API_HOST);
     dnsProbe(SHL_LIVE_HOST);
     dnsProbe("api.github.com");
+    dnsProbe(TELEMETRY_HOST);
 
     line("");
     line("TCP-anslutningar:");
@@ -85,6 +86,9 @@ const String &run(StepCb onStep) {
     tcpProbe  ("www.shl.se:443    (HTTPS — den vi behöver)", SHL_API_HOST, 443);
     tcpProbe  ("game-broadcaster.s8y.se:443", SHL_LIVE_HOST, 443);
     tcpProbe  ("api.github.com:443 (OTA)", "api.github.com", 443);
+    // Bara TCP, inget TLS: ett handslag här skulle köras vid varje start, och
+    // det var i telemetrins anrop som 1.3.0-rc1 kraschade.
+    tcpProbe  ("workers.dev:443   (driftstatistik)", TELEMETRY_HOST, 443);
 
     line("");
     line("Tolkning:");

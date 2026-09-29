@@ -19,6 +19,18 @@ void event(const char *type, const String &detail = "");
 // Körs varje varv i Online-läget. Skickar när det är dags och ingen match pågår.
 void loop(bool inLiveWindow);
 
+// Anropas en gång i setup(). Ser efter om förra starten dog mitt i en rapport
+// och stänger i så fall av rapporterna till nästa strömpåslag.
+void checkCrashedInSend();
+
+// Skicka en rapport i nästa varv, oavsett tid, match eller tidigare krasch.
+void requestSend();
+
+// Stegen i senaste försöket med tider ("dns 12 ms, tcp 30 ms, ..."), och den
+// senaste kraschen i en rapport. Tomma om inget finns att visa.
+const String &lastTrace();
+const String &lastCrash();
+
 // Rapporten som den skulle se ut just nu. Visas på /debug så att ägaren kan se
 // exakt vad som lämnar huset.
 String preview();

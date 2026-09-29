@@ -7,6 +7,8 @@
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
+#include <Preferences.h>
+#include <esp_attr.h>
 #include <time.h>
 
 namespace {
@@ -26,6 +28,48 @@ uint32_t gNextSend  = 0;
 uint32_t gInterval  = TELEMETRY_INTERVAL_MS;
 bool     gServerOff = false;          // Worker:n bad oss vila till nästa omstart
 String   gStatus    = "Ingen rapport skickad än";
+bool     gForce     = false;          // "Skicka nu" på /debug
+bool     gCrashOff  = false;          // förra försöket kraschade lampan
+String   gLastCrash;                  // sparad i NVS, visas på /debug
+String   gLastTrace;                  // stegen i senaste försöket, med tider
+
+// ── Brödsmulor genom en krasch ──────────────────────────────────────────────
+// 1.3.0-rc1 startade om mitt i rapporten, utan seriell kabel att läsa
+// backtracen från. RTC-minnet överlever en panic-omstart men inte ett
+// strömavbrott, så där skriver send() vilket steg den är i innan varje steg
+// som kan krascha. Hittar nästa start en smula vet vi var den dog.
+enum Stage : uint8_t { ST_NONE, ST_DNS, ST_TCP, ST_TLS, ST_POST, ST_REPLY };
+
+const char *stageName(uint8_t s) {
+    switch (s) {
+        case ST_DNS:   return "dns";
+        case ST_TCP:   return "tcp";
+        case ST_TLS:   return "tls";
+        case ST_POST:  return "post";
+        case ST_REPLY: return "svar";
+        default:       return "okänt";
+    }
+}
+
+struct Crumb {
+    uint32_t magic;
+    uint8_t  stage;
+    uint32_t up;          // sekunder sedan start
+    uint32_t heap;        // fritt heap när steget började
+    uint32_t stack;       // loop-taskens minsta lediga stack hittills, byte
+    uint32_t crashes;     // kraschar i send() sedan strömpåslag
+};
+
+constexpr uint32_t CRUMB_MAGIC = 0x7E1E5E4D;
+RTC_NOINIT_ATTR Crumb rtcCrumb;
+
+void crumb(Stage s) {
+    rtcCrumb.stage = s;
+    rtcCrumb.up    = millis() / 1000;
+    rtcCrumb.heap  = ESP.getFreeHeap();
+    rtcCrumb.stack = uxTaskGetStackHighWaterMark(nullptr);
+    rtcCrumb.magic = s == ST_NONE ? 0 : CRUMB_MAGIC;
+}
 
 uint32_t nowUtc() {
     const time_t t = time(nullptr);
@@ -97,11 +141,68 @@ void applyReply(const String &body) {
     }
 }
 
+// Stegvis förkontroll innan HTTPClient tar över: namnuppslag, ren TCP och
+// ett TLS-handslag var för sig. Kraschen i rc1 kom någonstans i POST:en, och
+// smulorna säger då vilket av stegen som tog lampan med sig.
+bool preflight(uint32_t &t0) {
+    auto lap = [&](const char *name) {
+        gLastTrace += String(name) + " " + String(millis() - t0) + " ms, ";
+        t0 = millis();
+    };
+
+    crumb(ST_DNS);
+    IPAddress ip;
+    if (!WiFi.hostByName(TELEMETRY_HOST, ip)) {
+        gLastTrace += "dns misslyckades";
+        gStatus = "Misslyckades (namnuppslag)";
+        return false;
+    }
+    lap("dns");
+
+    crumb(ST_TCP);
+    {
+        WiFiClient tcp;
+        const bool ok = tcp.connect(ip, 443, 6000) == 1;
+        tcp.stop();
+        if (!ok) {
+            gLastTrace += "tcp misslyckades";
+            gStatus = "Misslyckades (TCP till " + ip.toString() + ")";
+            return false;
+        }
+    }
+    lap("tcp");
+
+    crumb(ST_TLS);
+    {
+        WiFiClientSecure tls;
+        tls.setInsecure();
+        tls.setTimeout(10);
+        const bool ok = tls.connect(TELEMETRY_HOST, 443) == 1;
+        char err[80] = "";
+        if (!ok) tls.lastError(err, sizeof(err));
+        tls.stop();
+        if (!ok) {
+            gLastTrace += String("tls misslyckades: ") + err;
+            gStatus = String("Misslyckades (TLS: ") + err + ")";
+            return false;
+        }
+    }
+    lap("tls");
+    return true;
+}
+
 bool send() {
     JsonDocument doc;
     build(doc);
     String body;
     serializeJson(doc, body);
+
+    gLastTrace = "";
+    uint32_t t0 = millis();
+    if (!preflight(t0)) {
+        crumb(ST_NONE);
+        return false;
+    }
 
     // Samma avvägning som mot SHL: innehållet är inte känsligt, och en
     // hårdkodad rot-CA gör bara lampan tyst den dag Cloudflare byter kedja.
@@ -114,6 +215,7 @@ bool send() {
     http.setConnectTimeout(6000);
     http.setReuse(false);
     if (!http.begin(secure, TELEMETRY_URL)) {
+        crumb(ST_NONE);
         gStatus = "Kunde inte starta anropet";
         return false;
     }
@@ -121,9 +223,15 @@ bool send() {
     http.addHeader("X-LovGlod-Key", TELEMETRY_KEY);
     http.addHeader("User-Agent", "LovGlod/" FW_VERSION);
 
+    crumb(ST_POST);
     const int code = http.POST(body);
+    gLastTrace += "post " + String(millis() - t0) + " ms, ";
+    t0 = millis();
+    crumb(ST_REPLY);
     const String reply = code > 0 ? http.getString() : String();
     http.end();
+    crumb(ST_NONE);
+    gLastTrace += "svar " + String(millis() - t0) + " ms (" + String(code) + ")";
 
     if (code != 200 && code != 204) {
         gStatus = "Misslyckades (" + (code > 0 ? "HTTP " + String(code)
@@ -132,6 +240,13 @@ bool send() {
     }
 
     applyReply(reply);
+    if (gLastCrash.length()) {
+        // Kraschen följde med som händelse i den här rapporten.
+        Preferences p;
+        p.begin("tele", false);
+        p.remove("crash");
+        p.end();
+    }
     gCount   = 0;
     gDropped = 0;
     gStatus  = "Senast skickad efter " + String(millis() / 60000) + " min upptid, " +
@@ -145,6 +260,41 @@ namespace Telemetry {
 
 bool available() { return strlen(TELEMETRY_URL) > 0; }
 
+void checkCrashedInSend() {
+    const bool powerOn = esp_reset_reason() == ESP_RST_POWERON;
+    if (powerOn || rtcCrumb.magic != CRUMB_MAGIC) {
+        // Efter strömpåslag är RTC-minnet skräp. Räknaren börjar om, men den
+        // senaste kraschen ligger kvar i NVS tills en rapport gått fram.
+        if (powerOn) rtcCrumb.crashes = 0;
+    } else {
+        rtcCrumb.crashes++;
+        gCrashOff  = true;             // tyst till nästa strömpåslag
+        gLastCrash = String("kraschade i steget ") + stageName(rtcCrumb.stage) +
+                     " efter " + String(rtcCrumb.up) + " s upptid, heap " +
+                     String(rtcCrumb.heap) + " B, minsta lediga stack " +
+                     String(rtcCrumb.stack) + " B, omstart: " + resetCode() +
+                     ", " + String(rtcCrumb.crashes) + " gånger sedan strömpåslag";
+        Serial.printf("[tele] förra rapporten %s\n", gLastCrash.c_str());
+        event("tele_crash", String(stageName(rtcCrumb.stage)) + " heap=" +
+                            String(rtcCrumb.heap) + " stack=" + String(rtcCrumb.stack));
+        Preferences p;
+        p.begin("tele", false);
+        p.putString("crash", gLastCrash);
+        p.end();
+    }
+    rtcCrumb.magic = 0;
+
+    if (gLastCrash.isEmpty()) {
+        Preferences p;
+        p.begin("tele", true);
+        gLastCrash = p.getString("crash", "");
+        p.end();
+        if (gLastCrash.length()) event("tele_crash_tidigare", gLastCrash);
+    }
+}
+
+void requestSend() { gForce = true; }
+
 void event(const char *type, const String &detail) {
     if (gCount == TELEMETRY_QUEUE_MAX) {
         for (uint8_t i = 1; i < gCount; i++) gQueue[i - 1] = gQueue[i];
@@ -155,7 +305,21 @@ void event(const char *type, const String &detail) {
 }
 
 void loop(bool inLiveWindow) {
-    if (!available() || !settings.telemetry || gServerOff) return;
+    if (!available() || !settings.telemetry) return;
+
+    // Knappen på /debug går före allt annat: matchfönster, serverns paus och
+    // avstängningen efter en krasch. Den som trycker vill se vad som händer.
+    if (gForce) {
+        gForce     = false;
+        gStarted   = true;
+        gCrashOff  = false;
+        const bool ok = send();
+        gNextSend  = millis() + (ok ? gInterval : TELEMETRY_RETRY_MS);
+        Serial.printf("[tele] %s — %s\n", gStatus.c_str(), gLastTrace.c_str());
+        return;
+    }
+
+    if (gServerOff || gCrashOff) return;
 
     if (!gStarted) {
         gStarted  = true;
@@ -167,7 +331,7 @@ void loop(bool inLiveWindow) {
 
     const bool ok = send();
     gNextSend = millis() + (ok ? gInterval : TELEMETRY_RETRY_MS);
-    Serial.printf("[tele] %s\n", gStatus.c_str());
+    Serial.printf("[tele] %s — %s\n", gStatus.c_str(), gLastTrace.c_str());
 }
 
 String preview() {
@@ -185,7 +349,15 @@ const String &statusText() {
     if (!available())       return none;
     if (!settings.telemetry) return off;
     if (gServerOff)          return paused;
+    if (gCrashOff) {
+        static String crashed;
+        crashed = "Avstängd till nästa strömpåslag: förra försöket " + gLastCrash;
+        return crashed;
+    }
     return gStatus;
 }
+
+const String &lastTrace() { return gLastTrace; }
+const String &lastCrash() { return gLastCrash; }
 
 }  // namespace Telemetry

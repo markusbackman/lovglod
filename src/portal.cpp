@@ -525,6 +525,14 @@ void handleNetTest() {
     server.send(303);
 }
 
+void handleTelemetrySend() {
+    if (stationOnly()) return;
+    // TLS-anropet tar en sekund eller mer — loopen skickar, sidan laddas om.
+    Telemetry::requestSend();
+    server.sendHeader("Location", "/debug");
+    server.send(303);
+}
+
 void handleRefresh() {
     if (stationOnly()) return;
     // Hämtningen blockerar i flera sekunder — låt loopen göra jobbet.
@@ -634,9 +642,21 @@ void handleDebug() {
     if (Telemetry::available()) {
         p += F("<h2>Driftstatistik</h2><div class=card><p class=note>");
         p += htmlEscape(Telemetry::statusText());
-        p += F("</p><p class=note>Så här ser nästa rapport ut, tecken för tecken:</p><pre>");
+        p += F("</p>");
+        if (Telemetry::lastTrace().length()) {
+            p += F("<p class=note>Senaste försöket: ");
+            p += htmlEscape(Telemetry::lastTrace());
+            p += F("</p>");
+        }
+        if (Telemetry::lastCrash().length()) {
+            p += F("<p class=note>Senaste krasch i en rapport: ");
+            p += htmlEscape(Telemetry::lastCrash());
+            p += F("</p>");
+        }
+        p += F("<p class=note>Så här ser nästa rapport ut, tecken för tecken:</p><pre>");
         p += htmlEscape(Telemetry::preview());
-        p += F("</pre></div>");
+        p += F("</pre><form method=POST action=/telemetri>"
+               "<button class=ghost type=submit>Skicka rapport nu</button></form></div>");
     }
     p += F("<h2>LED-list</h2><div class=card><p class=note>");
     p += htmlEscape(String(Leds::stripName(settings.ledStrip)) + ", " +
@@ -750,6 +770,7 @@ void registerRoutes() {
     server.on("/update",   HTTP_POST, handleUpdate);
     server.on("/refresh",  HTTP_POST, handleRefresh);
     server.on("/nettest",  HTTP_POST, handleNetTest);
+    server.on("/telemetri", HTTP_POST, handleTelemetrySend);
     server.on("/push",     HTTP_POST, handlePush);
     server.on("/ljus",     HTTP_GET,  handleLight);
     server.on("/ljus",     HTTP_POST, handleLightPost);

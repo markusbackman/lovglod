@@ -476,8 +476,11 @@
 // inställningen säger. Nyckeln är inte hemlig — den ligger i varje binär. Den
 // finns för att sortera bort slumpmässigt skräp, inte för att stänga ute någon
 // som vill; Worker:n validerar och begränsar ändå varje anrop.
+#ifndef TELEMETRY_HOST
+#define TELEMETRY_HOST "lovglod-telemetri.lovglod.workers.dev"
+#endif
 #ifndef TELEMETRY_URL
-#define TELEMETRY_URL "https://lovglod-telemetri.lovglod.workers.dev/v1/rapport"
+#define TELEMETRY_URL "https://" TELEMETRY_HOST "/v1/rapport"
 #endif
 #ifndef TELEMETRY_KEY
 #define TELEMETRY_KEY "lovglod-telemetri-1"

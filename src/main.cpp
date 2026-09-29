@@ -1146,6 +1146,7 @@ void setup() {
     Serial.printf("[boot] start nr %lu, %lu onormala omstarter sedan strömpåslag\n",
                   (unsigned long)settings.bootCount, (unsigned long)settings.abnormalBoots);
     Telemetry::event("boot");
+    Telemetry::checkCrashedInSend();
     checkRollbackState();
     status.otaOnTrial = gOtaOnTrial;
     Leds::begin(settings.ledStrip, settings.ledCount);
