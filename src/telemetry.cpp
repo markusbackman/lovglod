@@ -34,8 +34,8 @@ String   gLastCrash;                  // sparad i NVS, visas på /debug
 String   gLastTrace;                  // stegen i senaste försöket, med tider
 
 // ── Brödsmulor genom en krasch ──────────────────────────────────────────────
-// 1.3.0-rc1 startade om mitt i rapporten, utan seriell kabel att läsa
-// backtracen från. RTC-minnet överlever en panic-omstart men inte ett
+// En krasch mitt i rapporten syns annars bara som "panic", och en lampa hos
+// någon annan har ingen seriell kabel att läsa backtracen från. RTC-minnet överlever en panic-omstart men inte ett
 // strömavbrott, så där skriver send() vilket steg den är i innan varje steg
 // som kan krascha. Hittar nästa start en smula vet vi var den dog.
 enum Stage : uint8_t { ST_NONE, ST_DNS, ST_TCP, ST_TLS, ST_POST, ST_REPLY };
@@ -142,8 +142,8 @@ void applyReply(const String &body) {
 }
 
 // Stegvis förkontroll innan HTTPClient tar över: namnuppslag, ren TCP och
-// ett TLS-handslag var för sig. Kraschen i rc1 kom någonstans i POST:en, och
-// smulorna säger då vilket av stegen som tog lampan med sig.
+// ett TLS-handslag var för sig. Kraschar lampan säger smulorna vilket av
+// stegen som tog den med sig.
 bool preflight(uint32_t &t0) {
     auto lap = [&](const char *name) {
         gLastTrace += String(name) + " " + String(millis() - t0) + " ms, ";

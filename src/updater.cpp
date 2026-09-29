@@ -281,7 +281,13 @@ bool queryLatest(const String &source, ReleaseInfo &out) {
 // kontrollordningen: httpUpdate anropar Update.end() själv och startar om, och
 // då är boot-partitionen redan satt. Vi behöver kunna säga nej mellan sista
 // byten och commit.
-static bool downloadAndInstall(const String &url, const ReleaseInfo &rel) {
+//
+// noinline: ramen är över 2 kB (nedladdningsbufferten). I 1.3.0-rc1 valde
+// kompilatorn att lägga in den i checkAndApply(), och då låg de 2 kB kvar på
+// stacken redan under TLS-handslaget mot GitHubs API i queryLatest(). Det
+// räckte för att spränga loop-taskens stack vid varje uppdateringskontroll.
+static bool __attribute__((noinline)) downloadAndInstall(const String &url,
+                                                         const ReleaseInfo &rel) {
     WiFiClientSecure client;
     configureTls(client);
 

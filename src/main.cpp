@@ -40,6 +40,12 @@
 // extern "C" krävs: den svaga originalfunktionen är definierad i en C-fil.
 extern "C" bool verifyRollbackLater() { return true; }
 
+// Loop-tasken får 16 kB i stället för kärnans 8 kB. Allt nätverk körs här, och
+// ett TLS-handslag i mbedTLS tar flera kB stack utöver anroparnas ramar.
+// 1.3.0-rc1 sprängde de 8 kB vid varje uppdateringskontroll, när en ändrad
+// inlining gjorde checkAndApply() 2 kB djupare. Heapen har gott om plats.
+SET_LOOP_TASK_STACK_SIZE(16 * 1024);
+
 // ── Tillstånd ───────────────────────────────────────────────────────────────
 enum class AppState { Boot, Portal, Connecting, Online };
 static AppState  gState = AppState::Boot;

@@ -86,8 +86,8 @@ const String &run(StepCb onStep) {
     tcpProbe  ("www.shl.se:443    (HTTPS — den vi behöver)", SHL_API_HOST, 443);
     tcpProbe  ("game-broadcaster.s8y.se:443", SHL_LIVE_HOST, 443);
     tcpProbe  ("api.github.com:443 (OTA)", "api.github.com", 443);
-    // Bara TCP, inget TLS: ett handslag här skulle köras vid varje start, och
-    // det var i telemetrins anrop som 1.3.0-rc1 kraschade.
+    // Bara TCP, inget TLS: testet körs vid varje start och ska inte kunna ta
+    // lampan med sig.
     tcpProbe  ("workers.dev:443   (driftstatistik)", TELEMETRY_HOST, 443);
 
     line("");
