@@ -32,6 +32,9 @@ void Settings::load() {
     liveScoreAway   = prefs.getChar("livesa", -1);
     bootCount       = prefs.getULong("boots", 0);
     abnormalBoots   = prefs.getULong("badboots", 0);
+    telemetry       = prefs.getBool("tele", true);
+    lampId          = prefs.getString("lampid", "");
+    lampName        = prefs.getString("lampname", "");
 
     // Lampor från före listvalet har WiFi men ingen listnyckel. De sitter alla
     // med WS2812B — det var den enda list firmwaren kunde driva — och utan det
@@ -45,10 +48,19 @@ void Settings::load() {
     if (!matchLeadMin)                 matchLeadMin = MATCH_LEAD_DEFAULT_MIN;
     ledCount = constrain(ledCount, LED_COUNT_MIN, LED_COUNT_MAX);
 
-    if (legacy) {
-        ledStrip = LED_STRIP_WS2812;
-        save();
+    // Slumpas en gång och sparas direkt. esp_random() är en riktig
+    // slumpkälla när radion är igång, men redan här räcker den gott för att
+    // tre lampor inte ska få samma ID.
+    const bool newId = lampId.length() != 16;
+    if (newId) {
+        char buf[17];
+        snprintf(buf, sizeof(buf), "%08lx%08lx",
+                 (unsigned long)esp_random(), (unsigned long)esp_random());
+        lampId = buf;
     }
+
+    if (legacy) ledStrip = LED_STRIP_WS2812;
+    if (legacy || newId) save();
 }
 
 void Settings::save() {
@@ -69,6 +81,9 @@ void Settings::save() {
     prefs.putULong("victgame", victoryGame);
     prefs.putUChar("ledstrip", ledStrip);
     prefs.putUShort("ledcount", ledCount);
+    prefs.putBool("tele", telemetry);
+    prefs.putString("lampid", lampId);
+    prefs.putString("lampname", lampName);
     prefs.end();
 }
 

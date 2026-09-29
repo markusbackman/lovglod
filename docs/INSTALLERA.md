@@ -154,6 +154,19 @@ dygnet runt, bara tändas kring matcherna eller vara helt släckt — se
 visa varje matchläge — slutspurterna, paus, övertid, segerdans, mål och suck —
 utan att vänta på en match.
 
+### Driftstatistik
+
+Lampan skickar en liten hälsorapport till den som byggt den, fem minuter efter
+start och sedan var sjätte timme — aldrig under en match. Rapporten innehåller
+firmwareversion, upptid, antal omstarter och orsaken till den senaste, ledigt
+minne, WiFi-signal, listtyp och inställningar, samt händelser som
+uppdateringar och återrullningar. Den innehåller inte SSID, IP-adress eller
+MAC-adress; lampan identifieras av ett slumpat ID och ett valfritt namn.
+
+Rutan är förkryssad i setup-portalen, och inställningen går att slå av på
+statussidan. Under **Felsökning** visas nästa rapport tecken för tecken.
+Mottagaren beskrivs i [tools/telemetri](../tools/telemetri/README.md).
+
 ---
 
 ## Uppdateringar

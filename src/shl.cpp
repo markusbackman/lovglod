@@ -29,7 +29,9 @@ constexpr const char *CLUB_BASE = "https://" SHL_CLUB_HOST;
 constexpr const char *LIVE_BASE = "https://" SHL_LIVE_HOST;
 
 // ── GET mot SHL ─────────────────────────────────────────────────────────────
-bool httpGet(const char *base, const String &path, String &body, size_t maxBytes = 24000) {
+uint32_t gHttpErrors = 0;             // misslyckade GET sedan start, för driftstatistiken
+
+bool httpGetOnce(const char *base, const String &path, String &body, size_t maxBytes) {
     if (WiFi.status() != WL_CONNECTED) { gLastError = "WiFi nere"; return false; }
 
     WiFiClientSecure secure;
@@ -62,6 +64,12 @@ bool httpGet(const char *base, const String &path, String &body, size_t maxBytes
 
     if (body.length() > maxBytes) body.remove(maxBytes);
     return true;
+}
+
+bool httpGet(const char *base, const String &path, String &body, size_t maxBytes = 24000) {
+    if (httpGetOnce(base, path, body, maxBytes)) return true;
+    gHttpErrors++;
+    return false;
 }
 
 bool apiGet(const String &path, String &body, size_t maxBytes = 24000) {
@@ -745,6 +753,7 @@ bool ssePump(LiveScore &out) {
 
 uint32_t sseFrames()     { return gSseFrames; }
 uint32_t sseReconnects() { return gSseReconnects; }
+uint32_t httpErrors()    { return gHttpErrors; }
 uint32_t sseComments()   { return gSseComments; }
 uint32_t sseSilentMs()   { return gSseActive ? millis() - gSseLastRx : 0; }
 

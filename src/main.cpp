@@ -28,6 +28,7 @@
 #include "shl.h"
 #include "updater.h"
 #include "netcheck.h"
+#include "telemetry.h"
 #include "trace.h"
 
 // Skjuter upp OTA-kvittensen. Arduino-kärnan kvitterar annars redan i
@@ -1088,6 +1089,7 @@ static void checkRollbackState() {
 
     Serial.printf("[ota] %s rullades tillbaka av bootloadern — kör %s igen\n",
                   settings.otaPendingVersion.c_str(), FW_VERSION);
+    Telemetry::event("ota_rollback", settings.otaPendingVersion);
     settings.noteOtaRollback(settings.otaPendingVersion);
 }
 
@@ -1106,6 +1108,7 @@ static void serviceOtaValidation() {
         gOtaOnTrial       = false;
         status.otaOnTrial = false;
         settings.clearOtaPending();
+        Telemetry::event("ota_ok", FW_VERSION);
         Serial.println(healthy ? "[ota] kvitterad som frisk — rollback avblåst"
                                : "[ota] inget WiFi konfigurerat — kvitterar ändå");
         return;
@@ -1142,6 +1145,7 @@ void setup() {
     settings.noteBoot(esp_reset_reason() == ESP_RST_POWERON, status.resetAbnormal);
     Serial.printf("[boot] start nr %lu, %lu onormala omstarter sedan strömpåslag\n",
                   (unsigned long)settings.bootCount, (unsigned long)settings.abnormalBoots);
+    Telemetry::event("boot");
     checkRollbackState();
     status.otaOnTrial = gOtaOnTrial;
     Leds::begin(settings.ledStrip, settings.ledCount);
@@ -1326,6 +1330,10 @@ void loop() {
                     status.state = "Standby";
                 }
             }
+
+            // Sist i varvet, och aldrig under en match: ett TLS-anrop tar
+            // en sekund och ett tjugotal kB heap som live-strömmen behöver.
+            Telemetry::loop(gInLiveWindow);
 
             status.dark = !lampAwake();
             Leds::setDark(status.dark);

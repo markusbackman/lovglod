@@ -63,6 +63,14 @@ struct Settings {
     int8_t   liveScoreHome;   // högsta ställning vi sett, -1 = ingen
     int8_t   liveScoreAway;
 
+    // Driftstatistik (telemetry.cpp). På från start, går att slå av i setup-
+    // portalen och på admin-sidan. lampId slumpas vid första starten och är
+    // det enda som identifierar lampan utåt — inte MAC, inte SSID. Det rörs
+    // inte av "Glöm WiFi", så en lampa som byter nät är fortfarande samma lampa.
+    bool    telemetry;
+    String  lampId;           // 16 hex-tecken
+    String  lampName;         // valfritt smeknamn, t.ex. "Mamma"
+
     uint32_t bootCount;       // alla starter, sedan lampan först flashades
     uint32_t abnormalBoots;   // onormala omstarter sedan senaste strömpåslag
 

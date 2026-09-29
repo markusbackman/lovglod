@@ -2,6 +2,7 @@
 #include "config.h"
 #include "settings.h"
 #include "leds.h"
+#include "telemetry.h"
 #include "ota_pubkey.h"
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
@@ -421,6 +422,7 @@ bool checkAndApply(const String &source) {
         gStatus = "Releasen saknar sha256 eller signatur — installerar inte";
         Serial.printf("[ota] %s\n", gStatus.c_str());
         settings.noteOtaFailure(rel.version);
+        Telemetry::event("ota_fail", rel.version + ": " + gStatus);
         return false;
     }
 
@@ -433,6 +435,7 @@ bool checkAndApply(const String &source) {
     if (!downloadAndInstall(binUrl, rel)) {
         Serial.printf("[ota] misslyckades: %s\n", gStatus.c_str());
         settings.noteOtaFailure(rel.version);
+        Telemetry::event("ota_fail", rel.version + ": " + gStatus);
         Leds::setMode(LED_STANDBY);
         return false;
     }

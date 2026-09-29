@@ -95,6 +95,7 @@ const String &lastError();
 // Räknare för diagnostikloggen.
 uint32_t sseFrames();
 uint32_t sseReconnects();
+uint32_t httpErrors();      // misslyckade GET mot SHL sedan start
 uint32_t sseComments();
 uint32_t sseSilentMs();
 

@@ -465,3 +465,34 @@
 // Utan omprövning blir ett tillfälligt fel permanent, och det syns inte: utan
 // klocka är matchfönstret, målen och segerläget alla tyst avstängda.
 #define TIME_RETRY_MS (5UL * 60 * 1000)
+
+// ─────────────────────────────────────────────────────────────
+//  Driftstatistik
+// ─────────────────────────────────────────────────────────────
+// Lampan skickar en liten hälsorapport till en Cloudflare Worker
+// (tools/telemetri/). Vad som skickas syns på lampans /debug-sida.
+//
+// Tom URL = ingen mottagare inbyggd, och då skickas ingenting oavsett vad
+// inställningen säger. Nyckeln är inte hemlig — den ligger i varje binär. Den
+// finns för att sortera bort slumpmässigt skräp, inte för att stänga ute någon
+// som vill; Worker:n validerar och begränsar ändå varje anrop.
+#ifndef TELEMETRY_URL
+#define TELEMETRY_URL "https://lovglod-telemetri.lovglod.workers.dev/v1/rapport"
+#endif
+#ifndef TELEMETRY_KEY
+#define TELEMETRY_KEY "lovglod-telemetri-1"
+#endif
+
+// Första rapporten skickas fem minuter efter uppkoppling: efter startens
+// SHL-hämtning, och efter att en ny firmware hunnit kvitteras (OTA_VALIDATE_
+// AFTER_MS), så att "ota_ok" följer med redan i den. Sedan var sjätte timme.
+// Worker:n kan svara med ett eget intervall, som då gäller tills nästa omstart.
+#define TELEMETRY_FIRST_MS    (5UL * 60 * 1000)
+#define TELEMETRY_INTERVAL_MS (6UL * 60 * 60 * 1000)
+#define TELEMETRY_RETRY_MS    (30UL * 60 * 1000)   // efter ett misslyckat försök
+#define TELEMETRY_MIN_S       (60UL * 60)          // golv för serverns intervall
+#define TELEMETRY_MAX_S       (48UL * 60 * 60)     // ...och tak
+
+// Händelser köas i RAM tills nästa rapport. Blir kön full slängs den äldsta —
+// statistiken får aldrig kosta lampan minne den behöver till annat.
+#define TELEMETRY_QUEUE_MAX   16

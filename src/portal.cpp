@@ -4,6 +4,7 @@
 #include "shl.h"
 #include "updater.h"
 #include "netcheck.h"
+#include "telemetry.h"
 #include "leds.h"
 #include "logo_svg.h"
 #include <WiFi.h>
@@ -84,6 +85,10 @@ form>label:first-child{margin-top:0}
 input,select{width:100%;min-height:48px;padding:10px 12px;border:1px solid var(--edge);
  border-radius:0;background:#fff;color:#000;font:16px var(--body)}
 input{-webkit-appearance:none;appearance:none}
+label.check{display:flex;gap:12px;align-items:flex-start;margin-top:22px;font-size:15px;
+ font-weight:400;letter-spacing:0;text-transform:none;color:#000}
+input[type=checkbox]{flex:none;width:22px;min-height:22px;height:22px;margin:0;padding:0;
+ -webkit-appearance:auto;appearance:auto;accent-color:var(--g7)}
 input:focus,select:focus{outline:2px solid var(--g7);outline-offset:0;border-color:var(--g7)}
 button{width:100%;min-height:48px;margin-top:22px;padding:12px 20px;border:2px solid var(--g7);
  border-radius:0;background:var(--g7);color:#fff;font:700 15px var(--body);
@@ -280,8 +285,17 @@ void handleSetup() {
     p += F("</select>"
            "<label>Nätverksnamn (SSID)</label><input id=ssid name=ssid required value='");
     p += htmlEscape(settings.wifiSsid);
-    p += F("'><label>Lösenord</label><input name=pass type=password value=''>"
-           "<button type=submit>Spara och anslut</button></form>"
+    p += F("'><label>Lösenord</label><input name=pass type=password value=''>");
+    // Förkryssad. Det dolda fältet skiljer "urkryssad" från ett formulär som
+    // inte hade rutan alls — en okryssad checkbox skickar ingenting.
+    if (Telemetry::available()) {
+        p += F("<input type=hidden name=telef value=1><label class=check>"
+               "<input type=checkbox name=tele value=1");
+        if (settings.telemetry) p += F(" checked");
+        p += F("><span>Skicka driftstatistik till den som byggt lampan — version, "
+               "omstarter och WiFi-signal. Inget om ditt nät eller hem.</span></label>");
+    }
+    p += F("<button type=submit>Spara och anslut</button></form>"
            "<p class=note>Lampan startar om och ansluter. Lyckas det inte dyker "
            "det här nätverket upp igen.</p></div>");
     p += FPSTR(PAGE_END);
@@ -299,6 +313,7 @@ void handleSave() {
 
     settings.wifiSsid = server.arg("ssid");
     settings.wifiPass = server.arg("pass");
+    if (server.hasArg("telef")) settings.telemetry = server.hasArg("tele");
     settings.save();
     gSubmitted = true;
 
@@ -377,6 +392,8 @@ void handleStatus() {
                             status.otaOnTrial);
     row("Uppdatering",      Updater::statusText());
     row("Kanal",            String(settings.otaBeta ? "Beta" : "Stabil"));
+    if (Telemetry::available())
+        row("Driftstatistik", settings.telemetry ? "På" : "Av");
 
     p += F("</table></div>"
            "<h2>Inställningar</h2><div class=card><form method=POST action=/settings>"
@@ -405,7 +422,18 @@ void handleStatus() {
                  "<option value=1 selected>Beta — pre-releases, kollar var 3:e timme</option>")
              : F("<option value=0 selected>Stabil</option>"
                  "<option value=1>Beta — pre-releases, kollar var 3:e timme</option>");
-    p += F("</select><label>Felsökningsläge — ta emot matchläge på /push</label>"
+    p += F("</select>");
+    if (Telemetry::available()) {
+        p += F("<label>Driftstatistik — vad som skickas syns under Felsökning</label>"
+               "<select name=tele>");
+        opt("1", settings.telemetry,  "På — skickar hälsorapport var 6:e timme");
+        opt("0", !settings.telemetry, "Av");
+        p += F("</select><label>Lampans namn i statistiken (valfritt)</label>"
+               "<input name=lampname maxlength=32 placeholder='t.ex. Mamma' value='");
+        p += htmlEscape(settings.lampName);
+        p += F("'>");
+    }
+    p += F("<label>Felsökningsläge — ta emot matchläge på /push</label>"
            "<select name=dbgpush>");
     p += settings.debugPush
              ? F("<option value=1 selected>På — mockservern får styra</option>"
@@ -464,6 +492,12 @@ void handleSettings() {
     if (server.hasArg("goaldly"))
         settings.goalDelayS =
             (uint8_t)constrain(server.arg("goaldly").toInt(), 0, GOAL_DELAY_MAX_S);
+    if (server.hasArg("tele")) settings.telemetry = server.arg("tele") == "1";
+    if (server.hasArg("lampname")) {
+        String n = server.arg("lampname");
+        n.trim();
+        settings.lampName = n.substring(0, 32);
+    }
     settings.save();
     Leds::setBrightness(settings.brightness);
     server.sendHeader("Location", "/");
@@ -597,6 +631,13 @@ void handleDebug() {
                                                 : String("(inte körd)"));
     p += F("</pre><form method=POST action=/nettest>"
            "<button class=ghost type=submit>Kör om nätverkstestet</button></form></div>");
+    if (Telemetry::available()) {
+        p += F("<h2>Driftstatistik</h2><div class=card><p class=note>");
+        p += htmlEscape(Telemetry::statusText());
+        p += F("</p><p class=note>Så här ser nästa rapport ut, tecken för tecken:</p><pre>");
+        p += htmlEscape(Telemetry::preview());
+        p += F("</pre></div>");
+    }
     p += F("<h2>LED-list</h2><div class=card><p class=note>");
     p += htmlEscape(String(Leds::stripName(settings.ledStrip)) + ", " +
                     String(settings.ledCount) + " dioder");

@@ -1,0 +1,26 @@
+name = "lovglod-telemetri"
+main = "src/index.js"
+compatibility_date = "2026-09-01"
+workers_dev = true
+preview_urls = false
+
+# Rensar rapporter äldre än RETENTION_DAYS en gång per natt.
+[triggers]
+crons = ["17 3 * * *"]
+
+[vars]
+# Samma sträng som TELEMETRY_KEY i include/config.h. Den är inte hemlig — den
+# ligger i varje binär — och finns bara för att sortera bort slumpmässiga anrop.
+LAMP_KEY = "lovglod-telemetri-1"
+RETENTION_DAYS = "365"
+# Sätt för att be lamporna rapportera med ett annat intervall (sekunder,
+# 3600–172800). Tomt = lampans eget, var sjätte timme.
+INTERVAL_S = ""
+
+# ADMIN_TOKEN sätts som hemlighet, inte här:
+#   npx wrangler secret put ADMIN_TOKEN
+
+[[d1_databases]]
+binding = "DB"
+database_name = "lovglod-telemetri"
+database_id = "0176faad-17f4-443f-adaf-988cdca8d4bf"
