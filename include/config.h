@@ -332,8 +332,9 @@
 #define OPP_G 196
 #define OPP_B 255
 
-// Segerdansen vid slutsignalen, innan segerläget tar vid.
-#define DANCE_MS            45000
+// Segerdansen vid slutsignalen, innan segerläget tar vid. En halvtimme, så
+// att firandet håller i sig medan man fortfarande njuter av vinsten.
+#define DANCE_MS            (30UL * 60 * 1000)
 // Suck vid motståndarmål: listen faller ihop och hämtar sig.
 #define SIGH_MS             4000
 

@@ -332,8 +332,8 @@ nästan mörker på en halv sekund och hämtar sig långsamt under fyra
 ### `LED_DANCE` — segerdansen
 
 När strömmen säger att matchen är avgjord och Löven leder: guld- och gröna
-block jagar utåt från mitten med gnistor ovanpå, i 45 sekunder (`DANCE_MS`)
-medan laget tackar publiken. De sista fem sekunderna tonar den över i
+block jagar utåt från mitten med gnistor ovanpå, i 30 minuter (`DANCE_MS`)
+efter att matchen är avgjord. De sista fem sekunderna tonar den över i
 segerläget, som då redan är tänt — lampan väntar inte på played-games när den
 själv sett slutsignalen.
 

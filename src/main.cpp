@@ -8,7 +8,7 @@
 //  Övertid        dragkamp mellan lagen, flyttas av skottrycket
 //  Mål            stroboskop och kometer, 7–22 s beroende på hur viktigt
 //  Motståndarmål  listen suckar
-//  Slutsignal     segerdans, sedan segerläget i tre timmar
+//  Slutsignal     segerdans i en halvtimme, sedan segerläget i tre timmar
 //  Inget WiFi     eget nät + captive portal som frågar efter SSID/lösenord
 //  Uppdatering    signerad self-update från GitHub Releases, annars USB
 //
