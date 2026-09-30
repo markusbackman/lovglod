@@ -64,6 +64,12 @@ void clearRefresh();
 // skäl som ovan: målfyrverkeriet ska inte starta inne i ett HTTP-anrop.
 bool pushPending();
 PushState takePush();
+#ifdef LIVE_TRACE
+// Diagnostikbygget: en push som kommit över seriekabeln i stället för POST
+// /push. Tolkas och köas exakt som en från nätet, men utan felsökningslägets
+// spärr. Falskt vid trasig JSON, med felet i err.
+bool pushFromSerial(const String &body, String &err);
+#endif
 // Knapparna på /ljus: samma tangenter som demoläget i seriemonitorn. Tas emot
 // i webbservern och spelas upp i loop(), som allt annat som tänder listen.
 bool demoPending();

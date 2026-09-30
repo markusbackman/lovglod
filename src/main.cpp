@@ -76,6 +76,10 @@ static bool      gReplayDanced      = false;  // segerdansen tagen i uppspelning
 static bool      gDataOk            = true;   // false när SHL inte svarar alls
 static bool      gFirstFetchPending = false;  // första hämtningen visar förlopp
 static uint32_t  gNextResultPoll    = 0;      // tät koll efter matchens slut
+#ifdef LIVE_TRACE
+static bool      gSerialPush        = false;  // pushen kom över USB, se serialPushLine()
+static bool      gSerialAck         = false;  // kvittens väntar på att pushen tillämpas
+#endif
 
 static void resetMood();                      // matchljuset, se nedan
 
@@ -327,8 +331,96 @@ static bool demoKey(char c) {
     return false;
 }
 
+#ifdef LIVE_TRACE
+// ── Push över seriekabeln (bara diagnostikbygget) ───────────────────────────
+// Stresstestet (tools/stresstest.py) når lampan bara över USB. En rad som börjar
+// med { är en push i samma format som POST /push och går genom samma tolkning
+// och samma applyPush() i loopen. Kvittensen, "[push] ok", skrivs först när
+// loopen tillämpat pushen — inte när raden lästs — så värden vet att nästa
+// ram inte skriver över en som ännu inte hunnit verka. Värden väntar in den
+// innan nästa rad; under ett TLS-handslag kan det dröja sekunder, och så
+// länge ligger det som hunnit komma i den förstorade mottagningsbufferten.
+//
+// En rad som börjar med @ är ett direktkommando till listen för sådant ingen
+// push kan åstadkomma: "@kö N MS" köar N mål bakom en fördröjning på MS ms,
+// fler än GOAL_QUEUE_MAX om man vill, oberoende av tv-fördröjningen i NVS.
+static const size_t   SERIAL_LINE_MAX  = 8192;
+static const uint32_t SERIAL_LINE_IDLE = 2000;   // ms utan tecken → raden är trasig
+
+// Läser resten av raden. Falskt om den blev för lång eller tog slut mitt i —
+// då är den redan slängd fram till radslutet, eller till tystnaden.
+static bool readSerialLine(String &out, const char *&why) {
+    out = "";
+    out.reserve(1024);
+    bool     tooLong = false;
+    uint32_t last    = millis();
+    for (;;) {
+        while (Serial.available()) {
+            const char c = Serial.read();
+            last = millis();
+            if (c == '\n') {
+                if (tooLong) why = "för lång rad";
+                return !tooLong;
+            }
+            if (c == '\r') continue;
+            if (out.length() < SERIAL_LINE_MAX) out += c;
+            else tooLong = true;
+        }
+        if (millis() - last > SERIAL_LINE_IDLE) {
+            why = tooLong ? "för lång rad" : "raden tog slut utan radslut";
+            return false;
+        }
+        delay(1);
+    }
+}
+
+static void serialQueueGoals(const String &line) {
+    int  n  = 0;
+    long ms = 0;
+    if (sscanf(line.c_str(), "@kö %d %ld", &n, &ms) != 2 || n < 1 || n > 40 || ms < 1) {
+        Serial.println("[diag] fel: väntade \"@kö N MS\"");
+        return;
+    }
+    for (int i = 0; i < n; i++)
+        Leds::triggerGoal((uint32_t)ms + i * 150, (uint8_t)(i * 255 / n));
+    Leds::sigh((uint32_t)ms / 2);
+    Serial.printf("[diag] ok kö=%u\n", Leds::pendingGoals());
+}
+
+// Sant om raden var vår. Står en push redan på tur lämnas nästa kvar i
+// bufferten tills loopen tagit den förra, så ingen ram skrivs över.
+static bool serialPushLine() {
+    const int first = Serial.peek();
+    if (first != '{' && first != '@') return false;
+    if (first == '{' && Portal::pushPending()) return true;
+
+    String      line;
+    const char *why = "";
+    if (!readSerialLine(line, why)) {
+        Serial.printf("[push] fel: %s\n", why);
+        return true;
+    }
+    if (first == '@') {
+        serialQueueGoals(line);
+        return true;
+    }
+
+    String err;
+    if (!Portal::pushFromSerial(line, err)) {
+        Serial.printf("[push] fel: json: %s\n", err.c_str());
+        return true;
+    }
+    gSerialPush = true;
+    gSerialAck  = true;
+    return true;
+}
+#endif
+
 static void handleSerialCommands() {
     if (!Serial.available()) return;
+#ifdef LIVE_TRACE
+    if (serialPushLine()) return;
+#endif
     const char c = Serial.read();
     while (Serial.available()) Serial.read();     // släng resten av raden
 
@@ -881,7 +973,13 @@ static void serviceLive() {
 static bool pushActive() {
     // Felsökningsläget av mitt i en lease avslutar push-läget direkt — alla tre
     // ställena i loopen frågar härigenom, så ingen väg tillbaka missas.
-    return settings.debugPush && gPushUntil != 0 &&
+#ifdef LIVE_TRACE
+    // En push över seriekabeln håller leasen själv, se serialPushLine().
+    const bool gate = settings.debugPush || gSerialPush;
+#else
+    const bool gate = settings.debugPush;
+#endif
+    return gate && gPushUntil != 0 &&
            (int32_t)(millis() - gPushUntil) < 0;
 }
 
@@ -977,6 +1075,9 @@ static void endPushMode() {
     gNext              = NextGame();
     gFetchNow          = true;
     gPushReplay        = false;
+#ifdef LIVE_TRACE
+    gSerialPush        = false;
+#endif
     Shl::resetLive();
     resetMood();
     Leds::clearPendingGoals();
@@ -1145,6 +1246,11 @@ static void serviceOtaValidation() {
 
 // ─────────────────────────────────────────────────────────────────────────────
 void setup() {
+#ifdef LIVE_TRACE
+    // Stresstestets pushar kommer över USB medan loopen kan stå sekunder i ett
+    // TLS-handslag. Kärnans 256 byte räcker inte ens till en ram.
+    Serial.setRxBufferSize(16384);
+#endif
     Serial.begin(115200);
     delay(200);
     Serial.println("\n\n== LövGlöd v" FW_VERSION " ==");
@@ -1267,7 +1373,16 @@ void loop() {
 
             serviceTimeSync();
 
-            if (Portal::pushPending()) applyPush(Portal::takePush());
+            if (Portal::pushPending()) {
+                applyPush(Portal::takePush());
+#ifdef LIVE_TRACE
+                if (gSerialAck) {
+                    gSerialAck = false;
+                    Serial.printf("[push] ok kö=%u heap=%u\n", Leds::pendingGoals(),
+                                  ESP.getFreeHeap());
+                }
+#endif
+            }
 
             // Portalen kan ha bytt datakälla eller bett om en ny hämtning. Släpp
             // matchen vi följde — uuid:t betyder inget på den nya servern.

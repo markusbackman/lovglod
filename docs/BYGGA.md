@@ -75,6 +75,7 @@ tools/live.py           följ SHL:s live-ström i terminalen
 tools/spela_in.py       spela in en match till mock/recordings/
 tools/forbehandla.py    städa en inspelning till det lampan läser (lampa.jsonl)
 tools/spela_upp.py      spela upp en inspelad match på en lampa
+tools/stresstest.py     stresstest över USB: matcher i hög fart, missbruk, övervakning
 tools/film.py           filmmanus: spelar upp webbplatsens filmer på lampan, på sekunden
 tools/produktfilm/      renderad produktfilm ur STL-filerna, se README där
 mock/server.py          mockserver för labbtest, styrsida på /
@@ -219,6 +220,26 @@ python3 tools/spela_upp.py <lampans ip> mock/recordings/<match> [--från 17:05] 
 omsändningarna kvar och markerade. `spela_upp.py` trycker ramarna till
 `/push` i samma takt som de kom, och game-overview som lampans reservpollning
 skulle ha sett den. Felsökningsläget slås på och av av skriptet.
+
+### Stresstest över USB
+
+`tools/stresstest.py` kör samma inspelningar utan nät: diagnostikbygget tar
+emot push-ramar över seriekabeln (en rad som börjar med `{`, kvitterad med
+`[push] ok` när loopen tillämpat den) och `@kö N MS` köar mål direkt i listen,
+fler än `GOAL_QUEUE_MAX` om man vill. Skriptet spelar matcherna i hög fart och
+kastar in målspam, suckar, demoläget, nättestet och omstarter mitt i, medan
+det läser varje rad efter krascher, vakthundar, tystnad och en heap som
+krymper. Rå logg och sammanfattning hamnar i en mapp per körning.
+
+```
+pio run -e esp32dev_diag -t upload
+~/.platformio/penv/bin/python tools/stresstest.py rök               # tre minuter, allt en gång
+~/.platformio/penv/bin/python tools/stresstest.py full --minuter 25 # matcher + missbruk + långkörning
+~/.platformio/penv/bin/python tools/stresstest.py kapp              # köade mål mot loopens lägessynk
+```
+
+Seriekroken finns bara i diagnostikbygget (`LIVE_TRACE`); produktionsbygget
+är orört.
 
 ---
 

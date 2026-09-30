@@ -746,23 +746,16 @@ void handleDebug() {
     server.send(200, "text/html; charset=utf-8", p);
 }
 
-void handlePush() {
-    if (stationOnly()) return;
-    // Felsökningsläget är porten. Är det av finns endpointen inte — lampan ska
-    // inte gå att styra från nätet bara för att någon känner till adressen.
-    if (!settings.debugPush) {
-        server.send(404, "text/plain", "404");
-        return;
-    }
-
+// Tolkar en push. Delas av POST /push och diagnostikbyggets seriekrok, så att
+// en inspelning som spelas upp över USB går genom exakt samma tolkning som den
+// som kommer över nätet. Falskt vid trasig JSON, med felet i err.
+bool parsePush(const String &body, PushState &p, String &err) {
     JsonDocument doc;
-    const DeserializationError err = deserializeJson(doc, server.arg("plain"));
-    if (err) {
-        server.send(400, "text/plain", String("json: ") + err.c_str());
-        return;
+    const DeserializationError de = deserializeJson(doc, body);
+    if (de) {
+        err = de.c_str();
+        return false;
     }
-
-    PushState p;
 
     const JsonObjectConst n = doc["next"].as<JsonObjectConst>();
     if (!n.isNull()) {
@@ -793,6 +786,24 @@ void handlePush() {
     if (!fr.isNull()) {
         p.hasFrames = true;
         serializeJson(fr, p.frames);
+    }
+    return true;
+}
+
+void handlePush() {
+    if (stationOnly()) return;
+    // Felsökningsläget är porten. Är det av finns endpointen inte — lampan ska
+    // inte gå att styra från nätet bara för att någon känner till adressen.
+    if (!settings.debugPush) {
+        server.send(404, "text/plain", "404");
+        return;
+    }
+
+    PushState p;
+    String    err;
+    if (!parsePush(server.arg("plain"), p, err)) {
+        server.send(400, "text/plain", String("json: ") + err);
+        return;
     }
 
     // Målfyrverkeriet får inte starta här inne — loopen plockar upp det.
@@ -923,6 +934,18 @@ bool refreshRequested()       { return gRefresh; }
 void clearRefresh()           { gRefresh = false; }
 bool pushPending()            { return gPushPending; }
 PushState takePush()          { gPushPending = false; return gPush; }
+
+#ifdef LIVE_TRACE
+// Seriekabeln är sin egen port: den som sitter i USB-uttaget kan redan flasha
+// om lampan, så felsökningsläget behöver inte fråga en gång till.
+bool pushFromSerial(const String &body, String &err) {
+    PushState p;
+    if (!parsePush(body, p, err)) return false;
+    gPush        = p;
+    gPushPending = true;
+    return true;
+}
+#endif
 bool demoPending()            { return gDemoKey != 0; }
 char takeDemo()               { const char k = gDemoKey; gDemoKey = 0; return k; }
 
