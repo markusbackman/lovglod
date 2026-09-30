@@ -16,7 +16,15 @@
 namespace {
 
 bool   gRequested = false;
-String gStatus    = "Ingen kontroll gjord än";
+String   gStatus;                 // tom tills första kontrollen är gjord
+time_t   gCheckedAt  = 0;
+uint32_t gNextCheck  = 0;
+
+// Klockan är synkad när den pekar in i vår egen tid, inte 1970.
+void noteChecked() {
+    const time_t now = time(nullptr);
+    gCheckedAt = now > 1600000000 ? now : 0;
+}
 
 void showProgress(unsigned int done, unsigned int total) {
     if (!total) return;
@@ -402,6 +410,7 @@ static bool __attribute__((noinline)) downloadAndInstall(const String &url,
 
 bool checkAndApply(const String &source) {
     ReleaseInfo rel;
+    noteChecked();
     if (!queryLatest(source, rel)) {
         Serial.printf("[ota] kontroll misslyckades: %s\n", gStatus.c_str());
         return false;
@@ -410,7 +419,8 @@ bool checkAndApply(const String &source) {
     const String current = normalizeVersion(FW_VERSION);
 
     if (rel.version == current) {
-        gStatus = "Senaste versionen (" + current + (settings.otaBeta ? ", beta)" : ")");
+        // Versionen står redan på raden ovanför (Firmware). Här räcker domen.
+        gStatus = "Senaste versionen körs";
         Serial.printf("[ota] %s\n", gStatus.c_str());
         settings.clearOtaFailures();
         return false;
@@ -471,6 +481,11 @@ void requestCheck()  { gRequested = true; }
 bool checkRequested(){ return gRequested; }
 void clearRequest()  { gRequested = false; }
 
-const String &statusText() { return gStatus; }
+void    scheduleCheckIn(uint32_t ms) { gNextCheck = millis() + ms; }
+bool    checkDue()                   { return msUntilCheck() <= 0; }
+int32_t msUntilCheck()               { return (int32_t)(gNextCheck - millis()); }
+
+const String &lastResult() { return gStatus; }
+time_t        checkedAt()  { return gCheckedAt; }
 
 }  // namespace Updater

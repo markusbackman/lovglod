@@ -265,17 +265,21 @@ dl[style*="width: 1280px"], ul[style*="width: 1280px"], ol[style*="width: 1280px
         <dt style="padding: 18px 0; border-bottom: 1px solid rgba(255,255,255,0.18); font-weight: 700;">Lampa</dt>
         <dd style="margin: 0; padding: 18px 0; border-bottom: 1px solid rgba(255,255,255,0.18); line-height: 1.5; color: rgba(255,255,255,0.85);"><b>Alltid på</b> glöder dygnet runt, och är standard. <b>Bara match</b> är släckt mellan matcherna och tänds före nedsläpp. <b>Av</b> är helt släckt. Lampan följer matcherna i bakgrunden även när den är släckt, så den är i fas direkt när den tänds.</dd>
         <dt style="padding: 18px 0; border-bottom: 1px solid rgba(255,255,255,0.18); font-weight: 700;">Bara match: tänd före nedsläpp</dt>
-        <dd style="margin: 0; padding: 18px 0; border-bottom: 1px solid rgba(255,255,255,0.18); line-height: 1.5; color: rgba(255,255,255,0.85);">15 eller 30 minuter. Gäller bara läget <i>Bara match</i>. Listen släcks igen vid slutsignalen.</dd>
+        <dd style="margin: 0; padding: 18px 0; border-bottom: 1px solid rgba(255,255,255,0.18); line-height: 1.5; color: rgba(255,255,255,0.85);">15 eller 30 minuter. Visas bara när <i>Bara match</i> är valt. Listen släcks igen vid slutsignalen.</dd>
         <dt style="padding: 18px 0; border-bottom: 1px solid rgba(255,255,255,0.18); font-weight: 700;">Ljusstyrka</dt>
         <dd style="margin: 0; padding: 18px 0; border-bottom: 1px solid rgba(255,255,255,0.18); line-height: 1.5; color: rgba(255,255,255,0.85);">5–255, standard 160. Gäller allt lampan visar, även målfyrverkeriet.</dd>
         <dt style="padding: 18px 0; border-bottom: 1px solid rgba(255,255,255,0.18); font-weight: 700;">Fördröjning på mål</dt>
         <dd style="margin: 0; padding: 18px 0; border-bottom: 1px solid rgba(255,255,255,0.18); line-height: 1.5; color: rgba(255,255,255,0.85);">0–180 sekunder, standard 0 (av). Matchdatan kommer före tv-bilden, så utan fördröjning avslöjar lampan målet innan du sett det. <b>Ställ in den efter din tv:</b> se hur många sekunder det går mellan att <i>Ställning nu</i> tickar upp på statussidan och att pucken går in på skärmen, och skriv in den siffran.</dd>
+        <dt style="padding: 18px 0; border-bottom: 1px solid rgba(255,255,255,0.18); font-weight: 700;">Lampans namn</dt>
+        <dd style="margin: 0; padding: 18px 0; border-bottom: 1px solid rgba(255,255,255,0.18); line-height: 1.5; color: rgba(255,255,255,0.85);">Valfritt, till exempel <i>LövGlöd i vardagsrummet</i>. Står överst på statussidan och i driftstatistiken, så att den som byggt lampan vet vilken som menas.</dd>
+        <dt style="padding: 18px 0; border-bottom: 1px solid rgba(255,255,255,0.18); font-weight: 700; grid-column: 1 / -1; font-size: 13px; text-transform: uppercase; letter-spacing: 0.1em; color: #f8d12b;">Under Avancerat — hopfällt längst ner på sidan</dt>
+        <dd style="margin: 0; padding: 0 0 6px; border-bottom: 1px solid rgba(255,255,255,0.18); grid-column: 1 / -1; line-height: 1.5; color: rgba(255,255,255,0.7); font-size: 15px;">Det här behöver du normalt inte röra. Klicka på <i>Avancerat</i> längst ner på statussidan för att se det.</dd>
         <dt style="padding: 18px 0; border-bottom: 1px solid rgba(255,255,255,0.18); font-weight: 700;">Uppdateringskanal</dt>
-        <dd style="margin: 0; padding: 18px 0; border-bottom: 1px solid rgba(255,255,255,0.18); line-height: 1.5; color: rgba(255,255,255,0.85);"><b>Stabil</b> är standard. <b>Beta</b> får nya versioner före alla andra och kollar var tredje timme. Lampan uppdaterar sig själv var tolfte timme, aldrig under en match.</dd>
+        <dd style="margin: 0; padding: 18px 0; border-bottom: 1px solid rgba(255,255,255,0.18); line-height: 1.5; color: rgba(255,255,255,0.85);"><b>Stabil</b> är standard. <b>Beta</b> får nya versioner före alla andra och kollar var tredje timme. Lampan uppdaterar sig själv var tolfte timme, aldrig under en match. <b>Varning:</b> betaversioner är otestade och kan göra lampan obrukbar. Väljer du Beta ansvarar du själv för att flasha om lampan via USB om det händer.</dd>
         <dt style="padding: 18px 0; border-bottom: 1px solid rgba(255,255,255,0.18); font-weight: 700;">Uppdateringskälla</dt>
         <dd style="margin: 0; padding: 18px 0; border-bottom: 1px solid rgba(255,255,255,0.18); line-height: 1.5; color: rgba(255,255,255,0.85);">Låt stå på <code>markusbackman/lovglod</code>. Tomt fält stänger av uppdateringarna.</dd>
         <dt style="padding: 18px 0; border-bottom: 1px solid rgba(255,255,255,0.18); font-weight: 700;">Driftstatistik</dt>
-        <dd style="margin: 0; padding: 18px 0; border-bottom: 1px solid rgba(255,255,255,0.18); line-height: 1.5; color: rgba(255,255,255,0.85);"><b>På</b> är standard. Lampan skickar en liten hälsorapport var sjätte timme, aldrig under en match: version, upptid, omstarter, ledigt minne och WiFi-signal. Inget om ditt nät, din IP-adress eller ditt hem. Exakt vad som skickas står under <i>Felsökning</i>. <b>Lampans namn</b> är valfritt och syns bara i statistiken.</dd>
+        <dd style="margin: 0; padding: 18px 0; border-bottom: 1px solid rgba(255,255,255,0.18); line-height: 1.5; color: rgba(255,255,255,0.85);"><b>På</b> är standard. Lampan skickar en liten hälsorapport var sjätte timme, aldrig under en match: version, upptid, omstarter, ledigt minne och WiFi-signal. Inget om ditt nät, din IP-adress eller ditt hem. Exakt vad som skickas står under <i>Felsökning</i>.</dd>
         <dt style="padding: 18px 0; border-bottom: 0 solid transparent; font-weight: 700;">Felsökningsläge</dt>
         <dd style="margin: 0; padding: 18px 0; border-bottom: 0 solid transparent; line-height: 1.5; color: rgba(255,255,255,0.85);">Låt stå på <b>Av</b>. Det är till för utveckling och låter en testserver styra lampan i stället för SHL.</dd>
       </dl>
@@ -284,11 +288,10 @@ dl[style*="width: 1280px"], ul[style*="width: 1280px"], ol[style*="width: 1280px
 
       <div style="display: flex; flex-direction: column; gap: 20px;">
         <h3 style="font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #f1d458;">Knapparna under Åtgärder</h3>
-        <ul style="list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 2px;">
-          <li style="background: #0c2a1f; padding: 20px; display: flex; flex-direction: column; gap: 8px;"><span style="font-size: 17px; font-weight: 700;">Testa målfyrverkeriet</span><span style="font-size: 14px; line-height: 1.4; color: rgba(255,255,255,0.78);">Tänder ett mål direkt, utan fördröjning. Innehåller blinkande ljus.</span></li>
-          <li style="background: #0c2a1f; padding: 20px; display: flex; flex-direction: column; gap: 8px;"><span style="font-size: 17px; font-weight: 700;">Testa matchljuset</span><span style="font-size: 14px; line-height: 1.4; color: rgba(255,255,255,0.78);">En knapp per läge: slutspurt, paus, övertid, segerdans, mål och suck. <i>Normal drift</i> avslutar, annars efter tio minuter.</span></li>
-          <li style="background: #0c2a1f; padding: 20px; display: flex; flex-direction: column; gap: 8px;"><span style="font-size: 17px; font-weight: 700;">Hämta matchdata nu</span><span style="font-size: 14px; line-height: 1.4; color: rgba(255,255,255,0.78);">Frågar SHL direkt i stället för att vänta på nästa hämtning.</span></li>
-          <li style="background: #0c2a1f; padding: 20px; display: flex; flex-direction: column; gap: 8px;"><span style="font-size: 17px; font-weight: 700;">Sök efter uppdatering nu</span><span style="font-size: 14px; line-height: 1.4; color: rgba(255,255,255,0.78);">Kollar efter ny firmware direkt och installerar om det finns.</span></li>
+        <ul style="list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 2px;">
+          <li style="background: #0c2a1f; padding: 20px; display: flex; flex-direction: column; gap: 8px;"><span style="font-size: 17px; font-weight: 700;">Testa ljuset</span><span style="font-size: 14px; line-height: 1.4; color: rgba(255,255,255,0.78);">Öppnar en sida med en knapp per läge: slutspurt, paus, övertid, segerdans, mål och suck. Målen innehåller blinkande ljus. <i>Normal drift</i> avslutar, annars efter tio minuter.</span></li>
+          <li style="background: #0c2a1f; padding: 20px; display: flex; flex-direction: column; gap: 8px;"><span style="font-size: 17px; font-weight: 700;">Hämta matchdata nu</span><span style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #f8d12b;">Under Avancerat</span><span style="font-size: 14px; line-height: 1.4; color: rgba(255,255,255,0.78);">Frågar SHL direkt i stället för att vänta på nästa hämtning.</span></li>
+          <li style="background: #0c2a1f; padding: 20px; display: flex; flex-direction: column; gap: 8px;"><span style="font-size: 17px; font-weight: 700;">Sök efter uppdatering nu</span><span style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #f8d12b;">Under Avancerat</span><span style="font-size: 14px; line-height: 1.4; color: rgba(255,255,255,0.78);">Kollar efter ny firmware direkt och installerar om det finns.</span></li>
           <li style="background: #0c2a1f; padding: 20px; display: flex; flex-direction: column; gap: 8px;"><span style="font-size: 17px; font-weight: 700;">Glöm WiFi</span><span style="font-size: 14px; line-height: 1.4; color: rgba(255,255,255,0.78);">Raderar det sparade nätet och startar setup-nätet igen. Använd när du byter router.</span></li>
         </ul>
       </div>
@@ -327,7 +330,7 @@ dl[style*="width: 1280px"], ul[style*="width: 1280px"], ol[style*="width: 1280px
           <h2 style="font-family: Antonio, sans-serif; font-weight: 700; font-size: 56px; line-height: 1; text-transform: uppercase;">4. Felsökning</h2>
         </div>
         <p style="font-size: 18px; line-height: 1.5; color: #242424;">Det mesta syns på statussidan. Kolla raderna <i>Läge</i>, <i>Lampa</i>, <i>Klocka</i> och <i>Omstarter</i> först.</p>
-        <p style="font-size: 15px; line-height: 1.5; color: #484848;">Längst ner på statussidan finns <i>Felsökning</i> med nätverkstest, datakällorna och LED-listen, för den som vill gräva djupare.</p>
+        <p style="font-size: 15px; line-height: 1.5; color: #484848;">Under <i>Avancerat</i> längst ner på statussidan finns <i>Felsökning</i> med nätverkstest, datakällorna och LED-listen, för den som vill gräva djupare.</p>
       </div>
       <div style="display: flex; flex-direction: column;">
         <div style="border-top: 2px solid #124734; padding: 20px 0 24px; display: flex; flex-direction: column; gap: 8px;">
@@ -360,7 +363,7 @@ dl[style*="width: 1280px"], ul[style*="width: 1280px"], ol[style*="width: 1280px
         </div>
         <div style="border-top: 1px solid #cecece; padding: 20px 0 24px; display: flex; flex-direction: column; gap: 8px;">
           <h3 style="font-size: 21px; font-weight: 700;">Bara en del av listen lyser, eller fel färger</h3>
-          <p style="font-size: 16px; line-height: 1.5; color: #484848;">Listtypen eller antalet dioder är fel inställt. Ändra under <i>Felsökning → Ändra LED-list</i> längst ner på statussidan.</p>
+          <p style="font-size: 16px; line-height: 1.5; color: #484848;">Listtypen eller antalet dioder är fel inställt. Ändra under <i>Avancerat → Felsökning → Ändra LED-list</i> längst ner på statussidan.</p>
         </div>
         <div style="border-top: 1px solid #cecece; padding: 20px 0 24px; display: flex; flex-direction: column; gap: 8px;">
           <h3 style="font-size: 21px; font-weight: 700;">Lampan startar om av sig själv</h3>

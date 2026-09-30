@@ -62,7 +62,6 @@ static uint32_t  gNextScheduleFetch = 0;
 static bool      gFetchNow          = true;
 static uint32_t  gScheduleRetryMs   = 0;      // backoff efter misslyckad hämtning
 static uint32_t  gNextLivePoll      = 0;
-static uint32_t  gNextOtaCheck      = 0;
 static uint32_t  gPortalSince       = 0;
 static uint32_t  gConnectStarted    = 0;
 static uint32_t  gNextTimeRetry     = 0;
@@ -389,6 +388,27 @@ static String formatLocal(time_t utc, const char *fmt) {
     return String(buf);
 }
 
+// Nedsläppstid på svenska: "idag 19:00", "imorgon 19:00" eller "tis 29 sep
+// 19:00". strftime har ingen svensk locale på ESP32, så namnen står här.
+static String formatKickoff(time_t utc) {
+    static const char *kDays[]   = {"sön", "mån", "tis", "ons", "tor", "fre", "lör"};
+    static const char *kMonths[] = {"jan", "feb", "mar", "apr", "maj", "jun",
+                                    "jul", "aug", "sep", "okt", "nov", "dec"};
+    struct tm lt, now;
+    localtime_r(&utc, &lt);
+    const time_t t = time(nullptr);
+    localtime_r(&t, &now);
+    char hm[8];
+    strftime(hm, sizeof(hm), "%H:%M", &lt);
+    const int dayDiff = (lt.tm_year - now.tm_year) * 366 + (lt.tm_yday - now.tm_yday);
+    String day;
+    if      (lt.tm_year == now.tm_year && dayDiff == 0) day = "idag";
+    else if (dayDiff == 1 || (lt.tm_year == now.tm_year + 1 && lt.tm_yday == 0 &&
+                              now.tm_yday >= 364))     day = "imorgon";
+    else day = String(kDays[lt.tm_wday]) + " " + String(lt.tm_mday) + " " + kMonths[lt.tm_mon];
+    return day + " " + hm;
+}
+
 // 1700000000 = november 2023. Allt under betyder att klockan aldrig blivit
 // satt — ESP32:n startar på epoch noll.
 static bool clockIsSane() { return time(nullptr) > 1700000000; }
@@ -510,7 +530,7 @@ static void refreshSchedule(bool showProgress) {
         if (n.uuid != gNext.uuid) { gScore = LiveScore(); resetMood(); }
         gNext = n;
         status.nextGame = n.homeCode + " – " + n.awayCode + "  " +
-                          formatLocal(n.startUtc, "%a %d %b %H:%M");
+                          formatKickoff(n.startUtc);
         Serial.printf("[shl] nästa: %s\n", status.nextGame.c_str());
     } else {
         gNext = NextGame();
@@ -804,6 +824,7 @@ static void serviceLive() {
 
     if (inWindow != gInLiveWindow) {
         gInLiveWindow = inWindow;
+        status.inWindow = gInLiveWindow;
         if (inWindow) {
             Serial.println("[live] matchfönster öppet — kopplar upp mot live-strömmen");
             settings.noteLiveGame(gNext.uuid, (uint32_t)gNext.startUtc,
@@ -913,6 +934,7 @@ static void applyPush(const PushState &p) {
 
     if (gInLiveWindow != p.live) {
         gInLiveWindow = p.live;
+        status.inWindow = gInLiveWindow;
         Serial.printf("[push] matchfönster %s\n", p.live ? "öppet" : "stängt");
         if (!p.live) {
             gScore = LiveScore();
@@ -956,7 +978,8 @@ static void endPushMode() {
     Serial.println("[push] tyst för länge — tillbaka till egen hämtning");
     status.pushMode    = false;
     gPushUntil         = 0;
-    gInLiveWindow      = false;
+    gInLiveWindow = false;
+    status.inWindow = gInLiveWindow;
     gScore             = LiveScore();
     status.liveScore   = "—";
     gNext              = NextGame();
@@ -1027,7 +1050,7 @@ static void goOnline() {
 
     gFetchNow          = true;                    // hämta direkt
     gFirstFetchPending = true;                    // ...och visa förlopp medan den går
-    gNextOtaCheck      = millis() + 60000;        // men vänta lite med OTA-kollen
+    Updater::scheduleCheckIn(60000);              // men vänta lite med OTA-kollen
 }
 
 // ── Omstartsorsak ───────────────────────────────────────────────────────────
@@ -1258,7 +1281,8 @@ void loop() {
             if (Portal::refreshRequested()) {
                 Portal::clearRefresh();
                 Shl::sseStop();
-                gInLiveWindow      = false;
+                gInLiveWindow = false;
+                status.inWindow = gInLiveWindow;
                 gNext              = NextGame();
                 gScore             = LiveScore();
                 status.liveScore   = "—";
@@ -1290,17 +1314,17 @@ void loop() {
                 // Diagnostikbygget får inte ersätta sig självt med senaste release.
                 const bool due    = false;
 #else
-                const bool due    = (int32_t)(millis() - gNextOtaCheck) >= 0;
+                const bool due    = Updater::checkDue();
 #endif
 
                 if (gOtaOnTrial && (manual || due)) {
                     // esp_ota_set_boot_partition() vägrar ändå så länge
                     // nuvarande image står i PENDING_VERIFY.
                     if (manual) Updater::clearRequest();
-                    gNextOtaCheck = millis() + 60000;
+                    Updater::scheduleCheckIn(60000);
                 } else if (settings.otaSource.length() && (manual || due)) {
-                    gNextOtaCheck = millis() + (settings.otaBeta ? OTA_CHECK_BETA_MS
-                                                                 : OTA_CHECK_MS);
+                    Updater::scheduleCheckIn(settings.otaBeta ? OTA_CHECK_BETA_MS
+                                                              : OTA_CHECK_MS);
                     Updater::clearRequest();
                     // Aldrig automatiskt mitt i en match — en omstart i tredje
                     // perioden vore synd. Manuell begäran får gå igenom ändå.

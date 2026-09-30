@@ -39,7 +39,15 @@ void requestCheck();
 bool checkRequested();
 void clearRequest();
 
-// Text för statussidan.
-const String &statusText();
+// Schemat för de automatiska kontrollerna. main.cpp bestämmer när, portalen
+// visar hur långt det är kvar.
+void     scheduleCheckIn(uint32_t ms);
+bool     checkDue();
+int32_t  msUntilCheck();          // negativt = förfallen
+
+// För statussidan: resultatet av senaste kontrollen (tom = ingen gjord sedan
+// starten) och när den gjordes (0 = okänt, klockan var inte synkad).
+const String &lastResult();
+time_t        checkedAt();
 
 }  // namespace Updater

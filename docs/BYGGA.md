@@ -115,7 +115,8 @@ Bara standardbiblioteket — inget att installera.
 Servern hämtar inte in lampan — den *trycker* matchläget till lampans egen
 `/push`. Två steg:
 
-1. På lampans statussida: sätt **Felsökningsläge** till *På* och spara.
+1. På lampans statussida, under **Avancerat**: sätt **Felsökningsläge** till
+   *På* och spara.
 2. På styrsidan: fyll i lampans adress under **Push till lampan** och slå på.
 
 Raden *Datakälla* byter då till `push från mockservern`, och styrsidan visar om
@@ -297,7 +298,8 @@ uppdatering.
 
 1. Repot ligger på `markusbackman/lovglod`. Workflowsen är aktiva och
    releaser publiceras där.
-2. Öppna lampans statussida och fyll i **Uppdateringskälla**:
+2. Öppna lampans statussida, fäll ut **Avancerat** och fyll i
+   **Uppdateringskälla**:
    `markusbackman/lovglod` (standardvärdet).
    Kortformen `owner/repo` expanderas automatiskt till Releases-API:t. Vill du
    hosta själv går det lika bra att ange en full URL till ett `firmware.json`.
@@ -316,7 +318,9 @@ direkt istället för att vänta på nästa 12-timmarsintervall.
 
 ### Betaprogrammet
 
-Välj **Uppdateringskanal: Beta** på statussidan för att skriva in en lampa.
+Välj **Uppdateringskanal: Beta** under **Avancerat** på statussidan för att
+skriva in en lampa. Sidan visar då en varning: betan kan göra lampan obrukbar
+och den som valt Beta ansvarar själv för att flasha om den via USB.
 Valet ligger i NVS och överlever omstart och OTA.
 
 | | Stabil | Beta |

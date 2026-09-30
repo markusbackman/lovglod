@@ -544,6 +544,26 @@ void begin(LedStrip strip, uint16_t count) {
     Serial.printf("[led] %s, %u dioder\n", stripName(strip), gCount);
 }
 
+const char *modeName(LedMode m) {
+    switch (m) {
+        case LED_BOOT:         return "Uppstart — gult flödar in";
+        case LED_PORTAL:       return "Setup — grön puls";
+        case LED_PORTAL_RETRY: return "WiFi svarar inte — röd puls";
+        case LED_CONNECTING:   return "Ansluter — gul punkt som jagar";
+        case LED_WORKING:      return "Arbetar — gul stapel";
+        case LED_STANDBY:      return "Standby — långsam gul glöd";
+        case LED_LIVE:         return "Match pågår — bärnstensglöd";
+        case LED_GOAL:         return "Mål! — fyrverkeri";
+        case LED_VICTORY:      return "Vann senaste matchen — lugna kometer";
+        case LED_UPDATING:     return "Uppdaterar — gul stapel som fylls";
+        case LED_ERROR:        return "Ingen data — rött andetag";
+        case LED_INTERMISSION: return "Paus — timglas";
+        case LED_OVERTIME:     return "Övertid — dragkamp";
+        case LED_DANCE:        return "Segerdans — slutsignal, vi vann";
+    }
+    return "?";
+}
+
 void configure(LedStrip strip, uint16_t count) {
     count = constrain(count, LED_COUNT_MIN, LED_COUNT_MAX);
 

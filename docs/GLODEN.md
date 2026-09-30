@@ -318,8 +318,8 @@ kastat tillbaka listen till stroboskopet och man hade tappat känslan av att det
 var *två* mål.
 
 Fyrverkeriet tänds bara på Björklövens mål — lampan hejar inte på fel lag.
-Knappen **"Testa målfyrverkeriet"** på statussidan kör hela sekvensen när som
-helst.
+**Mål — vanligt** och **Mål — avgörande** under *Testa ljuset* på statussidan
+kör hela sekvensen när som helst.
 
 ### Suck — motståndarmål
 
@@ -435,9 +435,10 @@ väljer Normal drift, eller tills tio minuter gått (`DEMO_TIMEOUT_MS`); under
 tiden hämtar lampan ingen matchdata. Samma lägen finns på tangenterna i
 seriemonitorn, `d` listar dem.
 
-Vill du testa effekterna utan att vänta på en match: knappen **"Testa
-målfyrverkeriet"** på statussidan. Den tänder alltid direkt — en testknapp som
-står tyst i 15 sekunder ser trasig ut.
+Vill du testa effekterna utan att vänta på en match: **Testa ljuset** på
+statussidan har en knapp per läge. Målen där tänder alltid direkt — en
+testknapp som står tyst i 15 sekunder ser trasig ut. Samma sak gäller *Skjut
+ett mål direkt* under **Avancerat**, som `tools/film.py` använder (`POST /test`).
 
 ### Tv-fördröjning
 

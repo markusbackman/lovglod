@@ -105,7 +105,7 @@ Vill du tömma allt oavsett väg: kör `esptool.py erase_flash` först.
 
 Observera att en lampa på stabila kanalen installerar senaste stabila release
 vid nästa kontroll, även om du nyss flashat en äldre. Ska den stå kvar på en
-gammal version, töm **Uppdateringskälla** på statussidan.
+gammal version, töm **Uppdateringskälla** under **Avancerat** på statussidan.
 
 ---
 
@@ -147,12 +147,21 @@ praktiskt om det bara var routern som startade om.
 ### Statussidan
 
 När lampan är online nås den på `http://lovglod.local` eller
-enhetens IP. Där finns nästa match, senaste resultat, ljusstyrka, en knapp som testar
-målfyrverkeriet, och "Glöm WiFi". Under **Lampa** väljer du om den ska glöda
-dygnet runt, bara tändas kring matcherna eller vara helt släckt — se
-[Lampläge](GLODEN.md#lampläge--alltid-bara-match-eller-av). Under **Testa matchljuset** (`/ljus`) kan du
-visa varje matchläge — slutspurterna, paus, övertid, segerdans, mål och suck —
-utan att vänta på en match.
+enhetens IP. Där finns nästa match, senaste resultat, ljusstyrka, fördröjning
+på mål, knappen **Testa ljuset** och "Glöm WiFi". Under **Lampa** väljer du om
+den ska glöda dygnet runt, bara tändas kring matcherna eller vara helt släckt —
+se [Lampläge](GLODEN.md#lampläge--alltid-bara-match-eller-av). Valet *tänd
+före nedsläpp* dyker upp först när *Bara match* är valt. Under **Testa
+ljuset** (`/ljus`) kan du visa varje matchläge — slutspurterna, paus, övertid,
+segerdans, mål och suck — utan att vänta på en match.
+
+Längst ner ligger **Avancerat**, hopfällt tills man klickar på det. Där finns
+det som den som byggt lampan behöver men som den som har den hemma inte ska
+behöva se: uppdateringskälla och uppdateringskanal, driftstatistik,
+felsökningsläget, knapparna *Hämta matchdata nu*, *Sök efter
+uppdatering nu* och *Skjut ett mål direkt*, en teknisk statustabell (WiFi-signal, minne, upptid,
+omstarter, firmware) och länken till *Felsökning*. Sparar man därinne öppnas
+sidan utfälld igen (`/?avancerat=1`).
 
 ### Driftstatistik
 
@@ -161,10 +170,12 @@ start och sedan var sjätte timme — aldrig under en match. Rapporten innehåll
 firmwareversion, upptid, antal omstarter och orsaken till den senaste, ledigt
 minne, WiFi-signal, listtyp och inställningar, samt händelser som
 uppdateringar och återrullningar. Den innehåller inte SSID, IP-adress eller
-MAC-adress; lampan identifieras av ett slumpat ID och ett valfritt namn.
+MAC-adress; lampan identifieras av ett slumpat ID och **Lampans namn**, som
+ställs in bland de vanliga inställningarna och också står överst på
+statussidan.
 
-Rutan är förkryssad i setup-portalen, och inställningen går att slå av på
-statussidan. Under **Felsökning** visas nästa rapport tecken för tecken.
+Rutan är förkryssad i setup-portalen, och inställningen går att slå av under
+**Avancerat** på statussidan. Under **Felsökning** visas nästa rapport tecken för tecken.
 Mottagaren beskrivs i [tools/telemetri](../tools/telemetri/README.md).
 
 ---
@@ -175,8 +186,8 @@ Lampan kollar GitHub Releases var 12:e timme — aldrig under pågående match �
 och installerar själv när en ny version finns. Förloppet syns som en gul stapel
 som fylls på listen, sedan startar den om.
 
-Knappen **Sök efter uppdatering nu** på statussidan tvingar fram en kontroll
-direkt.
+Knappen **Sök efter uppdatering nu** under **Avancerat** på statussidan tvingar
+fram en kontroll direkt.
 
 Varje binär är signerad. Stämmer inte signaturen eller kontrollsumman
 installeras ingenting och lampan fortsätter på den version den har. Hur det
@@ -193,10 +204,16 @@ Källan måste vara publik: lampan hämtar releaser anonymt, se
 
 ### Betaprogrammet
 
-Välj **Uppdateringskanal: Beta** på statussidan för att få pre-releaser
+Välj **Uppdateringskanal: Beta** under **Avancerat** på statussidan för att få
+pre-releaser
 (`v1.2.0-rc1`) före alla andra. Betalampor kollar var 3:e timme och tar den
 nyaste releasen oavsett sort, så de glider över till stabila versionen när den
 släpps.
+
+**Varning.** Betaversioner är otestade. En beta kan göra lampan obrukbar — den
+kan sluta svara, tappa WiFi eller fastna vid start. Händer det är det du själv
+som ansvarar för att flasha om lampan via USB enligt [Flasha över USB](#flasha-över-usb); den kan
+inte räddas över nätet. Statussidan visar samma varning så fort Beta väljs.
 
 Byter du tillbaka till **Stabil** kollar lampan direkt och installerar senaste
 stabila — även om den är äldre än betan du kör. Detaljer i

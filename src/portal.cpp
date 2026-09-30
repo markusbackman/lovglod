@@ -82,6 +82,10 @@ main>h2:first-child{margin-top:0}
 label{display:block;margin:18px 0 6px;font-size:13px;font-weight:600;
  letter-spacing:.04em;text-transform:uppercase;color:var(--mut)}
 form>label:first-child{margin-top:0}
+[hidden]{display:none!important}
+.warn{margin:12px 0 0;padding:16px;background:var(--gold);color:#000;font-size:15px;line-height:1.45}
+.warn b{display:block;margin-bottom:6px;font:700 22px/1 var(--disp);text-transform:uppercase}
+.warn a{color:#000}
 input,select{width:100%;min-height:48px;padding:10px 12px;border:1px solid var(--edge);
  border-radius:0;background:#fff;color:#000;font:16px var(--body)}
 input{-webkit-appearance:none;appearance:none}
@@ -95,8 +99,12 @@ button{width:100%;min-height:48px;margin-top:22px;padding:12px 20px;border:2px s
  letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
 button:hover{filter:brightness(1.25)}
 button:focus-visible,a:focus-visible{outline:2px solid var(--g7);outline-offset:2px}
-button.ghost{margin-top:10px;background:#fff;color:var(--g7)}
-button.ghost:hover{filter:none;background:var(--g7);color:#fff}
+button.ghost,a.btn{margin-top:10px;background:#fff;color:var(--g7)}
+a.btn{display:flex;align-items:center;justify-content:center;width:100%;min-height:48px;
+ padding:12px 20px;border:2px solid var(--g7);font:700 15px var(--body);letter-spacing:.06em;
+ text-transform:uppercase;text-decoration:none}
+.card>a.btn:first-child{margin-top:0}
+button.ghost:hover,a.btn:hover{filter:none;background:var(--g7);color:#fff}
 table{width:100%;border-collapse:collapse;font-size:15px}
 td{padding:10px 0;vertical-align:top;overflow-wrap:anywhere}
 tr+tr td{border-top:1px solid var(--line)}
@@ -111,6 +119,17 @@ pre{margin:0 0 4px;white-space:pre-wrap;word-break:break-all;font:12px/1.45 ui-m
 a{color:var(--g7);font-weight:700}
 .back{display:inline-flex;align-items:center;min-height:44px;text-transform:uppercase;
  letter-spacing:.06em;font-size:14px;text-decoration:none}
+details.adv{margin-top:32px}
+details.adv summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;
+ min-height:48px;padding:0 16px;border:2px solid var(--g7);background:#fff;color:var(--g7);
+ font:700 15px var(--body);letter-spacing:.06em;text-transform:uppercase}
+details.adv summary::-webkit-details-marker{display:none}
+details.adv summary:after{content:"\25BE";margin-left:auto;font-size:18px}
+details.adv[open] summary:after{content:"\25B4"}
+details.adv summary:hover{background:var(--g7);color:#fff}
+details.adv summary:focus-visible{outline:2px solid var(--g7);outline-offset:2px}
+details.adv>.note{margin:12px 0 0}
+details.adv>h2{margin-top:24px}
 )CSS";
 
 String formatNow(const char *fmt) {
@@ -164,6 +183,38 @@ String head(const char *title, const char *eyebrow, const String &heading,
 }
 
 const char PAGE_END[] PROGMEM = "</main></body></html>";
+
+String humanMs(int32_t ms) {
+    const int32_t min = (ms + 59999) / 60000;
+    if (min < 60) return String(min) + " min";
+    return String((min + 30) / 60) + " h";
+}
+
+// Raden "Uppdatering". "Ingen kontroll gjord än" sa inget om varför eller
+// när, och en lampa som nyss uppdaterat sig såg ut att aldrig ha kollat.
+String updateStatus() {
+    if (!settings.otaSource.length()) return String(F("Av — ingen uppdateringskälla"));
+    String s;
+    if (Updater::lastResult().length()) {
+        s = Updater::lastResult();
+        if (Updater::checkedAt()) {
+            struct tm lt;
+            const time_t at = Updater::checkedAt();
+            localtime_r(&at, &lt);
+            char buf[16];
+            strftime(buf, sizeof(buf), "%H:%M", &lt);
+            s += " · kollade " + String(buf);
+        }
+    } else if (status.otaOnTrial) {
+        s = F("Nyss uppdaterad till " FW_VERSION " — provkörs");
+    } else {
+        s = F("Inte kollat sedan starten");
+    }
+    if (status.otaOnTrial)                s += F(" · kollar igen när den är kvitterad");
+    else if (Updater::msUntilCheck() > 0) s += " · nästa om " + humanMs(Updater::msUntilCheck());
+    else                                  s += F(" · kollar strax");
+    return s;
+}
 
 void handleLogo() {
     server.sendHeader("Cache-Control", "public, max-age=604800");
@@ -328,9 +379,19 @@ void handleSave() {
     server.send(200, "text/html; charset=utf-8", p);
 }
 
+// Statussidan har två lager. Det översta är för den som har lampan hemma:
+// hur den mår, nästa match, ljusstyrka och måldröjning. Uppdateringskälla,
+// driftstatistik, felsökningsläge, minne och omstarter ligger under
+// "Avancerat" — hopfällt tills man klickar. Formulären därinne skickar med
+// adv=1, och sidan öppnas utfälld igen (?avancerat=1) efter sparningen så
+// att man ser att det tog.
+const char *backTo() { return server.hasArg("adv") ? "/?avancerat=1" : "/"; }
+
 void handleStatus() {
-    String p = head("LövGlöd — Admin",
-                    ("v" FW_VERSION " · " + WiFi.localIP().toString()).c_str(),
+    const bool adv = server.hasArg("avancerat");
+    String eyebrow = "v" FW_VERSION " · " + WiFi.localIP().toString();
+    if (settings.lampName.length()) eyebrow = htmlEscape(settings.lampName) + " · " + eyebrow;
+    String p = head("LövGlöd — Admin", eyebrow.c_str(),
                     F("<img class=mark src=/logo.svg alt='LövGlöd'>"), "Läge: <b>" + htmlEscape(status.state) + "</b>");
     p += F("<h2>Status</h2><div class=card><table>");
 
@@ -351,29 +412,77 @@ void handleStatus() {
         if (status.dark) lamp += "  · släckt nu";
         row("Lampa", lamp, !status.dark);
     }
-    row("Datakälla",        status.pushMode ? String("push från mockservern")
-                                          : String("shl.se  (skarp)"),
-                            status.pushMode);
+    // Påslaget felsökningsläge betyder att lampan inte följer SHL. Det ska
+    // synas även för den som aldrig fäller ut Avancerat.
     if (settings.debugPush)
         row("Felsökningsläge", "På — tar emot push på /push", true);
-    row("Nästa match",      status.nextGame);
+    // Under matchen är den spårade matchen den som pågår, inte nästa.
+    row(status.inWindow ? "Pågående match" : "Nästa match", status.nextGame, status.inWindow);
     row("Senaste resultat", status.lastResult);
     row("Ställning nu",     status.liveScore);
-    row("Måldröjning",      settings.goalDelayS
-                                ? String(settings.goalDelayS) + " s  (väntar in tv-bilden)"
-                                : String("Av — tänder direkt"));
     if (Leds::pendingGoals()) {
         row("Mål på gång",  String(Leds::pendingGoals()) + " st — tänder om " +
                             String((Leds::pendingGoalInMs() + 999) / 1000) + " s", true);
     }
     // Osynkad klocka är annars helt tyst utåt, och stänger ändå av matchläget,
-    // målen och segerläget. Den ska gå att se utan att koppla in seriekabeln.
+    // målen och segerläget. Den ska gå att se utan att koppla in seriekabeln —
+    // synkad klocka är däremot bara brus här och står under Avancerat.
+    if (!status.timeSynced)
+        row("Klocka",       "INTE synkad — matchläge, mål och seger är avstängda");
+
+    p += F("</table></div>"
+           "<h2>Inställningar</h2><div class=card><form method=POST action=/settings>"
+           "<label>Lampa</label><select name=lampmode>");
+    const auto opt = [&](const char *v, bool sel, const char *text) {
+        p += String("<option value=") + v + (sel ? " selected>" : ">") + text + "</option>";
+    };
+    opt("0", settings.lampMode == LAMP_ALWAYS, "Alltid på — glöder dygnet runt");
+    opt("1", settings.lampMode == LAMP_MATCH,  "Bara match — släckt mellan matcherna");
+    opt("2", settings.lampMode == LAMP_OFF,    "Av — helt släckt");
+    // Nedsläppsvalet hör bara ihop med "Bara match". Det ligger kvar i
+    // formuläret men göms tills det läget är valt; utan JavaScript syns det
+    // som förut.
+    p += F("</select><div id=lead><label>Bara match: tänd före nedsläpp</label><select name=leadmin>");
+    opt("15", settings.matchLeadMin != 30, "15 minuter");
+    opt("30", settings.matchLeadMin == 30, "30 minuter");
+    p += F("</select></div><label>Ljusstyrka (5–255)</label>"
+           "<input name=bright type=number min=5 max=255 value='");
+    p += String(settings.brightness);
+    p += F("'><label>Fördröjning på mål (sekunder — tv-sändningen ligger efter)</label>"
+           "<input name=goaldly type=number min=0 max=" GOAL_DELAY_MAX_STR " value='");
+    p += String(settings.goalDelayS);
+    p += F("'><label>Lampans namn (valfritt — står överst här och i driftstatistiken)</label>"
+           "<input name=lampname maxlength=32 placeholder='LövGlöd i vardagsrummet' value='");
+    p += htmlEscape(settings.lampName);
+    p += F("'><button type=submit>Spara inställningar</button></form></div>"
+           "<script>(function(){var m=document.querySelector('[name=lampmode]'),"
+           "l=document.getElementById('lead'),f=function(){l.hidden=m.value!='1'};"
+           "m.addEventListener('change',f);f()})()</script>"
+           "<h2>Åtgärder</h2><div class=card>"
+           "<a class='btn ghost' href=/ljus>Testa ljuset — alla lägen</a>"
+           "<form method=POST action=/forget onsubmit=\"return confirm('Glöm WiFi och starta setup-portalen?')\">"
+           "<button class=ghost type=submit>Glöm WiFi</button></form>"
+           "</div>");
+
+    // ---- Avancerat ---------------------------------------------------------
+    p += adv ? F("<details class=adv open>") : F("<details class=adv>");
+    p += F("<summary>Avancerat</summary><p class=note>För den som byggt lampan: "
+           "uppdateringar, driftstatistik, felsökningsläge och teknisk status.</p>"
+           "<h2>Teknisk status</h2><div class=card><table>");
+    row("Datakälla",        status.pushMode ? String("push från mockservern")
+                                          : String("shl.se  (skarp)"),
+                            status.pushMode);
     row("Klocka",           status.timeSynced
                                 ? formatNow("%Y-%m-%d %H:%M")
-                                : String("INTE synkad — matchläge, mål och "
-                                         "seger är avstängda"),
+                                : String("INTE synkad"),
                             status.timeSynced);
-    row("Gnistor",          status.sparkles ? "På — vinsten lyser till nästa match" : "Av");
+    {
+        // Det listen faktiskt ritar just nu, med namnen från GLODEN.md.
+        String led = Leds::modeName(Leds::mode());
+        if (status.sparkles) led += "  · vann senaste matchen (gnistor)";
+        if (status.dark)     led += "  · nedtonad av lampläget";
+        row("Listen visar", led);
+    }
     row("Live-ström",       status.sseLive ? "Ansluten" : "Av");
     row("LED-list",         String(Leds::stripName(settings.ledStrip)) + ", " +
                             String(settings.ledCount) + " dioder");
@@ -390,30 +499,15 @@ void handleStatus() {
                                 ? String(FW_VERSION) + "  — på prov, inte kvitterad"
                                 : String(FW_VERSION),
                             status.otaOnTrial);
-    row("Uppdatering",      Updater::statusText());
+    row("Uppdatering",      updateStatus());
     row("Kanal",            String(settings.otaBeta ? "Beta" : "Stabil"));
     if (Telemetry::available())
         row("Driftstatistik", settings.telemetry ? "På" : "Av");
 
     p += F("</table></div>"
-           "<h2>Inställningar</h2><div class=card><form method=POST action=/settings>"
-           "<label>Lampa</label><select name=lampmode>");
-    const auto opt = [&](const char *v, bool sel, const char *text) {
-        p += String("<option value=") + v + (sel ? " selected>" : ">") + text + "</option>";
-    };
-    opt("0", settings.lampMode == LAMP_ALWAYS, "Alltid på — glöder dygnet runt");
-    opt("1", settings.lampMode == LAMP_MATCH,  "Bara match — släckt mellan matcherna");
-    opt("2", settings.lampMode == LAMP_OFF,    "Av — helt släckt");
-    p += F("</select><label>Bara match: tänd före nedsläpp</label><select name=leadmin>");
-    opt("15", settings.matchLeadMin != 30, "15 minuter");
-    opt("30", settings.matchLeadMin == 30, "30 minuter");
-    p += F("</select><label>Ljusstyrka (5–255)</label>"
-           "<input name=bright type=number min=5 max=255 value='");
-    p += String(settings.brightness);
-    p += F("'><label>Fördröjning på mål (sekunder — tv-sändningen ligger efter)</label>"
-           "<input name=goaldly type=number min=0 max=" GOAL_DELAY_MAX_STR " value='");
-    p += String(settings.goalDelayS);
-    p += F("'><label>Uppdateringskälla (tom = av)</label>"
+           "<h2>Fler inställningar</h2><div class=card><form method=POST action=/settings>"
+           "<input type=hidden name=adv value=1>"
+           "<label>Uppdateringskälla (tom = av)</label>"
            "<input name=otasrc placeholder='markusbackman/lovglod' value='");
     p += htmlEscape(settings.otaSource);
     p += F("'><label>Uppdateringskanal</label><select name=otabeta>");
@@ -422,16 +516,13 @@ void handleStatus() {
                  "<option value=1 selected>Beta — pre-releases, kollar var 3:e timme</option>")
              : F("<option value=0 selected>Stabil</option>"
                  "<option value=1>Beta — pre-releases, kollar var 3:e timme</option>");
-    p += F("</select>");
+    p += F("</select>" "<div id=betawarn class=warn hidden><b>Varning — betakanalen</b>Betaversioner är otestade. En beta kan göra lampan obrukbar: den kan sluta svara, tappa WiFi eller fastna vid start. Händer det är det du själv som ansvarar för att flasha om lampan via USB — den kan inte räddas över nätet. Hur du gör står i <a href=\"https://github.com/markusbackman/lovglod/blob/main/docs/INSTALLERA.md#flasha-över-usb\" target=_blank rel=noopener>installationsguiden på GitHub</a>.</div>");
     if (Telemetry::available()) {
         p += F("<label>Driftstatistik — vad som skickas syns under Felsökning</label>"
                "<select name=tele>");
         opt("1", settings.telemetry,  "På — skickar hälsorapport var 6:e timme");
         opt("0", !settings.telemetry, "Av");
-        p += F("</select><label>Lampans namn i statistiken (valfritt)</label>"
-               "<input name=lampname maxlength=32 placeholder='t.ex. Mamma' value='");
-        p += htmlEscape(settings.lampName);
-        p += F("'>");
+        p += F("</select>");
     }
     p += F("<label>Felsökningsläge — ta emot matchläge på /push</label>"
            "<select name=dbgpush>");
@@ -441,17 +532,17 @@ void handleStatus() {
              : F("<option value=1>På — mockservern får styra</option>"
                  "<option value=0 selected>Av</option>");
     p += F("</select><button type=submit>Spara inställningar</button></form></div>"
-           "<h2>Åtgärder</h2><div class=card>"
+           "<script>(function(){var b=document.querySelector('[name=otabeta]'),"
+           "w=document.getElementById('betawarn'),f=function(){w.hidden=b.value!='1'};"
+           "b.addEventListener('change',f);f()})()</script>"
+           "<h2>Fler åtgärder</h2><div class=card>"
            "<form method=POST action=/test><button class=ghost type=submit>"
-           "Testa målfyrverkeriet</button></form>"
-           "<a class=back href=/ljus>Testa matchljuset →</a>"
-           "<form method=POST action=/refresh><button class=ghost type=submit>"
-           "Hämta matchdata nu</button></form>"
-           "<form method=POST action=/update><button class=ghost type=submit>"
-           "Sök efter uppdatering nu</button></form>"
-           "<form method=POST action=/forget onsubmit=\"return confirm('Glöm WiFi och starta setup-portalen?')\">"
-           "<button class=ghost type=submit>Glöm WiFi</button></form>"
-           "</div><a class=back href=/debug>Felsökning →</a>"
+           "Skjut ett mål direkt — utan fördröjning</button></form>"
+           "<form method=POST action=/refresh><input type=hidden name=adv value=1>"
+           "<button class=ghost type=submit>Hämta matchdata nu</button></form>"
+           "<form method=POST action=/update><input type=hidden name=adv value=1>"
+           "<button class=ghost type=submit>Sök efter uppdatering nu</button></form>"
+           "</div><a class=back href=/debug>Felsökning →</a></details>"
            "<p class=foot>Vad som än händer står vi här.</p>");
     p += FPSTR(PAGE_END);
 
@@ -500,7 +591,7 @@ void handleSettings() {
     }
     settings.save();
     Leds::setBrightness(settings.brightness);
-    server.sendHeader("Location", "/");
+    server.sendHeader("Location", backTo());
     server.send(303);
 }
 
@@ -537,7 +628,7 @@ void handleRefresh() {
     if (stationOnly()) return;
     // Hämtningen blockerar i flera sekunder — låt loopen göra jobbet.
     gRefresh = true;
-    server.sendHeader("Location", "/");
+    server.sendHeader("Location", backTo());
     server.send(303);
 }
 
@@ -546,7 +637,7 @@ void handleUpdate() {
     // Kontrollen tar upp till 30 s och laddar ner ~1 MB. Kör den i loopen
     // istället för här, annars timeoutar webbläsaren mitt i.
     Updater::requestCheck();
-    server.sendHeader("Location", "/");
+    server.sendHeader("Location", backTo());
     server.send(303);
 }
 
@@ -582,7 +673,7 @@ const DemoButton kLightOverlays[] = {
 
 void handleLight() {
     if (stationOnly()) return;
-    String p = head("LövGlöd — Matchljus", "Admin", F("Matchljus"),
+    String p = head("LövGlöd — Testa ljuset", "Admin", F("Testa ljuset"),
                     status.demo.length() ? "Visar: <b>" + htmlEscape(status.demo) + "</b>"
                                          : String(F("Normal drift")));
     p += F("<h2>Lägen</h2><div class=card><p class=note>Låser listen i läget tills "
@@ -629,7 +720,7 @@ void handleDebug() {
     p += "<tr><td>Live-URL</td><td>" + htmlEscape(Shl::liveBaseUrl()) + "</td></tr>";
     p += "<tr><td>OTA-URL</td><td>" +
          htmlEscape(Updater::resolveSourceUrl(settings.otaSource, settings.otaBeta)) + "</td></tr>";
-    p += "<tr><td>OTA-status</td><td>" + htmlEscape(Updater::statusText()) + "</td></tr>";
+    p += "<tr><td>OTA-status</td><td>" + htmlEscape(updateStatus()) + "</td></tr>";
     if (settings.otaBadCount)
         p += "<tr><td>Misslyckad version</td><td>" + htmlEscape(settings.otaBadVersion) +
              " (" + String(settings.otaBadCount) + " försök)</td></tr>";

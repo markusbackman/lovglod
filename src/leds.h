@@ -51,6 +51,8 @@ const char *stripName(LedStrip strip);
 
 void setMode(LedMode m);
 LedMode mode();
+// Lägets namn som det står i docs/GLODEN.md, för statussidan.
+const char *modeName(LedMode m);
 
 // Gnistor läggs ovanpå glöden när laget vann sin senaste match; main.cpp
 // håller dem tända fram till nästa nedsläpp. Segerläget glittrar alltid,
