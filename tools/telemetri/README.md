@@ -25,6 +25,25 @@ Lägg in den i `include/config.h`:
 Så länge `TELEMETRY_URL` är tom skickar lamporna ingenting, och inställningen
 syns inte i portalen.
 
+## Översiktssidan
+
+`https://lovglod-telemetri.lovglod.workers.dev/` visar flottan: hur många
+lampor som finns, vilka som tystnat eller är värda en titt, versionerna, de
+senaste händelserna, och för varje lampa kurvor över WiFi-signal och minne.
+Logga in med `ADMIN_TOKEN`. Inloggningen sparas i en cookie i 90 dagar.
+
+En lampa räknas som **tyst** när den inte hörts av på 12 timmar, alltså två
+missade rapporter. **Titta** betyder onormala omstarter, brownout, krasch eller
+watchdog vid senaste starten, signal under −80 dBm eller under 30 kB minne.
+
+Sidan ligger i `src/dashboard.html`. Så här provar du den lokalt:
+
+```sh
+npx wrangler d1 execute lovglod-telemetri --local --file=schema.sql
+echo ADMIN_TOKEN=test > .dev.vars
+npx wrangler dev
+```
+
 ## Läsa ut
 
 ```sh

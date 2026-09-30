@@ -4,6 +4,12 @@ compatibility_date = "2026-09-01"
 workers_dev = true
 preview_urls = false
 
+# Översiktssidan och logotyperna buntas in som text.
+[[rules]]
+type = "Text"
+globs = ["**/*.html", "**/*.svg"]
+fallthrough = false
+
 # Rensar rapporter äldre än RETENTION_DAYS en gång per natt.
 [triggers]
 crons = ["17 3 * * *"]

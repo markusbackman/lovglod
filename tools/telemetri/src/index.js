@@ -1,11 +1,18 @@
 // LövGlöd driftstatistik — tar emot lampornas hälsorapporter och sparar dem i D1.
 //
 //   POST /v1/rapport               från lampan, se src/telemetry.cpp
+//   GET  /                         översiktssidan över alla lampor
+//   POST /logga-in, /logga-ut      sätter och tar bort inloggningscookien
 //   GET  /v1/lampor                senaste läget per lampa        (ADMIN_TOKEN)
 //   GET  /v1/lampor/:id            rapporter och händelser        (ADMIN_TOKEN)
+//   GET  /v1/handelser             senaste händelserna, alla lampor (ADMIN_TOKEN)
 //
 // Avsändarens IP-adress läses aldrig och sparas inte. Det enda som
 // identifierar en lampa är det slumpade ID:t och smeknamnet ägaren satt.
+
+import page from "./dashboard.html";
+import logo from "./logo.svg";
+import icon from "./icon.svg";
 
 const MAX_BODY = 8 * 1024;
 const MIN_GAP_S = 5 * 60;          // en lampa rapporterar var 6:e timme; tätare än så är fel
@@ -73,14 +80,75 @@ async function report(request, env) {
   return json(reply);
 }
 
+// Samma lösenord två vägar: som Bearer för curl, och som cookie för sidan.
+const COOKIE = "lg_admin";
+
+function cookie(request, name) {
+  for (const part of (request.headers.get("cookie") ?? "").split(";")) {
+    const [k, ...v] = part.trim().split("=");
+    if (k === name) return decodeURIComponent(v.join("="));
+  }
+  return null;
+}
+
 function authorized(request, env) {
-  return env.ADMIN_TOKEN && request.headers.get("authorization") === `Bearer ${env.ADMIN_TOKEN}`;
+  if (!env.ADMIN_TOKEN) return false;
+  return request.headers.get("authorization") === `Bearer ${env.ADMIN_TOKEN}` ||
+         cookie(request, COOKIE) === env.ADMIN_TOKEN;
+}
+
+async function login(request, env) {
+  const form = await request.formData().catch(() => null);
+  const ok = env.ADMIN_TOKEN && form?.get("token") === env.ADMIN_TOKEN;
+  const headers = { location: ok ? "/" : "/?fel=1" };
+  if (ok) {
+    headers["set-cookie"] =
+      `${COOKIE}=${encodeURIComponent(env.ADMIN_TOKEN)}; Path=/; Max-Age=${90 * 86400}; ` +
+      "HttpOnly; Secure; SameSite=Strict";
+  }
+  return new Response(null, { status: 303, headers });
+}
+
+const logout = () =>
+  new Response(null, {
+    status: 303,
+    headers: {
+      location: "/",
+      "set-cookie": `${COOKIE}=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Strict`,
+    },
+  });
+
+// Namnen kommer från lamporna och är alltså inte betrodda. Sidan sätter dem
+// med textContent, och CSP:n stänger dörren för allt som ändå skulle slinka
+// igenom.
+const PAGE_HEADERS = {
+  "content-type": "text/html; charset=utf-8",
+  "cache-control": "no-store",
+  "content-security-policy":
+    "default-src 'self'; script-src 'self' 'unsafe-inline'; " +
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+    "font-src https://fonts.gstatic.com; img-src 'self'; frame-ancestors 'none'",
+  "referrer-policy": "no-referrer",
+};
+
+const svg = (body) =>
+  new Response(body, {
+    headers: { "content-type": "image/svg+xml", "cache-control": "public, max-age=86400" },
+  });
+
+async function recentEvents(env) {
+  const { results } = await env.DB.prepare(
+    `SELECT e.lamp_id, l.name, e.at, e.type, e.detail
+       FROM events e LEFT JOIN lamps l ON l.id = e.lamp_id
+      ORDER BY e.at DESC LIMIT 50`
+  ).all();
+  return json(results);
 }
 
 async function lamps(env) {
   const { results } = await env.DB.prepare(
     `SELECT l.id, l.name, l.fw, l.first_seen, l.last_seen,
-            r.up, r.boots, r.bad_boots, r.reset, r.heap, r.min_heap, r.rssi, r.shl_err, r.sse_re
+            r.beta, r.up, r.boots, r.bad_boots, r.reset, r.heap, r.min_heap, r.rssi, r.shl_err, r.sse_re
        FROM lamps l LEFT JOIN reports r ON r.id = l.last_report
       ORDER BY l.last_seen DESC`
   ).all();
@@ -104,6 +172,17 @@ async function lampDetail(env, id) {
 export default {
   async fetch(request, env) {
     const { pathname } = new URL(request.url);
+
+    if (pathname === "/" && request.method === "GET") return new Response(page, { headers: PAGE_HEADERS });
+    if (pathname === "/logo.svg") return svg(logo);
+    if (pathname === "/icon.svg") return svg(icon);
+    if (pathname === "/logga-in" && request.method === "POST") return login(request, env);
+    if (pathname === "/logga-ut" && request.method === "POST") return logout();
+
+    if (pathname === "/v1/handelser") {
+      if (!authorized(request, env)) return json({ error: "behörighet" }, 401);
+      return recentEvents(env);
+    }
 
     if (pathname === "/v1/rapport") {
       if (request.method !== "POST") return json({ error: "POST" }, 405);

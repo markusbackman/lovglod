@@ -1,0 +1,511 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LövGlöd flottan</title>
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Antonio:wght@700&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --g900: #071912; --g800: #0C2A1F; --g700: #124734; --g500: #1C5F45;
+  --gold: #F8D12B;
+  --bg: #F7F7F7; --card: #FFFFFF; --ink: #000000; --ink-2: #484848; --mut: #6b6b6b;
+  --line: #E8E8E8; --grid: #E8E8E8;
+  --series: #124734; --series-fill: rgba(18, 71, 52, .08);
+  --good: #0ca30c; --warn: #fab219; --crit: #d03b3b;
+  --bar: #124734;
+  --disp: "Antonio", "Arial Narrow", Impact, sans-serif;
+  --body: "Barlow", Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #071912; --card: #0C2A1F; --ink: #FFFFFF; --ink-2: rgba(255,255,255,.82); --mut: rgba(255,255,255,.6);
+    --line: rgba(255,255,255,.12); --grid: rgba(255,255,255,.1);
+    --series: #F8D12B; --series-fill: rgba(248, 209, 43, .10);
+    --bar: #4FA383;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #071912; --card: #0C2A1F; --ink: #FFFFFF; --ink-2: rgba(255,255,255,.82); --mut: rgba(255,255,255,.6);
+  --line: rgba(255,255,255,.12); --grid: rgba(255,255,255,.1);
+  --series: #F8D12B; --series-fill: rgba(248, 209, 43, .10);
+  --bar: #4FA383;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font: 16px/1.45 var(--body); -webkit-font-smoothing: antialiased; }
+button { font: inherit; }
+
+header { position: sticky; top: 0; z-index: 5; background: var(--g800); color: #fff; }
+.bar { max-width: 1200px; margin: 0 auto; padding: 0 32px; height: 60px; display: flex; align-items: center; gap: 16px; }
+.bar img { height: 34px; width: auto; display: block; }
+.bar .where { font: 600 13px var(--body); letter-spacing: .08em; text-transform: uppercase; color: rgba(255,255,255,.7); }
+.bar .sp { flex: 1; }
+.bar .fresh { font-size: 13px; color: rgba(255,255,255,.7); }
+.ghost { min-height: 40px; padding: 0 14px; border: 2px solid rgba(255,255,255,.5); background: transparent; color: #fff;
+  font: 700 13px var(--body); letter-spacing: .06em; text-transform: uppercase; border-radius: 0; cursor: pointer; }
+.ghost:hover { background: #fff; color: var(--g800); }
+:focus-visible { outline: 2px solid var(--g700); outline-offset: 2px; }
+header :focus-visible { outline-color: #fff; }
+
+main { max-width: 1200px; margin: 0 auto; padding: 32px 32px 64px; }
+h1 { font: 700 44px/1 var(--disp); text-transform: uppercase; margin: 0 0 6px; }
+.lede { color: var(--ink-2); margin: 0 0 28px; }
+h2 { display: flex; align-items: center; gap: 10px; margin: 40px 0 14px; font: 700 26px/1 var(--disp); text-transform: uppercase; }
+h2::before { content: ""; flex: none; width: 7px; height: 26px; background: var(--g700); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) h2::before { background: var(--gold); } }
+:root[data-theme="dark"] h2::before { background: var(--gold); }
+.card { background: var(--card); padding: 20px; }
+
+.tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 2px; }
+.tile { background: var(--card); padding: 20px; }
+.tile .k { font: 600 13px var(--body); letter-spacing: .04em; text-transform: uppercase; color: var(--mut); }
+.tile .v { font: 700 56px/1.05 var(--disp); margin-top: 6px; font-variant-numeric: tabular-nums; }
+.tile .s { font-size: 14px; color: var(--ink-2); }
+.tile.hero { background: var(--g700); color: #fff; }
+.tile.hero .k, .tile.hero .s { color: rgba(255,255,255,.75); }
+
+.cols { display: grid; grid-template-columns: 2fr 1fr; gap: 32px; }
+
+.tbl { width: 100%; border-collapse: collapse; font-size: 15px; }
+.tbl th { text-align: left; font: 600 12px var(--body); letter-spacing: .05em; text-transform: uppercase; color: var(--mut);
+  padding: 0 12px 10px 0; white-space: nowrap; }
+.tbl td { padding: 12px 12px 12px 0; border-top: 1px solid var(--line); vertical-align: top; font-variant-numeric: tabular-nums; }
+.tbl tbody tr { cursor: pointer; }
+.tbl tbody tr:hover td { background: color-mix(in srgb, var(--g700) 5%, transparent); }
+.tbl tbody tr[aria-selected="true"] td { background: color-mix(in srgb, var(--g700) 10%, transparent); }
+.tbl .num { text-align: right; }
+.name { font-weight: 700; }
+.id { font: 12px ui-monospace, Menlo, monospace; color: var(--mut); }
+.why { font-size: 13px; color: var(--ink-2); }
+.tag { display: inline-block; margin-left: 6px; padding: 1px 6px; font: 700 11px var(--body); letter-spacing: .06em;
+  text-transform: uppercase; background: var(--gold); color: #000; }
+.scroll { overflow-x: auto; }
+
+.st { display: inline-flex; align-items: center; gap: 7px; font-weight: 600; white-space: nowrap; }
+.st svg { flex: none; }
+
+.vers { display: grid; gap: 14px; }
+.vrow .top { display: flex; justify-content: space-between; font-size: 15px; }
+.vrow .top b { font-variant-numeric: tabular-nums; }
+.track { height: 8px; background: var(--line); margin-top: 6px; }
+.fill { height: 8px; background: var(--bar); border-radius: 0 4px 4px 0; }
+
+.events { list-style: none; margin: 0; padding: 0; }
+.events li { display: grid; grid-template-columns: 22px 1fr; gap: 10px; padding: 12px 0; border-top: 1px solid var(--line); }
+.events li:first-child { border-top: 0; padding-top: 0; }
+.events .when { font-size: 13px; color: var(--mut); }
+.empty { color: var(--mut); margin: 0; }
+
+.detail-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 12px; }
+.detail-head h3 { font: 700 30px/1 var(--disp); text-transform: uppercase; margin: 0; }
+.facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin: 18px 0 8px; }
+.facts .k { font: 600 12px var(--body); letter-spacing: .04em; text-transform: uppercase; color: var(--mut); }
+.facts .v { font-weight: 600; font-variant-numeric: tabular-nums; }
+.charts { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin-top: 20px; }
+.chart h4 { margin: 0 0 8px; font: 600 14px var(--body); }
+.chart .plot { position: relative; }
+.chart svg { display: block; width: 100%; height: 180px; overflow: visible; }
+.chart .axis { font: 11px var(--body); fill: var(--mut); }
+.tip { position: absolute; pointer-events: none; background: var(--g900); color: #fff; padding: 6px 9px; font-size: 13px;
+  white-space: nowrap; transform: translate(-50%, calc(-100% - 10px)); display: none; z-index: 2; }
+.tip b { font-variant-numeric: tabular-nums; }
+details { margin-top: 8px; font-size: 13px; color: var(--ink-2); }
+details table { border-collapse: collapse; margin-top: 6px; }
+details td { padding: 2px 12px 2px 0; font-variant-numeric: tabular-nums; }
+
+.login { max-width: 420px; margin: 12vh auto 0; }
+.login label { display: block; margin: 0 0 6px; font: 600 13px var(--body); letter-spacing: .04em; text-transform: uppercase; color: var(--mut); }
+.login input { width: 100%; min-height: 48px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 0;
+  background: var(--card); color: var(--ink); font: 16px var(--body); }
+.login button { width: 100%; min-height: 48px; margin-top: 18px; border: 0; border-radius: 0; background: var(--g700); color: #fff;
+  font: 700 15px var(--body); letter-spacing: .06em; text-transform: uppercase; cursor: pointer; }
+.login button:hover { filter: brightness(1.25); }
+.err { color: var(--crit); font-weight: 600; margin: 12px 0 0; }
+[hidden] { display: none !important; }
+
+@media (max-width: 900px) {
+  .tiles { grid-template-columns: 1fr 1fr; }
+  .cols, .charts { grid-template-columns: 1fr; }
+  .facts { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 600px) {
+  .bar { padding: 0 16px; gap: 10px; }
+  .bar .where, .bar .fresh { display: none; }
+  main { padding: 24px 16px 48px; }
+  h1 { font-size: 36px; }
+  .tile .v { font-size: 44px; }
+  .hide-sm { display: none; }
+
+  /* Tabellen blir kort: namn och senast hörd överst, status under, version
+     och omstarter sist. */
+  .tbl thead { display: none; }
+  .tbl, .tbl tbody { display: block; }
+  .tbl tr { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; padding: 14px 0; border-top: 1px solid var(--line); }
+  .tbl tr:first-child { border-top: 0; padding-top: 0; }
+  .tbl td { padding: 0; border: 0; }
+  .tbl td:nth-child(2) { grid-area: 1 / 1; }
+  .tbl td:nth-child(4) { grid-area: 1 / 2; text-align: right; font-size: 14px; color: var(--ink-2); }
+  .tbl td:nth-child(1) { grid-area: 2 / 1 / 3 / 3; }
+  .tbl td:nth-child(3) { grid-area: 3 / 1; }
+  .tbl td:nth-child(8) { grid-area: 3 / 2; }
+  .tbl td:nth-child(8)::before { content: "Omstarter "; color: var(--mut); font-size: 13px; }
+  .scroll { overflow-x: visible; }
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="bar">
+    <img src="/logo.svg" alt="LövGlöd">
+    <span class="where">Flottan</span>
+    <span class="sp"></span>
+    <span class="fresh" id="fresh"></span>
+    <form method="post" action="/logga-ut" id="logout" hidden><button class="ghost" type="submit">Logga ut</button></form>
+  </div>
+</header>
+
+<main>
+  <section id="login" class="login" hidden>
+    <h1>Logga in</h1>
+    <p class="lede">Översikten över alla lampor. Lösenordet är <code>ADMIN_TOKEN</code>.</p>
+    <form method="post" action="/logga-in" class="card">
+      <label for="token">Lösenord</label>
+      <input id="token" name="token" type="password" autocomplete="current-password" required autofocus>
+      <button type="submit">Logga in</button>
+      <p class="err" id="loginErr" hidden>Fel lösenord.</p>
+    </form>
+  </section>
+
+  <div id="app" hidden>
+    <h1>Hur mår lamporna?</h1>
+    <p class="lede" id="lede"></p>
+
+    <div class="tiles" id="tiles"></div>
+
+    <h2>Lamporna</h2>
+    <div class="card scroll">
+      <table class="tbl" id="lamps">
+        <thead><tr>
+          <th>Status</th><th>Lampa</th><th>Version</th><th>Senast hörd</th>
+          <th class="num hide-sm">Upptid</th><th class="num hide-sm">Signal</th>
+          <th class="num hide-sm">Minne</th><th class="num">Omstarter</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+      <p class="empty" id="noLamps" hidden>Ingen lampa har hört av sig än. Den första rapporten kommer fem minuter efter att en lampa startat med v1.3.0 eller senare.</p>
+    </div>
+
+    <section id="detail" hidden>
+      <h2>Lampan</h2>
+      <div class="card">
+        <div class="detail-head"><h3 id="dName"></h3><span class="id" id="dId"></span><span id="dStatus"></span></div>
+        <div class="facts" id="dFacts"></div>
+        <div class="charts">
+          <div class="chart" id="cRssi"><h4>WiFi-signal, dBm</h4><div class="plot"></div></div>
+          <div class="chart" id="cHeap"><h4>Lägsta lediga minne, kB</h4><div class="plot"></div></div>
+        </div>
+        <h2 style="font-size:20px;margin-top:28px">Händelser</h2>
+        <ul class="events" id="dEvents"></ul>
+      </div>
+    </section>
+
+    <div class="cols">
+      <div>
+        <h2>Senaste händelserna</h2>
+        <div class="card"><ul class="events" id="events"></ul></div>
+      </div>
+      <div>
+        <h2>Versioner</h2>
+        <div class="card"><div class="vers" id="versions"></div></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+"use strict";
+const SILENT_S = 12 * 3600;              // lampan rapporterar var 6:e timme; två missade = tyst
+const WEAK_RSSI = -80;
+const LOW_HEAP = 30 * 1024;
+const BAD_RESETS = new Set(["brownout", "panic", "int_wdt", "task_wdt", "wdt"]);
+const RESET_SV = {
+  poweron: "strömpåslag", sw: "omstart från koden", brownout: "brownout", panic: "krasch",
+  int_wdt: "watchdog", task_wdt: "watchdog", wdt: "watchdog", ext: "extern reset",
+  deepsleep: "djupsömn", unknown: "okänd",
+};
+const EVENT_SV = {
+  boot: "Startade", ota_ok: "Ny firmware kvitterad", ota_fail: "Uppdatering misslyckades",
+  ota_rollback: "Firmware rullades tillbaka",
+};
+const EVENT_KIND = { ota_ok: "good", ota_fail: "warn", ota_rollback: "crit", boot: "info" };
+
+const $ = (id) => document.getElementById(id);
+const el = (tag, props = {}, ...kids) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(props)) {
+    if (k === "class") n.className = v; else if (k === "text") n.textContent = v; else n.setAttribute(k, v);
+  }
+  for (const k of kids) if (k != null) n.append(k);
+  return n;
+};
+const now = () => Math.floor(Date.now() / 1000);
+
+function ago(t) {
+  const d = Math.max(0, now() - t);
+  if (d < 90) return "nyss";
+  if (d < 3600) return `för ${Math.round(d / 60)} min sedan`;
+  if (d < 86400 * 2) return `för ${Math.round(d / 3600)} h sedan`;
+  return `för ${Math.round(d / 86400)} dagar sedan`;
+}
+function uptime(s) {
+  if (s == null) return "–";
+  const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60);
+  return d ? `${d} d ${h} h` : h ? `${h} h ${m} min` : `${m} min`;
+}
+const dateTime = (t) => new Date(t * 1000).toLocaleString("sv-SE", { dateStyle: "short", timeStyle: "short" });
+const shortDate = (t) => new Date(t * 1000).toLocaleDateString("sv-SE", { day: "numeric", month: "short" }).replace(/\.$/, "");
+const kB = (b) => (b == null ? "–" : `${Math.round(b / 1024)} kB`);
+const lampName = (l) => l.name || `Lampa ${l.id.slice(0, 4)}`;
+
+// Status bärs alltid av ikon + ord, aldrig av färgen ensam.
+const ICONS = {
+  good: '<circle cx="8" cy="8" r="7" fill="var(--good)"/><path d="M4.5 8.2l2.3 2.3 4.7-4.9" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>',
+  warn: '<path d="M8 1.2l7 12.8H1z" fill="var(--warn)"/><path d="M8 5.8v4" stroke="#000" stroke-width="1.8" stroke-linecap="round"/><circle cx="8" cy="12" r="1" fill="#000"/>',
+  crit: '<rect x="1" y="1" width="14" height="14" fill="var(--crit)"/><path d="M5 5l6 6M11 5l-6 6" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/>',
+  info: '<circle cx="8" cy="8" r="6" fill="none" stroke="var(--mut)" stroke-width="1.6"/><circle cx="8" cy="8" r="2" fill="var(--mut)"/>',
+};
+function icon(kind) {
+  const s = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  s.setAttribute("width", "16"); s.setAttribute("height", "16"); s.setAttribute("viewBox", "0 0 16 16");
+  s.setAttribute("aria-hidden", "true");
+  s.innerHTML = ICONS[kind];
+  return s;
+}
+const badge = (h) => el("span", { class: "st" }, icon(h.kind), h.label);
+
+function health(l) {
+  if (now() - l.last_seen > SILENT_S) return { kind: "crit", label: "Tyst", why: [`Inte hörd ${ago(l.last_seen)}`] };
+  const why = [];
+  if (l.bad_boots > 0) why.push(`${l.bad_boots} onormala omstarter i följd`);
+  if (BAD_RESETS.has(l.reset)) why.push(`Senaste omstart: ${RESET_SV[l.reset]}`);
+  if (l.rssi != null && l.rssi < WEAK_RSSI) why.push(`Svag WiFi, ${l.rssi} dBm`);
+  if (l.min_heap != null && l.min_heap < LOW_HEAP) why.push(`Lite minne, ${kB(l.min_heap)} som lägst`);
+  return why.length ? { kind: "warn", label: "Titta", why } : { kind: "good", label: "Frisk", why };
+}
+
+// ── Hämtning ────────────────────────────────────────────────────────────────
+async function api(path) {
+  const r = await fetch(path, { credentials: "same-origin" });
+  if (r.status === 401) throw Object.assign(new Error("401"), { auth: true });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r.json();
+}
+
+let lamps = [];
+let selected = null;
+try { selected = sessionStorage.getItem("lampa"); } catch {}
+
+async function load() {
+  try {
+    const [l, e] = await Promise.all([api("/v1/lampor"), api("/v1/handelser")]);
+    lamps = l;
+    showApp();
+    renderTiles(); renderLamps(); renderVersions(); renderEvents($("events"), e, true);
+    $("fresh").textContent = `Uppdaterad ${new Date().toLocaleTimeString("sv-SE", { timeStyle: "short" })}`;
+    if (selected && lamps.some((x) => x.id === selected)) openLamp(selected, false);
+  } catch (err) {
+    if (err.auth) return showLogin();
+    $("fresh").textContent = "Kunde inte hämta — försöker igen";
+  }
+}
+
+function showLogin() {
+  $("login").hidden = false; $("app").hidden = true; $("logout").hidden = true;
+  if (new URLSearchParams(location.search).has("fel")) $("loginErr").hidden = false;
+}
+function showApp() {
+  $("login").hidden = true; $("app").hidden = false; $("logout").hidden = false;
+  if (location.search) history.replaceState(null, "", "/");
+}
+
+// ── Översikt ────────────────────────────────────────────────────────────────
+function renderTiles() {
+  const hs = lamps.map(health);
+  const day = lamps.filter((l) => now() - l.last_seen < 86400).length;
+  const silent = hs.filter((h) => h.kind === "crit").length;
+  const warn = hs.filter((h) => h.kind === "warn").length;
+  const newest = lamps.length ? Math.min(...lamps.map((l) => l.first_seen)) : null;
+  $("lede").textContent = lamps.length
+    ? `${lamps.length} ${lamps.length === 1 ? "lampa har" : "lampor har"} hört av sig sedan ${shortDate(newest)}.`
+    : "Här syns varje lampa som skickar driftstatistik.";
+
+  const tile = (k, v, s, hero) =>
+    el("div", { class: "tile" + (hero ? " hero" : "") }, el("div", { class: "k", text: k }),
+       el("div", { class: "v", text: String(v) }), el("div", { class: "s", text: s }));
+  $("tiles").replaceChildren(
+    tile("Lampor", lamps.length, "totalt i flottan", true),
+    tile("Hörda senaste dygnet", day, lamps.length ? `av ${lamps.length}` : "–"),
+    tile("Tysta", silent, "inte hörda på 12 h"),
+    tile("Värda en titt", warn, "omstarter, signal eller minne"),
+  );
+}
+
+function renderLamps() {
+  const tbody = $("lamps").querySelector("tbody");
+  $("noLamps").hidden = lamps.length > 0;
+  $("lamps").hidden = lamps.length === 0;
+  const order = { crit: 0, warn: 1, good: 2 };
+  const rows = lamps.map((l) => ({ l, h: health(l) }))
+    .sort((a, b) => order[a.h.kind] - order[b.h.kind] || b.l.last_seen - a.l.last_seen);
+
+  tbody.replaceChildren(...rows.map(({ l, h }) => {
+    const tr = el("tr", { tabindex: "0", "aria-selected": String(l.id === selected) },
+      el("td", {}, badge(h), h.why.length ? el("div", { class: "why", text: h.why.join(" · ") }) : null),
+      el("td", {}, el("div", { class: "name", text: lampName(l) }), el("div", { class: "id", text: l.id })),
+      el("td", {}, l.fw ?? "–", l.beta ? el("span", { class: "tag", text: "Beta" }) : null),
+      el("td", { text: ago(l.last_seen) }),
+      el("td", { class: "num hide-sm", text: uptime(l.up) }),
+      el("td", { class: "num hide-sm", text: l.rssi != null ? `${l.rssi} dBm` : "–" }),
+      el("td", { class: "num hide-sm", text: kB(l.min_heap) }),
+      el("td", { class: "num", text: `${l.bad_boots ?? 0} / ${l.boots ?? 0}` }),
+    );
+    tr.title = "Onormala omstarter i följd / starter totalt";
+    const open = () => openLamp(l.id, true);
+    tr.addEventListener("click", open);
+    tr.addEventListener("keydown", (ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); open(); } });
+    return tr;
+  }));
+}
+
+function renderVersions() {
+  const counts = {};
+  for (const l of lamps) {
+    const k = (l.fw ?? "okänd") + (l.beta ? " · beta" : "");
+    counts[k] = (counts[k] ?? 0) + 1;
+  }
+  const rows = Object.entries(counts).sort((a, b) => b[1] - a[1] || b[0].localeCompare(a[0], "sv", { numeric: true }));
+  const max = Math.max(1, ...rows.map((r) => r[1]));
+  $("versions").replaceChildren(...(rows.length ? rows.map(([v, n]) =>
+    el("div", { class: "vrow" },
+      el("div", { class: "top" }, el("span", { text: v }), el("b", { text: String(n) })),
+      el("div", { class: "track" }, (() => { const f = el("div", { class: "fill" }); f.style.width = `${(n / max) * 100}%`; return f; })()),
+    )) : [el("p", { class: "empty", text: "Inga lampor än." })]));
+}
+
+function renderEvents(list, events, withLamp) {
+  if (!events.length) return list.replaceChildren(el("li", {}, el("span"), el("p", { class: "empty", text: "Inga händelser än." })));
+  list.replaceChildren(...events.map((e) => {
+    const what = EVENT_SV[e.type] ?? e.type;
+    const who = withLamp ? (e.name || `Lampa ${e.lamp_id.slice(0, 4)}`) + " · " : "";
+    return el("li", {}, icon(EVENT_KIND[e.type] ?? "info"),
+      el("div", {},
+        el("div", {}, el("b", { text: what }), e.detail ? ` ${e.detail}` : ""),
+        el("div", { class: "when", text: `${who}${dateTime(e.at)}` })));
+  }));
+}
+
+// ── En lampa ────────────────────────────────────────────────────────────────
+async function openLamp(id, scroll) {
+  selected = id;
+  try { sessionStorage.setItem("lampa", id); } catch {}
+  for (const tr of $("lamps").querySelectorAll("tbody tr"))
+    tr.setAttribute("aria-selected", String(tr.querySelector(".id")?.textContent === id));
+  const l = lamps.find((x) => x.id === id);
+  if (!l) return;
+  const h = health(l);
+  $("detail").hidden = false;
+  $("dName").textContent = lampName(l);
+  $("dId").textContent = l.id;
+  $("dStatus").replaceChildren(badge(h));
+  const fact = (k, v) => el("div", {}, el("div", { class: "k", text: k }), el("div", { class: "v", text: v }));
+  $("dFacts").replaceChildren(
+    fact("Första rapport", dateTime(l.first_seen)),
+    fact("Senaste rapport", `${dateTime(l.last_seen)}`),
+    fact("Senaste omstart", RESET_SV[l.reset] ?? l.reset ?? "–"),
+    fact("Fel mot SHL sedan start", l.shl_err != null ? String(l.shl_err) : "–"),
+  );
+  if (scroll) $("detail").scrollIntoView({ behavior: "smooth", block: "start" });
+
+  let d;
+  try { d = await api(`/v1/lampor/${encodeURIComponent(id)}`); } catch { return; }
+  if (selected !== id) return;
+  const reps = d.reports.slice().reverse();
+  lineChart($("cRssi"), reps.filter((r) => r.rssi != null).map((r) => ({ t: r.received_at, v: r.rssi })), (v) => `${v} dBm`);
+  lineChart($("cHeap"), reps.filter((r) => r.min_heap != null).map((r) => ({ t: r.received_at, v: Math.round(r.min_heap / 1024) })), (v) => `${v} kB`);
+  renderEvents($("dEvents"), d.events, false);
+}
+
+// En serie per diagram: rubriken namnger den, så ingen förklaringsruta behövs.
+function lineChart(box, pts, fmt) {
+  const plot = box.querySelector(".plot");
+  plot.replaceChildren();
+  if (pts.length < 2) {
+    plot.append(el("p", { class: "empty", text: pts.length ? `Bara en rapport än: ${fmt(pts[0].v)}.` : "Inga rapporter än." }));
+    return;
+  }
+  const W = Math.max(280, plot.clientWidth), H = 180, L = 40, R = 14, T = 12, B = 24;
+  const t0 = pts[0].t, t1 = pts[pts.length - 1].t;
+  let lo = Math.min(...pts.map((p) => p.v)), hi = Math.max(...pts.map((p) => p.v));
+  if (hi - lo < 4) { lo -= 2; hi += 2; }
+  const pad = (hi - lo) * 0.12; lo = Math.floor(lo - pad); hi = Math.ceil(hi + pad);
+  const x = (t) => L + ((t - t0) / Math.max(1, t1 - t0)) * (W - L - R);
+  const y = (v) => T + (1 - (v - lo) / (hi - lo)) * (H - T - B);
+
+  const NS = "http://www.w3.org/2000/svg";
+  const s = document.createElementNS(NS, "svg");
+  s.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  s.setAttribute("role", "img");
+  s.setAttribute("aria-label", `${box.querySelector("h4").textContent}: ${pts.length} mätpunkter, senast ${fmt(pts[pts.length - 1].v)}`);
+  const add = (tag, a) => { const n = document.createElementNS(NS, tag); for (const k in a) n.setAttribute(k, a[k]); s.append(n); return n; };
+
+  for (let i = 0; i <= 3; i++) {
+    const v = lo + ((hi - lo) * i) / 3, yy = y(v);
+    add("line", { x1: L, x2: W - R, y1: yy, y2: yy, stroke: "var(--grid)", "stroke-width": 1 });
+    add("text", { x: L - 8, y: yy + 4, "text-anchor": "end", class: "axis" }).textContent = Math.round(v);
+  }
+  for (const [t, anchor] of [[t0, "start"], [t1, "end"]])
+    add("text", { x: x(t), y: H - 6, "text-anchor": anchor, class: "axis" }).textContent = shortDate(t);
+
+  const d = pts.map((p, i) => `${i ? "L" : "M"}${x(p.t).toFixed(1)},${y(p.v).toFixed(1)}`).join("");
+  add("path", { d: `${d}L${x(t1)},${H - B}L${x(t0)},${H - B}Z`, fill: "var(--series-fill)" });
+  add("path", { d, fill: "none", stroke: "var(--series)", "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" });
+  const last = pts[pts.length - 1];
+  add("circle", { cx: x(last.t), cy: y(last.v), r: 4, fill: "var(--series)", stroke: "var(--card)", "stroke-width": 2 });
+
+  const cross = add("line", { y1: T, y2: H - B, stroke: "var(--mut)", "stroke-width": 1, "stroke-dasharray": "3 3", visibility: "hidden" });
+  const dot = add("circle", { r: 5, fill: "var(--series)", stroke: "var(--card)", "stroke-width": 2, visibility: "hidden" });
+  const hit = add("rect", { x: L, y: 0, width: W - L - R, height: H, fill: "transparent" });
+  const tip = el("div", { class: "tip" });
+  plot.append(s, tip);
+
+  const show = (clientX) => {
+    const r = s.getBoundingClientRect(), sx = ((clientX - r.left) / r.width) * W;
+    let best = pts[0];
+    for (const p of pts) if (Math.abs(x(p.t) - sx) < Math.abs(x(best.t) - sx)) best = p;
+    const px = x(best.t), py = y(best.v);
+    cross.setAttribute("x1", px); cross.setAttribute("x2", px); cross.setAttribute("visibility", "visible");
+    dot.setAttribute("cx", px); dot.setAttribute("cy", py); dot.setAttribute("visibility", "visible");
+    tip.replaceChildren(el("b", { text: fmt(best.v) }), ` · ${dateTime(best.t)}`);
+    tip.style.left = `${(px / W) * 100}%`; tip.style.top = `${(py / H) * r.height}px`; tip.style.display = "block";
+  };
+  const hide = () => { cross.setAttribute("visibility", "hidden"); dot.setAttribute("visibility", "hidden"); tip.style.display = "none"; };
+  hit.addEventListener("pointermove", (e) => show(e.clientX));
+  hit.addEventListener("pointerdown", (e) => show(e.clientX));
+  hit.addEventListener("pointerleave", hide);
+
+  const rows = pts.slice(-50).reverse().map((p) => el("tr", {}, el("td", { text: dateTime(p.t) }), el("td", { text: fmt(p.v) })));
+  plot.append(el("details", {}, el("summary", { text: "Visa som tabell" }), el("table", {}, ...rows)));
+}
+
+let resizeT;
+addEventListener("resize", () => { clearTimeout(resizeT); resizeT = setTimeout(() => selected && !$("detail").hidden && openLamp(selected, false), 200); });
+load();
+setInterval(() => { if (!document.hidden && !$("app").hidden) load(); }, 60000);
+</script>
+</body>
+</html>
