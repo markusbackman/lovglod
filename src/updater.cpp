@@ -145,6 +145,13 @@ static bool requestJson(const String &url, JsonDocument &doc, const JsonDocument
     http.setConnectTimeout(10000);
     http.setReuse(false);
     http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
+    // HTTP/1.0: då kan svaret inte komma chunkat. getStream() nedan ger råa
+    // bytes från socketen — HTTPClient avkodar chunkar bara i writeToStream() —
+    // och GitHub chunkar betalistan (fem releaser, ~50 kB) när den inte ligger i
+    // deras cache. Kroppen börjar då med en chunkstorlek i hex i stället för "[",
+    // och ArduinoJson svarar Ok med ett tomt dokument. Det såg ut som
+    // "Manifestet saknar version eller url" i 1.3.0-rc3.
+    http.useHTTP10(true);
 
     code = -1;
     if (!http.begin(client, url)) { gStatus = "Kunde inte nå uppdateringskällan"; return false; }
