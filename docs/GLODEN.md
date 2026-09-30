@@ -399,7 +399,7 @@ segrar — så att den är i fas i samma stund läget ändras.
 - Med 30 minuter lyser vardagsglöden den första kvarten; matchljuset tar över
   när matchfönstret öppnar, 15 min före nedsläpp.
 - Portalen syns alltid — utan den går lampan inte att ställa in. Demoläget på
-  `/ljus` syns också, men inte testknappen för målet.
+  `/ljus` syns också.
 - Uppstartsflödet syns när lampan kopplas in eller startat om efter ett fel,
   fram till första hämtningen. Startar den om av sig själv — efter en
   OTA-uppdatering — eller tappar WiFi, förblir den mörk.
@@ -437,8 +437,8 @@ seriemonitorn, `d` listar dem.
 
 Vill du testa effekterna utan att vänta på en match: **Testa ljuset** på
 statussidan har en knapp per läge. Målen där tänder alltid direkt — en
-testknapp som står tyst i 15 sekunder ser trasig ut. Samma sak gäller *Skjut
-ett mål direkt* under **Avancerat**, som `tools/film.py` använder (`POST /test`).
+testknapp som står tyst i 15 sekunder ser trasig ut. `tools/film.py` tänder
+sina mål samma väg (`POST /ljus` med `k=g`).
 
 ### Tv-fördröjning
 
@@ -463,8 +463,8 @@ sekunder det går mellan att ställningen tickar upp på statussidan (raden
 Detaljer värda att känna till:
 
 - Fördröjningen gäller **alla mål från datakällan** — SSE-strömmen,
-  reservpollningen och push-läget från mockservern. Det är bara testknappen som
-  går förbi den.
+  reservpollningen och push-läget från mockservern. Det är bara målen på
+  **Testa ljuset** som går förbi den.
 - Kön rymmer sex mål samtidigt och hålls i tidsordning. Två mål inom
   fördröjningen tänds alltså med samma mellanrum som de gjordes — och landar de
   i samma bildruta staplar de på varandra precis som två snabba mål i realtid.

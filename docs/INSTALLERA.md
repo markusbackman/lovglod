@@ -158,8 +158,8 @@ segerdans, mål och suck — utan att vänta på en match.
 Längst ner ligger **Avancerat**, hopfällt tills man klickar på det. Där finns
 det som den som byggt lampan behöver men som den som har den hemma inte ska
 behöva se: uppdateringskälla och uppdateringskanal, driftstatistik,
-felsökningsläget, knapparna *Hämta matchdata nu*, *Sök efter
-uppdatering nu* och *Skjut ett mål direkt*, en teknisk statustabell (WiFi-signal, minne, upptid,
+felsökningsläget, knapparna *Hämta matchdata nu* och *Sök efter
+uppdatering nu*, en teknisk statustabell (WiFi-signal, minne, upptid,
 omstarter, firmware) och länken till *Felsökning*. Sparar man därinne öppnas
 sidan utfälld igen (`/?avancerat=1`).
 

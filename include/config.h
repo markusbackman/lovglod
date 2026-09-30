@@ -245,7 +245,7 @@
 // Målfyrverkeri. Skalar med hur mycket målet betydde (0–255, se
 // goalImportance() i main.cpp): ett tidigt mål i en utklassning får den korta
 // varianten, en sen kvittering eller ett övertidsmål den långa. Mitt emellan
-// ligger testknappen, GOAL_TEST_IMPORTANCE, som ger den gamla längden på 12 s.
+// ligger demomålet på /ljus, GOAL_TEST_IMPORTANCE, som ger den gamla längden på 12 s.
 #define GOAL_MIN_MS          7000   // vikt 0
 #define GOAL_MAX_MS          22000  // vikt 255
 #define GOAL_STROBE_MIN_MS   1200

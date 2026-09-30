@@ -536,8 +536,6 @@ void handleStatus() {
            "w=document.getElementById('betawarn'),f=function(){w.hidden=b.value!='1'};"
            "b.addEventListener('change',f);f()})()</script>"
            "<h2>Fler åtgärder</h2><div class=card>"
-           "<form method=POST action=/test><button class=ghost type=submit>"
-           "Skjut ett mål direkt — utan fördröjning</button></form>"
            "<form method=POST action=/refresh><input type=hidden name=adv value=1>"
            "<button class=ghost type=submit>Hämta matchdata nu</button></form>"
            "<form method=POST action=/update><input type=hidden name=adv value=1>"
@@ -592,15 +590,6 @@ void handleSettings() {
     settings.save();
     Leds::setBrightness(settings.brightness);
     server.sendHeader("Location", backTo());
-    server.send(303);
-}
-
-void handleTest() {
-    if (stationOnly()) return;
-    // Utan fördröjning med flit: en testknapp som står tyst i 15 sekunder ser
-    // trasig ut. Fördröjningen gäller riktiga mål från SHL.
-    Leds::triggerGoal();
-    server.sendHeader("Location", "/");
     server.send(303);
 }
 
@@ -856,7 +845,6 @@ void registerRoutes() {
         server.on(probe, HTTP_GET, handleCaptiveProbe);
 
     server.on("/settings", HTTP_POST, handleSettings);
-    server.on("/test",     HTTP_POST, handleTest);
     server.on("/debug",    HTTP_GET,  handleDebug);
     server.on("/update",   HTTP_POST, handleUpdate);
     server.on("/refresh",  HTTP_POST, handleRefresh);

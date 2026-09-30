@@ -12,7 +12,7 @@ visa, på sekunden, medan kameran rullar.
 
 Lampan styrs som mockservern gör det: hela matchläget trycks in på POST /push,
 med hjärtslag emellan så att PUSH_LEASE_MS aldrig löper ut. Målet tänds däremot
-med POST /test. Det är samma fyrverkeri, men utan tv-fördröjningen — ett mål
+med POST /ljus och tangenten g. Det är samma fyrverkeri, men utan tv-fördröjningen — ett mål
 via ställningen skulle vänta settings.goalDelayS (0 s som standard, men
 den kan vara uppskruvad) och då stämmer inte tidslinjen.
 
@@ -53,7 +53,7 @@ TEAM_CODE = "IFB"
 OPPONENT = "LHF"
 
 HEARTBEAT_S = 20          # långt under PUSH_LEASE_MS (5 min)
-GOAL_S = 12               # /test och demomålet: GOAL_TEST_IMPORTANCE ≈ 12 s
+GOAL_S = 12               # demomålet på /ljus: GOAL_TEST_IMPORTANCE ≈ 12 s
 BIG_GOAL_S = 22           # avgörande mål, GOAL_MAX_MS
 DANCE_S = 45              # DANCE_MS
 GLOW_BREATH_S = 60 / 9    # GLOW_BPM → ~6,7 s
@@ -199,7 +199,7 @@ SCRIPTS: dict[str, Script] = {
 #  Lampan
 # ─────────────────────────────────────────────────────────────────────────────
 class NoRedirect(HTTPRedirectHandler):
-    # /settings och /test svarar 303 till statussidan. Att följa den kostar en
+    # /settings och /ljus svarar 303 till statussidan. Att följa den kostar en
     # hel sidrendering på lampan, och det är tid som hamnar i tidslinjen.
     def redirect_request(self, *args, **kwargs):
         return None
@@ -253,7 +253,7 @@ class Lamp:
             "next": {"home": TEAM_CODE, "away": OPPONENT, "homeIsUs": True,
                      "text": f"{TEAM_CODE} – {OPPONENT}  (film)"},
             "live": live,
-            # Ställningen står still: målet tänds via /test, och en ändrad
+            # Ställningen står still: målet tänds via /ljus, och en ändrad
             # ställning skulle tända ett till, fördröjt.
             "score": {"home": 0, "away": 0},
             "last": {"won": self.state == "gnistor",
@@ -271,7 +271,10 @@ class Lamp:
                        "application/x-www-form-urlencoded")
             return
         if action == "mal":
-            self._call("/test", b"", "application/x-www-form-urlencoded")
+            # Tangenten g tänder bara målet, den slår inte på demoläget, så
+            # pushen tar över igen när fyrverkeriet är slut.
+            self._call("/ljus", urlencode({"k": "g"}).encode(),
+                       "application/x-www-form-urlencoded")
             return
         with self.lock:
             self.state = action
