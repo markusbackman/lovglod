@@ -73,6 +73,14 @@ LedMode mode();
 // Lägets namn som det står i docs/GLODEN.md, för statussidan.
 const char *modeName(LedMode m);
 
+// Lägessynken i loop(): byter läge bara om listen inte är upptagen med något
+// som styr sig självt — målfyrverkeri, segerdans eller OTA-stapel. Kontroll
+// och byte sker i ett och samma tag i låset. Att loopen först frågar mode()
+// och sedan anropar setMode() räcker inte: rendertasken kan tända ett köat
+// mål mellan de två anropen, och nästa varvs standby skulle släcka det.
+// Sant om läget sattes.
+bool setModeIfIdle(LedMode m);
+
 // Gnistor läggs ovanpå glöden när laget vann sin senaste match; main.cpp
 // håller dem tända fram till nästa nedsläpp. Segerläget glittrar alltid,
 // oavsett den här flaggan — det vet redan att laget vann.

@@ -752,6 +752,13 @@ const char *stripName(LedStrip strip) {
 
 void setMode(LedMode m) { Guard g; setModeImpl(m); }
 
+bool setModeIfIdle(LedMode m) {
+    Guard g;
+    if (gMode == LED_GOAL || gMode == LED_DANCE || gMode == LED_UPDATING) return false;
+    setModeImpl(m);
+    return true;
+}
+
 void lockMode(LedMode m) {
     Guard g;
     gLocked     = true;

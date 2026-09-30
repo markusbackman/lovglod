@@ -1330,27 +1330,30 @@ void loop() {
             // Håll LED-läget i synk med tillståndet (målfyrverkeriet får styra själv).
             // Kör efter refreshSchedule() i samma varv, så förloppsstapeln ersätts
             // av rätt läge så fort hämtningen är klar och kan inte fastna.
+            // Förkontrollen här är bara för att slippa räkna; själva bytet går
+            // via setModeIfIdle(), som gör kontrollen igen under listens lås —
+            // rendertasken kan ha tänt ett köat mål sedan vi frågade.
             if (Leds::mode() != LED_GOAL && Leds::mode() != LED_UPDATING &&
                 Leds::mode() != LED_DANCE) {
                 if (victoryActive()) {
                     // Går före felläget med flit: segern är redan känd och
                     // sparad, så ett tillfälligt SHL-avbrott ska inte avbryta
                     // firandet.
-                    Leds::setMode(LED_VICTORY);
+                    Leds::setModeIfIdle(LED_VICTORY);
                     status.state = "Seger — firar";
                 } else if (!gDataOk && !pushActive()) {
-                    Leds::setMode(LED_ERROR);
+                    Leds::setModeIfIdle(LED_ERROR);
                     status.state = "Ingen kontakt med SHL";
                 } else if (gInLiveWindow) {
                     // Vanlig push styr bara ställningen; en uppspelning bär
                     // matchläget också och får hela matchljuset.
                     const LedMode m = pushActive() && !gPushReplay ? LED_LIVE : serviceMood();
-                    Leds::setMode(m);
+                    Leds::setModeIfIdle(m);
                     status.state = moodStateText(m);
                     if (m == LED_LIVE && gMoodI >= MOOD_THRESHOLD)
                         status.state += " · slutspurt " + String((int)(gMoodI * 100)) + " %";
                 } else {
-                    Leds::setMode(LED_STANDBY);
+                    Leds::setModeIfIdle(LED_STANDBY);
                     status.state = "Standby";
                 }
             }
