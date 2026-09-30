@@ -38,9 +38,28 @@ enum LedStrip : uint8_t {
     LED_STRIP_APA102 = 2,   // APA102/DotStar, data + klocka
 };
 
+// Listen ritas av en egen FreeRTOS-task, så att ett blockerande nätanrop i
+// loop() inte längre fryser bilden. Allt nedan får anropas från loopTask som
+// vanligt: rendertasken och funktionerna här delar ett och samma mutex, som
+// varje funktion tar själv. Det är inte rekursivt — ingen funktion i
+// namnrymden får därför anropa en annan publik funktion härifrån, den skulle
+// låsa sig själv för gott.
 namespace Leds {
 // Registrerar drivrutiner för båda listorna och slår på den som hör till strip.
+// Ritar ingenting — det gör tasken, och den startas först av start().
 void begin(LedStrip strip, uint16_t count);
+
+// Startar rendertasken. Skild från begin() för att setup() sätter ljusstyrka,
+// mörkerläge och startläge först efter begin(). En task som redan ritade
+// skulle hinna visa en bildruta på ljusstyrka 255 på en lampa som ska vara
+// släckt — och det är just den strömlasten blank() nedan varnar för. Anropas
+// en gång när listen är färdigställd; fler anrop gör ingenting.
+void start();
+
+// Minsta lediga stack rendertasken haft sedan start, i byte (0 innan
+// start()). Finns för att LED_TASK_STACK ska kunna sänkas på mätdata i
+// stället för på gissning — se config.h.
+uint32_t stackFree();
 
 // Byter list eller antal under drift, utan omstart. Omstart vore enklare men
 // inte ofarligt: står en nyinstallerad OTA på prov rullar bootloadern tillbaka
@@ -63,7 +82,7 @@ bool sparkles();
 // Startar/förlänger målfyrverkeriet. Flera mål i rad staplar på varandra.
 // delayMs > 0 köar målet istället för att tända direkt — tv-sändningen ligger
 // efter SHL:s live-data, och lampan ska inte avslöja målet innan det syns på
-// skärmen. Kön hålls i tidsordning och töms i render().
+// skärmen. Kön hålls i tidsordning och töms av rendertasken.
 //
 // importance, 0–255, avgör hur stort fyrverkeriet blir: längd, stroboskop och
 // täthet i salvorna. Se GOAL_MIN_MS och goalImportance() i main.cpp.
@@ -113,12 +132,13 @@ void setBrightness(uint8_t b);
 void setUpdateProgress(uint8_t percent);
 
 // Förlopp under uppstartsarbete som blockerar (nätverkstest, första
-// datahämtningen). Anropen går inte att avbryta, så listen står stilla mellan
-// stegen — en stapel som stannar mitt i ser avsiktlig ut, det gör inte en
-// animation som fryser.
+// datahämtningen). Stapeln har ingen egen rörelse: stegen är få och långa, och
+// ett huvud som står still mellan dem säger ärligt att vi väntar på ett svar —
+// en animation skulle lova ett flöde som inte finns.
 void setWorkProgress(uint8_t done, uint8_t total);
 
-// Släcker listen och skriver ut den direkt, förbi bildrutegrinden.
+// Släcker listen och skriver ut den direkt från anroparens task, under listens
+// lås, så ingen bildruta kan hamna emellan.
 //
 // Finns för ett enda syfte: strömlasten precis innan WiFi-radion startar. Vid
 // det laget står listen kvar på uppstartsflödets sista bildruta — 60 dioder på
@@ -129,11 +149,4 @@ void setWorkProgress(uint8_t done, uint8_t total);
 // fadeToBlackBy(28), vilket sänker en fulltänd list med ~11 % per bildruta. Den
 // måste släckas, inte tonas.
 void blank();
-
-// Anropas varje varv i loop(). Ritar bara om när det är dags för ny bildruta.
-void render();
-
-// Ritar om omedelbart, förbi bildrutegrinden. Behövs när nästa rad kod
-// blockerar i sekunder — annars hinner stapeln inte visas innan den fryser.
-void renderNow();
 }

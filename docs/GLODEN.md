@@ -82,9 +82,10 @@ fram i stapeln lyser i full styrka som markör för steget som pågår. Används
 under de blockerande momenten i uppstarten (nätverkstest, första
 datahämtningen).
 
-Stapeln har medvetet **ingen egen animation**. Anropen den täcker går inte att
-avbryta, så bilden fryser ändå mitt i steget — och en stapel som står still ser
-avsiktlig ut, vilket en fryst animation inte gör.
+Stapeln har medvetet **ingen egen animation**. Rendertasken ritar den i jämn
+takt även medan nätanropen pågår, så det är inte bilden som står still utan
+stapeln. Ett rörligt huvud skulle inte säga något om hur långt steget kommit,
+och en stapel som vilar mellan stegen ser avsiktlig ut.
 
 Stegen är få och långa: nätverkstestet rapporterar 9 steg, första hämtningen
 bara 3. Stapeln hoppar alltså i stora språng och står stilla länge däremellan,
@@ -349,10 +350,11 @@ Listen fylls från början i takt med nedladdningen, med en snabbt pulserande LE
 i fronten som visar att överföringen lever. Tar över alla andra lägen medan den
 pågår, och den enda utgången är omstart in i den nya firmwaren.
 
-Till skillnad från uppstartsstapeln **får** den här röra sig. En nedladdning är
-en ström: förloppet uppdateras kontinuerligt och processorn är ledig, så ett
-pulserande huvud är ärligt. Uppstartsstapeln står stilla för att den måste —
-anropen den täcker fryser bilden ändå.
+Till skillnad från uppstartsstapeln **får** den här röra sig. Båda ritas av
+rendertasken, så skillnaden ligger i vad de rapporterar. En nedladdning är en
+ström: förloppet uppdateras kontinuerligt, så ett pulserande huvud är ärligt.
+Uppstartsstapeln rapporterar en handfull separata steg och står still mellan
+dem.
 
 Kroppen ligger däremot dämpad (`UPDATE_BODY_VAL 40`, huvudet `UPDATE_HEAD_VAL
 120`). En ljusare stapel drog tillräckligt med ström för att fälla enheten mitt i

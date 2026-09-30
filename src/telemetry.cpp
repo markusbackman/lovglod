@@ -56,7 +56,7 @@ struct Crumb {
     uint8_t  stage;
     uint32_t up;          // sekunder sedan start
     uint32_t heap;        // fritt heap när steget började
-    uint32_t stack;       // loop-taskens minsta lediga stack hittills, byte
+    uint32_t stack;       // loop-taskens minsta lediga stack hittills, byte (inte LED-taskens)
     uint32_t crashes;     // kraschar i send() sedan strömpåslag
 };
 
@@ -106,6 +106,7 @@ void build(JsonDocument &doc) {
     doc["reset"]    = resetCode();
     doc["heap"]     = ESP.getFreeHeap();
     doc["minHeap"]  = ESP.getMinFreeHeap();
+    doc["ledStack"] = Leds::stackFree();
     doc["rssi"]     = WiFi.RSSI();
     doc["strip"]    = Leds::stripName(settings.ledStrip);
     doc["leds"]     = settings.ledCount;

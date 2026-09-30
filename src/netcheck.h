@@ -6,8 +6,8 @@
 // enhetens /debug-sida.
 namespace NetCheck {
 // Anropas efter varje avklarat delprov. Proberna blockerar internt och går inte
-// att avbryta, så det här är enda tillfället att rita om listen — mellan stegen,
-// inte under dem.
+// att avbryta, så det här är enda tillfället att flytta fram stapeln — mellan
+// stegen, inte under dem.
 using StepCb = void (*)(uint8_t done, uint8_t total);
 
 // Antal delprov run() går igenom: 4 DNS-uppslag + 7 TCP-anslutningar.

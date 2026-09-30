@@ -61,6 +61,12 @@
 // Global ljusstyrka (0–255). Kan ändras i webbportalen.
 #define LED_DEFAULT_BRIGHTNESS 160
 
+// Stack för rendertasken, i byte. Tilltagen i överkant till att börja med:
+// ett stackspill här blir en omstart mitt i en animation. Mät med
+// Leds::stackFree() (statussidan, telemetrin, [stat]-raden) genom alla lägen
+// innan den sänks.
+#define LED_TASK_STACK 6144
+
 // Uppstart. Ljuset flödar in på BOOT_FILL_MS och står sedan kvar tills
 // setup() går vidare — pausen på slutet är det som gör floden till en egen
 // gest och inte bara början på nästa animation.
@@ -231,8 +237,8 @@
 #define VICTORY_GLOW_BPM    7
 
 // Hur ofta lampan frågar played-games när matchen kan ha tagit slut. Startar
-// först VICTORY_POLL_AFTER_MS efter nedsläpp: dessförinnan spelas det, och
-// varje hämtning är ett blockerande TLS-anrop som fryser bilden ett ögonblick.
+// först VICTORY_POLL_AFTER_MS efter nedsläpp: dessförinnan spelas det
+// fortfarande, och ingen hämtning kan hitta ett resultat som inte finns än.
 #define VICTORY_POLL_AFTER_MS (2UL * 60 * 60 * 1000)
 #define VICTORY_POLL_MS       (5UL * 60 * 1000)
 

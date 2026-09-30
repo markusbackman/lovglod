@@ -700,7 +700,7 @@ bool ssePump(LiveScore &out) {
     bool got = false;
 
     // Läs allt som ligger i bufferten, men släpp loopen efter en rimlig mängd
-    // så att LED-renderingen inte hackar.
+    // så att resten av loop() — portalen och kommandona — får köra.
     for (uint16_t guard = 0; guard < 4096 && gSse.available(); guard++) {
         const char c = (char)gSse.read();
         gSseLastRx = millis();

@@ -489,6 +489,7 @@ void handleStatus() {
     row("WiFi-nät",         WiFi.SSID() + "  (" + WiFi.localIP().toString() + ")");
     row("Signal",           String(WiFi.RSSI()) + " dBm");
     row("Ledigt minne",     String(ESP.getFreeHeap() / 1024) + " kB");
+    row("LED-taskens stack", String(Leds::stackFree()) + " B kvar som minst");
     row("Upptid",           String(millis() / 60000) + " min");
     row("Senaste omstart",  status.resetReason, status.resetAbnormal);
     row("Omstarter",        String(settings.abnormalBoots) +
@@ -596,11 +597,9 @@ void handleSettings() {
 void handleNetTest() {
     if (stationOnly()) return;
     // Testet blockerar i upp till en halv minut på ett trasigt nät. Samma
-    // förloppsstapel som vid uppstart, annars ser listen bara död ut så länge.
-    NetCheck::run([](uint8_t done, uint8_t total) {
-        Leds::setWorkProgress(done, total);
-        Leds::renderNow();
-    });
+    // förloppsstapel som vid uppstart, som stegar fram mellan proberna, annars
+    // ser det ut som att lampan hängt sig så länge.
+    NetCheck::run(Leds::setWorkProgress);
     server.sendHeader("Location", "/debug");
     server.send(303);
 }

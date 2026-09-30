@@ -1,4 +1,8 @@
 #include <FastLED.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/semphr.h>
+#include <freertos/task.h>
+#include <esp_task_wdt.h>
 #include "leds.h"
 #include "trace.h"
 #include "config.h"
@@ -20,7 +24,6 @@ uint32_t  gGoalStart     = 0;
 uint8_t   gGoalImp       = GOAL_TEST_IMPORTANCE;  // pågående fyrverkeris vikt
 uint8_t   gUpdatePercent = 0;
 uint32_t  gModeSince     = 0;
-uint32_t  gLastFrame     = 0;
 uint32_t  gLastSparkle   = 0;
 uint16_t  gSparkleGap    = 0;
 uint16_t  gWorkLit       = 0;        // antal tända LEDs i uppstartsstapeln
@@ -46,8 +49,27 @@ bool      gDark       = false;      // lampläget vill ha listen släckt
 bool      gShowSetup  = true;       // uppstart och anslutning syns ändå
 float     gFade       = 1.0f;       // 0 = släckt, 1 = full, glider mot målet
 
-// Lägesbyte förbi låset. Används internt av demoläget och av målfyrverkeriet,
-// som ska få tända även när ett läge står låst.
+SemaphoreHandle_t gLock = nullptr;
+TaskHandle_t      gTask = nullptr;
+
+// Listens lås. Varje publik funktion i Leds tar det, och rendertasken håller
+// det genom hela bildrutan — även FastLED.show(), som tar 1–2 ms. Det går inte
+// att släppa före utskriften: RMT-drivrutinens statiska räknare tål inte två
+// show() samtidigt, så blank() och configure() måste vänta ut bildrutan.
+//
+// Ett vanligt mutex, inte rekursivt. Tar samma task det två gånger står den
+// och väntar på sig själv för alltid, och FreeRTOS säger ingenting. Därför går
+// alla interna vägar via de olåsta funktionerna (setModeImpl() med flera) och
+// aldrig via det publika API:t.
+struct Guard {
+    Guard()  { xSemaphoreTake(gLock, portMAX_DELAY); }
+    ~Guard() { xSemaphoreGive(gLock); }
+    Guard(const Guard &)            = delete;
+    Guard &operator=(const Guard &) = delete;
+};
+
+// Lägesbyte förbi demolåset (gLocked). Används internt av demoläget och av
+// målfyrverkeriet, som ska få tända även när ett läge står låst.
 inline void forceMode(LedMode m) {
     if (m == gMode) return;
     gMode      = m;
@@ -475,9 +497,9 @@ void drawBoot() {
 }
 
 // ── Uppstartsförlopp ────────────────────────────────────────────────────────
-// Huvudet markerar steget som pågår just nu. Eftersom bildrutan ofta fryser
-// mitt i ett blockerande anrop är det medvetet en stapel utan egen rörelse:
-// det som står stilla ska se ut att stå stilla med flit.
+// Huvudet markerar steget som pågår just nu. Medvetet en stapel utan egen
+// rörelse: stegen är få och långa, och mellan dem väntar lampan på ett svar.
+// Det som står stilla ska se ut att stå stilla med flit.
 void drawWorking() {
     fill_solid(leds, gCount, CRGB::Black);
     for (uint16_t i = 0; i < gWorkLit && i < gCount; i++) leds[i] = gold(WORK_BODY_VAL);
@@ -505,136 +527,17 @@ void drawError() {
     fill_solid(leds, gCount, CHSV(0, 230, v));
 }
 
-}  // namespace
-
-// ─────────────────────────────────────────────────────────────────────────────
-namespace Leds {
-
-// Båda drivrutinerna är registrerade hela tiden; det är den här som avgör vilken
-// som skriver ut. FastLED kan inte ta bort en drivrutin, så att byta list utan
-// omstart går bara till så här.
-//
-// Den avstängda får dessutom längden noll. show() hoppar över avstängda, men
-// strömtaket räknar ihop varje registrerad drivrutins buffert oavsett — med
-// full längd på båda skulle budgeten i praktiken halveras. Så är det medan
-// ingen list är vald, och det är ett rimligt pris för att portalen syns.
-void applyStrip(LedStrip strip, uint16_t count) {
-    const bool ws  = strip != LED_STRIP_APA102;
-    const bool apa = strip != LED_STRIP_WS2812;
-    gWs2812->setLeds(leds, ws ? count : 0);
-    gWs2812->setEnabled(ws);
-    gApa102->setLeds(leds, apa ? count : 0);
-    gApa102->setEnabled(apa);
-    gCount = count;
-}
-
-void begin(LedStrip strip, uint16_t count) {
-    gWs2812 = &FastLED.addLeds<WS2812B, LED_WS2812_PIN, LED_WS2812_ORDER>(leds, LED_COUNT_MAX);
-    gApa102 = &FastLED.addLeds<APA102, LED_APA102_DATA, LED_APA102_CLOCK, LED_APA102_ORDER,
-                               DATA_RATE_MHZ(LED_APA102_MHZ)>(leds, LED_COUNT_MAX);
-    gWs2812->setCorrection(LED_COLOR_CORRECTION);
-    gApa102->setCorrection(LED_COLOR_CORRECTION);
-    applyStrip(strip, constrain(count, LED_COUNT_MIN, LED_COUNT_MAX));
-
-    FastLED.setMaxPowerInVoltsAndMilliamps(LED_PSU_VOLTS, LED_MAX_MILLIAMPS);
-    FastLED.setDither(LED_DITHER);       // mjukar upp glödens smala nivåband
-    FastLED.clear(true);
-    memset(sparkleLevel, 0, sizeof(sparkleLevel));
-    gModeSince = millis();
-    Serial.printf("[led] %s, %u dioder\n", stripName(strip), gCount);
-}
-
-const char *modeName(LedMode m) {
-    switch (m) {
-        case LED_BOOT:         return "Uppstart — gult flödar in";
-        case LED_PORTAL:       return "Setup — grön puls";
-        case LED_PORTAL_RETRY: return "WiFi svarar inte — röd puls";
-        case LED_CONNECTING:   return "Ansluter — gul punkt som jagar";
-        case LED_WORKING:      return "Arbetar — gul stapel";
-        case LED_STANDBY:      return "Standby — långsam gul glöd";
-        case LED_LIVE:         return "Match pågår — bärnstensglöd";
-        case LED_GOAL:         return "Mål! — fyrverkeri";
-        case LED_VICTORY:      return "Vann senaste matchen — lugna kometer";
-        case LED_UPDATING:     return "Uppdaterar — gul stapel som fylls";
-        case LED_ERROR:        return "Ingen data — rött andetag";
-        case LED_INTERMISSION: return "Paus — timglas";
-        case LED_OVERTIME:     return "Övertid — dragkamp";
-        case LED_DANCE:        return "Segerdans — slutsignal, vi vann";
-    }
-    return "?";
-}
-
-void configure(LedStrip strip, uint16_t count) {
-    count = constrain(count, LED_COUNT_MIN, LED_COUNT_MAX);
-
-    // Släck med den gamla uppsättningen innan bytet: en list som kopplas bort
-    // fryser annars på sista bildrutan, och en list som kortas behåller svansen
-    // tänd bortom det nya slutet.
-    fill_solid(leds, LED_COUNT_MAX, CRGB::Black);
-    FastLED.show();
-
-    applyStrip(strip, count);
-    memset(sparkleLevel, 0, sizeof(sparkleLevel));
-    Serial.printf("[led] byter till %s, %u dioder\n", stripName(strip), gCount);
-}
-
-const char *stripName(LedStrip strip) {
-    switch (strip) {
-        case LED_STRIP_WS2812: return "WS2812B";
-        case LED_STRIP_APA102: return "APA102/DotStar";
-        default:               return "inte vald";
-    }
-}
-
-void setMode(LedMode m) {
+// ── Olåsta interna ──────────────────────────────────────────────────────────
+// Det publika API:ts kroppar, för anrop inifrån där låset redan hålls. Se Guard.
+void setModeImpl(LedMode m) {
     if (gLocked) return;
     forceMode(m);
 }
 
-void lockMode(LedMode m) {
-    gLocked     = true;
-    gLockedMode = m;
-    gMode       = m;
-    gModeSince  = millis();          // alltid om från början, även samma läge
-}
-
-void unlockMode() { gLocked = false; }
-bool locked()     { return gLocked; }
-
-LedMode mode() { return gMode; }
-
-void setSparkles(bool on) { gSparkles = on; }
-bool sparkles() { return gSparkles; }
-
-void triggerGoal(uint32_t delayMs, uint8_t importance) {
-    const uint32_t now = millis();
-
-    if (delayMs) {
-        if (gPendingCount >= GOAL_QUEUE_MAX) {
-            // Sex obesvarade mål inom fördröjningen händer inte i en hockeymatch.
-            // Skulle det ändå ske är det bättre att tappa ett än att tappa kön.
-            Serial.println("[led] målkön full — hoppar över fördröjningen");
-            delayMs = 0;
-        } else {
-            const uint32_t at = now + delayMs;
-            // Insättning i tidsordning. Fördröjningen kan ha ändrats mellan två
-            // mål, så ankomstordningen är inte nödvändigtvis tidsordningen.
-            uint8_t i = gPendingCount;
-            while (i && (int32_t)(gPendingAt[i - 1] - at) > 0) {
-                gPendingAt[i]  = gPendingAt[i - 1];
-                gPendingImp[i] = gPendingImp[i - 1];
-                i--;
-            }
-            gPendingAt[i]  = at;
-            gPendingImp[i] = importance;
-            gPendingCount++;
-            return;
-        }
-    }
-
-    // Nytt mål under pågående fyrverkeri: förläng istället för att starta om,
-    // annars tappar man stroboskopet vid snabba 2-mål. Vikten får bara växa —
-    // en kvittering direkt efter ett vanligt mål ska få den stora varianten.
+// Nytt mål under pågående fyrverkeri: förläng istället för att starta om,
+// annars tappar man stroboskopet vid snabba 2-mål. Vikten får bara växa —
+// en kvittering direkt efter ett vanligt mål ska få den stora varianten.
+void fireGoal(uint32_t now, uint8_t importance) {
     const uint32_t until = now + goalDurationMs(importance);
     if (gMode != LED_GOAL) {
         gGoalStart = now;
@@ -647,67 +550,16 @@ void triggerGoal(uint32_t delayMs, uint8_t importance) {
     forceMode(LED_GOAL);
 }
 
-void sigh(uint32_t delayMs) {
-    if (delayMs) {
-        gSighAt      = millis() + delayMs;
-        gSighPending = true;
-    } else {
-        gSighStart = millis() | 1;       // 0 betyder "ingen suck"
-    }
+void startSigh() {
+    gSighStart = millis() | 1;       // 0 betyder "ingen suck"
 }
 
-void setMood(const MatchMood &m) { gMood = m; }
-
-void dance() { forceMode(LED_DANCE); }
-
-uint8_t pendingGoals() { return gPendingCount; }
-
-uint32_t pendingGoalInMs() {
-    if (!gPendingCount) return 0;
-    const int32_t left = (int32_t)(gPendingAt[0] - millis());
-    return left > 0 ? (uint32_t)left : 0;
-}
-
-void clearPendingGoals() { gPendingCount = 0; gSighPending = false; }
-
-void setDark(bool dark, bool instant) {
-    gDark = dark;
-    if (instant) gFade = dark ? 0.0f : 1.0f;
-}
-void setShowSetup(bool on)   { gShowSetup = on; }
-
-void setBrightness(uint8_t b) { FastLED.setBrightness(b); }
-
-void setUpdateProgress(uint8_t percent) {
-    gUpdatePercent = percent > 100 ? 100 : percent;
-    setMode(LED_UPDATING);
-}
-
-void setWorkProgress(uint8_t done, uint8_t total) {
-    if (done > total) done = total;
-    // Förloppet skalas in i intervallet [WORK_MIN_LIT, gCount] i stället för
-    // [0, gCount]. Nollförloppet ska synas som en stapel som just startat,
-    // inte som en släckt list.
-    gWorkLit = total
-        ? BAR_MIN_LIT + (uint16_t)((uint32_t)done * (gCount - BAR_MIN_LIT) / total)
-        : BAR_MIN_LIT;
-    setMode(LED_WORKING);
-}
-
-void blank() {
-    fill_solid(leds, gCount, CRGB::Black);
-    FastLED.show();
-}
-
-void renderNow() {
-    gLastFrame = millis() - (1000u / FPS);
-    render();
-}
-
-void render() {
+// ── Bildrutan ───────────────────────────────────────────────────────────────
+// Anropas bara av rendertasken, med låset taget.
+void renderFrame() {
     const uint32_t now = millis();
-    if (now - gLastFrame < (1000u / FPS)) return;
-    gLastFrame = now;
+    // Klämman gör en stall — flashskrivning, en tappad takt — osynlig för
+    // fasackumulatorerna: de tar ett normalt steg i stället för ett språng.
     const float dt = gPrevFrame ? std::min(now - gPrevFrame, 100u) / 1000.0f : 0;
     gPrevFrame = now;
 
@@ -719,11 +571,11 @@ void render() {
 
     if (gSighPending && (int32_t)(now - gSighAt) >= 0) {
         gSighPending = false;
-        sigh();
+        startSigh();
     }
 
     // Köade mål vars tv-fördröjning gått ut. Flera kan förfalla samma bildruta;
-    // triggerGoal() staplar dem då precis som två snabba mål i realtid.
+    // fireGoal() staplar dem då precis som två snabba mål i realtid.
     while (gPendingCount && (int32_t)(now - gPendingAt[0]) >= 0) {
         const uint8_t imp = gPendingImp[0];
         for (uint8_t i = 1; i < gPendingCount; i++) {
@@ -732,7 +584,7 @@ void render() {
         }
         gPendingCount--;
         TRACE("[led] köat mål tänds nu, vikt %u (%u kvar i kön)\n", imp, gPendingCount);
-        triggerGoal(0, imp);
+        fireGoal(now, imp);
     }
 
     switch (gMode) {
@@ -772,6 +624,236 @@ void render() {
     gFade = target > gFade ? std::min(target, gFade + step) : std::max(target, gFade - step);
 
     FastLED.show(scale8(FastLED.getBrightness(), (uint8_t)(gFade * 255)));
+}
+
+// Rendertasken. Takten hålls av vTaskDelayUntil, inte av millis()-jämförelser,
+// så bildrutorna ligger jämnt oavsett hur länge ritandet tog.
+void renderTask(void *) {
+    TickType_t last = xTaskGetTickCount();
+    for (;;) {
+        { Guard g; renderFrame(); }
+        esp_task_wdt_reset();
+        // Efter en stall (flashskrivning, ett show() som fick ge upp) ligger
+        // `last` långt efter. vTaskDelayUntil skulle då rita ikapp med en skur
+        // bildrutor rygg mot rygg — det som gått förlorat är ändå förlorat.
+        const TickType_t now = xTaskGetTickCount();
+        if ((int32_t)(now - last) > (int32_t)pdMS_TO_TICKS(50)) last = now;
+        vTaskDelayUntil(&last, pdMS_TO_TICKS(1000 / FPS));
+    }
+}
+
+}  // namespace
+
+// ─────────────────────────────────────────────────────────────────────────────
+namespace Leds {
+
+// Båda drivrutinerna är registrerade hela tiden; det är den här som avgör vilken
+// som skriver ut. FastLED kan inte ta bort en drivrutin, så att byta list utan
+// omstart går bara till så här.
+//
+// Den avstängda får dessutom längden noll. show() hoppar över avstängda, men
+// strömtaket räknar ihop varje registrerad drivrutins buffert oavsett — med
+// full längd på båda skulle budgeten i praktiken halveras. Så är det medan
+// ingen list är vald, och det är ett rimligt pris för att portalen syns.
+void applyStrip(LedStrip strip, uint16_t count) {
+    const bool ws  = strip != LED_STRIP_APA102;
+    const bool apa = strip != LED_STRIP_WS2812;
+    gWs2812->setLeds(leds, ws ? count : 0);
+    gWs2812->setEnabled(ws);
+    gApa102->setLeds(leds, apa ? count : 0);
+    gApa102->setEnabled(apa);
+    gCount = count;
+}
+
+void begin(LedStrip strip, uint16_t count) {
+    if (!gLock) gLock = xSemaphoreCreateMutex();
+
+    gWs2812 = &FastLED.addLeds<WS2812B, LED_WS2812_PIN, LED_WS2812_ORDER>(leds, LED_COUNT_MAX);
+    gApa102 = &FastLED.addLeds<APA102, LED_APA102_DATA, LED_APA102_CLOCK, LED_APA102_ORDER,
+                               DATA_RATE_MHZ(LED_APA102_MHZ)>(leds, LED_COUNT_MAX);
+    gWs2812->setCorrection(LED_COLOR_CORRECTION);
+    gApa102->setCorrection(LED_COLOR_CORRECTION);
+    applyStrip(strip, constrain(count, LED_COUNT_MIN, LED_COUNT_MAX));
+
+    FastLED.setMaxPowerInVoltsAndMilliamps(LED_PSU_VOLTS, LED_MAX_MILLIAMPS);
+    FastLED.setDither(LED_DITHER);       // mjukar upp glödens smala nivåband
+    // Den första show() avgör var RMT-avbrottet allokeras, och den sker här i
+    // loopTask — alltså på kärna 1, samma kärna som rendertasken sedan ritar på.
+    FastLED.clear(true);
+    memset(sparkleLevel, 0, sizeof(sparkleLevel));
+    gModeSince = millis();
+    Serial.printf("[led] %s, %u dioder\n", stripName(strip), gCount);
+}
+
+// Kärna 1 är loopTasks, och det är där RMT-avbrottet ligger; WiFi och lwIP har
+// kärna 0 för sig själva. Prio 2, ett steg över loopTask, så att bildrutan går
+// före även mitt i ett CPU-bundet TLS-handslag — den tar bara någon millisekund
+// och lämnar sedan tillbaka kärnan i vTaskDelayUntil.
+//
+// Tasken prenumererar på vakthunden. Hänger show() trots tidsgränsen i
+// platformio.ini blir det en task_wdt-omstart som syns i telemetrin, i stället
+// för en lampa som står still och en loop() som tyst väntar på låset.
+void start() {
+    if (gTask) return;
+    xTaskCreatePinnedToCore(renderTask, "leds", LED_TASK_STACK, nullptr, 2, &gTask, 1);
+    if (esp_task_wdt_add(gTask) != ESP_OK)
+        Serial.println("[led] rendertasken står utan vakthund");
+}
+
+// Utan lås: läser bara taskens egen bokföring.
+uint32_t stackFree() {
+    return gTask ? uxTaskGetStackHighWaterMark(gTask) : 0;
+}
+
+const char *modeName(LedMode m) {
+    switch (m) {
+        case LED_BOOT:         return "Uppstart — gult flödar in";
+        case LED_PORTAL:       return "Setup — grön puls";
+        case LED_PORTAL_RETRY: return "WiFi svarar inte — röd puls";
+        case LED_CONNECTING:   return "Ansluter — gul punkt som jagar";
+        case LED_WORKING:      return "Arbetar — gul stapel";
+        case LED_STANDBY:      return "Standby — långsam gul glöd";
+        case LED_LIVE:         return "Match pågår — bärnstensglöd";
+        case LED_GOAL:         return "Mål! — fyrverkeri";
+        case LED_VICTORY:      return "Vann senaste matchen — lugna kometer";
+        case LED_UPDATING:     return "Uppdaterar — gul stapel som fylls";
+        case LED_ERROR:        return "Ingen data — rött andetag";
+        case LED_INTERMISSION: return "Paus — timglas";
+        case LED_OVERTIME:     return "Övertid — dragkamp";
+        case LED_DANCE:        return "Segerdans — slutsignal, vi vann";
+    }
+    return "?";
+}
+
+void configure(LedStrip strip, uint16_t count) {
+    count = constrain(count, LED_COUNT_MIN, LED_COUNT_MAX);
+
+    {
+        Guard g;
+        // Släck med den gamla uppsättningen innan bytet: en list som kopplas bort
+        // fryser annars på sista bildrutan, och en list som kortas behåller svansen
+        // tänd bortom det nya slutet.
+        fill_solid(leds, LED_COUNT_MAX, CRGB::Black);
+        FastLED.show();
+
+        applyStrip(strip, count);
+        memset(sparkleLevel, 0, sizeof(sparkleLevel));
+    }
+    Serial.printf("[led] byter till %s, %u dioder\n", stripName(strip), gCount);
+}
+
+const char *stripName(LedStrip strip) {
+    switch (strip) {
+        case LED_STRIP_WS2812: return "WS2812B";
+        case LED_STRIP_APA102: return "APA102/DotStar";
+        default:               return "inte vald";
+    }
+}
+
+void setMode(LedMode m) { Guard g; setModeImpl(m); }
+
+void lockMode(LedMode m) {
+    Guard g;
+    gLocked     = true;
+    gLockedMode = m;
+    gMode       = m;
+    gModeSince  = millis();          // alltid om från början, även samma läge
+}
+
+void unlockMode() { Guard g; gLocked = false; }
+bool locked()     { Guard g; return gLocked; }
+
+LedMode mode() { Guard g; return gMode; }
+
+void setSparkles(bool on) { Guard g; gSparkles = on; }
+bool sparkles() { Guard g; return gSparkles; }
+
+void triggerGoal(uint32_t delayMs, uint8_t importance) {
+    Guard g;
+    const uint32_t now = millis();
+
+    if (delayMs) {
+        if (gPendingCount >= GOAL_QUEUE_MAX) {
+            // Sex obesvarade mål inom fördröjningen händer inte i en hockeymatch.
+            // Skulle det ändå ske är det bättre att tappa ett än att tappa kön.
+            Serial.println("[led] målkön full — hoppar över fördröjningen");
+            delayMs = 0;
+        } else {
+            const uint32_t at = now + delayMs;
+            // Insättning i tidsordning. Fördröjningen kan ha ändrats mellan två
+            // mål, så ankomstordningen är inte nödvändigtvis tidsordningen.
+            uint8_t i = gPendingCount;
+            while (i && (int32_t)(gPendingAt[i - 1] - at) > 0) {
+                gPendingAt[i]  = gPendingAt[i - 1];
+                gPendingImp[i] = gPendingImp[i - 1];
+                i--;
+            }
+            gPendingAt[i]  = at;
+            gPendingImp[i] = importance;
+            gPendingCount++;
+            return;
+        }
+    }
+
+    fireGoal(now, importance);
+}
+
+void sigh(uint32_t delayMs) {
+    Guard g;
+    if (delayMs) {
+        gSighAt      = millis() + delayMs;
+        gSighPending = true;
+    } else {
+        startSigh();
+    }
+}
+
+void setMood(const MatchMood &m) { Guard g; gMood = m; }
+
+void dance() { Guard g; forceMode(LED_DANCE); }
+
+uint8_t pendingGoals() { Guard g; return gPendingCount; }
+
+uint32_t pendingGoalInMs() {
+    Guard g;
+    if (!gPendingCount) return 0;
+    const int32_t left = (int32_t)(gPendingAt[0] - millis());
+    return left > 0 ? (uint32_t)left : 0;
+}
+
+void clearPendingGoals() { Guard g; gPendingCount = 0; gSighPending = false; }
+
+void setDark(bool dark, bool instant) {
+    Guard g;
+    gDark = dark;
+    if (instant) gFade = dark ? 0.0f : 1.0f;
+}
+void setShowSetup(bool on)   { Guard g; gShowSetup = on; }
+
+void setBrightness(uint8_t b) { Guard g; FastLED.setBrightness(b); }
+
+void setUpdateProgress(uint8_t percent) {
+    Guard g;
+    gUpdatePercent = percent > 100 ? 100 : percent;
+    setModeImpl(LED_UPDATING);
+}
+
+void setWorkProgress(uint8_t done, uint8_t total) {
+    Guard g;
+    if (done > total) done = total;
+    // Förloppet skalas in i intervallet [WORK_MIN_LIT, gCount] i stället för
+    // [0, gCount]. Nollförloppet ska synas som en stapel som just startat,
+    // inte som en släckt list.
+    gWorkLit = total
+        ? BAR_MIN_LIT + (uint16_t)((uint32_t)done * (gCount - BAR_MIN_LIT) / total)
+        : BAR_MIN_LIT;
+    setModeImpl(LED_WORKING);
+}
+
+void blank() {
+    Guard g;
+    fill_solid(leds, gCount, CRGB::Black);
+    FastLED.show();
 }
 
 }  // namespace Leds

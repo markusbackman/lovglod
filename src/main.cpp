@@ -79,20 +79,17 @@ static uint32_t  gNextResultPoll    = 0;      // tät koll efter matchens slut
 
 static void resetMood();                      // matchljuset, se nedan
 
-// Ritar upp förloppet mellan blockerande steg. renderNow() krävs: nästa rad
-// efter återropet blockerar ofta i sekunder, och en vanlig render() kan hoppa
-// över bildrutan om FPS-grinden inte släppt än.
+// Flyttar fram förloppet mellan blockerande steg. Rendertasken ritar även
+// medan nästa steg blockerar, så här sätts bara steget.
 static void showWorkStep(uint8_t done, uint8_t total) {
     Leds::setWorkProgress(done, total);
-    Leds::renderNow();
 }
 
 // ── Demoläge ────────────────────────────────────────────────────────────────
 // Kortet kräver att BOOT-knappen hålls in vid varje flashning, så animationerna
 // måste gå att växla mellan utan att bygga om. Siffertangenterna låser ett
-// läge, x släpper det igen. Medan demon är på står app-logiken still: en
-// blockerande SHL-hämtning mitt i en animation ser ut som ett fel i
-// animationen, och det är animationen vi tittar på.
+// läge, x släpper det igen. Medan demon är på står app-logiken still, så att
+// inget från SHL rör listen — det är animationen vi tittar på.
 struct DemoItem {
     char        key;
     const char *name;
@@ -427,7 +424,6 @@ static void syncTime() {
     // gnistor, segerläge) bygger på korrekt tid.
     const uint32_t deadline = millis() + 10000;
     while (!clockIsSane() && millis() < deadline) {
-        Leds::render();
         delay(50);
     }
 
@@ -854,11 +850,8 @@ static void serviceLive() {
     LiveScore fresh;
     if (Shl::ssePump(fresh)) applyScore(fresh, "sse");
 
-    // Reservpollning ifall SSE-strömmen är tyst eller formatet ändrats. Inte
-    // medan målfyrverkeriet brinner: hämtningen blockerar loop() i upp till 20 s
-    // och fryser animationen mitt i. Pollningen skjuts bara upp — den går så
-    // fort fyrverkeriet är slut.
-    if (Leds::mode() != LED_GOAL && (int32_t)(millis() - gNextLivePoll) >= 0) {
+    // Reservpollning ifall SSE-strömmen är tyst eller formatet ändrats.
+    if ((int32_t)(millis() - gNextLivePoll) >= 0) {
         gNextLivePoll = millis() + POLL_LIVE_FALLBACK_MS;
         LiveScore polled;
         if (Shl::pollLiveScore(gNext.uuid, polled)) applyScore(polled, "poll");
@@ -870,8 +863,7 @@ static void serviceLive() {
 
     // Nära slutsignalen: fråga played-games ofta, så segerläget tänds i
     // anslutning till matchen och inte vid nästa sexttimmarshämtning. Först
-    // efter VICTORY_POLL_AFTER_MS — dessförinnan spelas det fortfarande, och
-    // varje hämtning är ett blockerande TLS-anrop som fryser bilden ett ögonblick.
+    // efter VICTORY_POLL_AFTER_MS — dessförinnan spelas det fortfarande.
     if (gNext.valid && gTimeSynced && !victoryActive() &&
         time(nullptr) >= gNext.startUtc + (time_t)(VICTORY_POLL_AFTER_MS / 1000) &&
         (int32_t)(millis() - gNextResultPoll) >= 0) {
@@ -1187,9 +1179,10 @@ void setup() {
     Leds::setShowSetup(esp_reset_reason() != ESP_RST_SW);
     Leds::setMode(LED_BOOT);
 
-    // Kort uppstartsflöde så man ser att listen lever
-    const uint32_t until = millis() + BOOT_FILL_MS + BOOT_HOLD_MS;
-    while (millis() < until) Leds::render();
+    // Kort uppstartsflöde så man ser att listen lever. Rendertasken ritar
+    // svepet; här väntar vi bara ut det innan nätet tar över.
+    Leds::start();
+    delay(BOOT_FILL_MS + BOOT_HOLD_MS);
 
     if (settings.hasWifi()) beginConnect();
     else                    enterPortal(false);
@@ -1215,13 +1208,14 @@ static void traceTick() {
     nextLine = millis() + 30000;
     const time_t now = time(nullptr);
     Serial.printf("[stat] %s  läge=%s fönster=%d sse=%d ramar=%lu återansl=%lu hb=%lu tyst=%lus  "
-                  "ställn=%s  kö=%u  heap=%u/%u kB  wifi=%d dBm\n",
+                  "ställn=%s  kö=%u  heap=%u/%u kB  wifi=%d dBm  ledstack=%u\n",
                   gTimeSynced ? formatLocal(now, "%H:%M:%S").c_str() : "--:--:--",
                   modeName(Leds::mode()), gInLiveWindow, Shl::sseConnected(),
                   (unsigned long)Shl::sseFrames(), (unsigned long)Shl::sseReconnects(),
                   (unsigned long)Shl::sseComments(), Shl::sseSilentMs() / 1000,
                   status.liveScore.c_str(), Leds::pendingGoals(),
-                  ESP.getFreeHeap() / 1024, ESP.getMinFreeHeap() / 1024, WiFi.RSSI());
+                  ESP.getFreeHeap() / 1024, ESP.getMinFreeHeap() / 1024, WiFi.RSSI(),
+                  (unsigned)Leds::stackFree());
 }
 #endif
 
@@ -1229,7 +1223,6 @@ void loop() {
 #ifdef LIVE_TRACE
     traceTick();
 #endif
-    Leds::render();
     Portal::loop();
     serviceOtaValidation();
     handleSerialCommands();

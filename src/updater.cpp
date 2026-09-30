@@ -26,10 +26,11 @@ void noteChecked() {
     gCheckedAt = now > 1600000000 ? now : 0;
 }
 
+// Sätter bara procenten — rendertasken ritar stapeln medan nedladdningen och
+// flashskrivningen blockerar här.
 void showProgress(unsigned int done, unsigned int total) {
     if (!total) return;
     Leds::setUpdateProgress((uint8_t)((uint64_t)done * 100 / total));
-    Leds::render();
 }
 
 // GitHub-taggar heter oftast "v1.2.3" men FW_VERSION är "1.2.3".
@@ -361,7 +362,6 @@ static bool __attribute__((noinline)) downloadAndInstall(const String &url,
                 ok = false;
                 break;
             }
-            Leds::render();
             delay(1);
             continue;
         }
@@ -471,8 +471,7 @@ bool checkAndApply(const String &source) {
     gStatus = "Installerade " + rel.version;
     Serial.println("[ota] klar — startar om i den nya firmwaren, på prov");
     Leds::setUpdateProgress(100);
-    Leds::renderNow();
-    delay(200);
+    delay(200);                           // så rendertasken hinner visa full stapel
     ESP.restart();
     return true;                          // nås aldrig
 }

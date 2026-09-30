@@ -62,7 +62,7 @@ Vad varje värde gör förklaras i [Ljusspråket](GLODEN.md#justera-beteendet).
 platformio.ini          byggkonfiguration: firmware + kopplingstest
 include/config.h        all justerbar konfiguration
 src/main.cpp            tillståndsmaskin, schemaläggning
-src/leds.cpp            effekterna (glöd, gnistor, matchljus, målfyrverkeri)
+src/leds.cpp            effekterna, ritas i egen FreeRTOS-task på kärna 1
 src/shl.cpp             SHL-API: HTTP(S)-poll + SSE-klient, val av datakälla
 src/portal.cpp          captive portal + statussida
 src/settings.cpp        NVS-lagring
@@ -386,6 +386,32 @@ pio run -t upload            # håll in BOOT — kortet har trasig auto-reset
 GitHub-svaret parsas strömmande med ett ArduinoJson-filter, så bara `tag_name`
 och asset-namnen behålls. För ett repo med 280 assets krymper svaret från
 480 kB till 38 kB; för det här repot är det 308 byte.
+
+Uppdateringskontrollen körs, som allt nätverk, i Arduinos `loopTask`: 16 kB
+stack, kärna 1, prioritet 1. Animationerna ligger i en egen task, `leds`
+(`LED_TASK_STACK` i `config.h`, 6144 byte), också på kärna 1 men med prioritet 2.
+Prioriteten gör att en bildruta går före även mitt i ett CPU-bundet
+TLS-handslag, så TLS-pollningar, SSE-återanslutningar, uppdateringskontroller
+och telemetri inte längre fryser bilden. Kärna 1 håller tasken borta från kärna
+0, där WiFi och lwIP kör, och det är där RMT-avbrottet ligger, eftersom
+avbrottet allokeras på den kärna som gör första `FastLED.show()` (i
+`Leds::begin()`). LED-tillståndet skyddas av ett enda mutex. Rendertasken
+håller det en hel bildruta, inklusive `show()`, så ett anrop från loopen väntar
+som mest en bildruta.
+
+Hur mycket av rendertaskens stack som aldrig använts (high-water mark,
+`Leds::stackFree()`) syns på tre ställen: på statussidan, som `ledStack` i
+telemetrin och som `ledstack=` på `[stat]`-raden i diag-bygget. 6144 är ett
+försiktigt startvärde. När fältdata visar god marginal genom mål, dans, live,
+paus, övertid, uppdatering och nättest kan `LED_TASK_STACK` sänkas till 4096.
+
+Tasken prenumererar på task-watchdogen. Ett känt FastLED-fel gör att RMT-avbrottet
+ibland uteblir och `show()` väntar för evigt. Med låset skulle då loopen hänga på
+nästa `Leds::`-anrop och lampan tystna utan spår. `FASTLED_RMT_MAX_TICKS_FOR_GTX_SEM=100`
+i `platformio.ini` begränsar hur länge `show()` väntar, och fastnar tasken ändå
+startar watchdogen om lampan. Står `task_wdt` som orsak till senaste omstart på
+statussidan eller i telemetrin är det alltså i första hand rendertasken som
+slutat rita.
 
 ### Signerad firmware
 
