@@ -81,9 +81,10 @@ const char *modeName(LedMode m);
 // Sant om läget sattes.
 bool setModeIfIdle(LedMode m);
 
-// Gnistor läggs ovanpå glöden när laget vann sin senaste match; main.cpp
-// håller dem tända fram till nästa nedsläpp. Segerläget glittrar alltid,
-// oavsett den här flaggan — det vet redan att laget vann.
+// Laget vann sin senaste match; main.cpp håller flaggan på fram till nästa
+// nedsläpp. Standby ritar då gröna kometer i stället för den gula glöden.
+// Segerläget glittrar alltid, oavsett den här flaggan — det vet redan att
+// laget vann.
 void setSparkles(bool on);
 bool sparkles();
 

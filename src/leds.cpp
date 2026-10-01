@@ -42,6 +42,9 @@ uint32_t  gSighStart     = 0;        // 0 = ingen suck
 uint32_t  gSighAt        = 0;        // köad suck (tv-fördröjning)
 bool      gSighPending   = false;
 
+uint8_t   winSpark[LED_COUNT_MAX];   // vinstkometernas färgade gnistor
+CRGB      winSparkCol[LED_COUNT_MAX];
+
 bool      gLocked     = false;      // demoläge: app-logiken får inte byta läge
 LedMode   gLockedMode = LED_STANDBY;
 
@@ -412,6 +415,51 @@ void drawOvertime() {
     splat(leds, bd, CRGB(255, 250, 235), 230, 0.9f);
 }
 
+// ── Vann senast ─────────────────────────────────────────────────────────────
+// Från segerläget fram till nästa match. Samma gest som segerläget, men i
+// lagets grönt: kometer med vitgröna kärnor glider ut från mitten över en
+// guldglöd, med gröna och gula gnistor. Inga utrop — läget står i dagar och
+// ska kännas, inte påkalla uppmärksamhet.
+inline CRGB lovGreen(uint8_t v) { return CHSV(104, 255, v); }
+
+// Mjuk ljusfläck kring en position mellan dioderna, så kometerna glider i
+// stället för att hoppa diod för diod — med 30 dioder syns varje steg.
+void addSplat(float pos, CRGB col, float radius) {
+    for (uint16_t i = 0; i < gCount; i++) {
+        const float g = expf(-sqf((i - pos) / radius));
+        if (g > 0.01f) leds[i] += CRGB(col).nscale8((uint8_t)(g * 255));
+    }
+}
+
+void drawWinComets(float dt) {
+    drawGlow(VICTORY_GLOW_MIN, WIN_GLOW_MAX, VICTORY_GLOW_BPM, LIVE_YELLOW_G);
+
+    const float c = (gCount - 1) / 2.0f;
+    for (uint8_t v = 0; v < WIN_VOLLEYS; v++) {
+        const float   p    = ((millis() + (uint32_t)v * WIN_TRAVEL_MS / WIN_VOLLEYS) %
+                              WIN_TRAVEL_MS) / (float)WIN_TRAVEL_MS;
+        const uint8_t life = 255 - (uint8_t)(p * 255);
+        for (int8_t dir = -1; dir <= 1; dir += 2) {
+            const float pos = c + dir * p * (c + 1);
+            addSplat(pos,              CRGB(190, 255, 160).nscale8(life), 0.7f);
+            addSplat(pos - dir * 1.5f, lovGreen(scale8(230, life)), 1.0f);
+            addSplat(pos - dir * 3.2f, lovGreen(scale8(90, life)), 1.2f);
+        }
+    }
+
+    // Gnistorna i eget lager, för de har en färg var.
+    if (random16() < (uint16_t)clampf(WIN_SPARKS_PER_S * dt * 65535, 0, 65535)) {
+        const uint16_t i = random16(gCount);
+        winSpark[i]    = 255;
+        winSparkCol[i] = random8() & 1 ? lovGreen(255) : gold(255, 200);
+    }
+    for (uint16_t i = 0; i < gCount; i++) {
+        if (!winSpark[i]) continue;
+        leds[i] += CRGB(winSparkCol[i]).nscale8(winSpark[i]);
+        winSpark[i] = qsub8(winSpark[i], WIN_SPARK_DECAY);
+    }
+}
+
 // Segerdansen: guld- och gröna block jagar utåt från mitten medan laget tackar
 // publiken, och de sista sekunderna tonar över i segerläget.
 void drawDance(float dt) {
@@ -604,8 +652,12 @@ void renderFrame() {
 
         case LED_STANDBY:
         default:
-            drawGlow(GLOW_MIN_VAL, GLOW_MAX_VAL, GLOW_BPM);
-            updateSparkles();
+            if (gSparkles) {
+                drawWinComets(dt);
+            } else {
+                drawGlow(GLOW_MIN_VAL, GLOW_MAX_VAL, GLOW_BPM);
+                updateSparkles();
+            }
             break;
     }
 

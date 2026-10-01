@@ -110,7 +110,7 @@ static const DemoItem kDemo[] = {
     {'4', "ansluter (gult jagande ljus)",  LED_CONNECTING,   false, 0, 0},
     {'5', "uppstartsförlopp (stapel)",     LED_WORKING,      false, 0, 0},
     {'6', "standby-glöd",                  LED_STANDBY,      false, 0, 0},
-    {'7', "standby + gnistor (vann sist)", LED_STANDBY,      true,  0, 0},
+    {'7', "vann sist (gröna kometer)",     LED_STANDBY,      true,  0, 0},
     {'8', "live, match pågår",             LED_LIVE,         false, 0, 0},
     {'9', "OTA-uppdatering (stapel)",      LED_UPDATING,     false, 0, 0},
     {'0', "fel, ingen data (rött)",        LED_ERROR,        false, 0, 0},
@@ -1418,8 +1418,10 @@ void loop() {
 
             {
                 const bool manual = Updater::checkRequested();
-#ifdef LIVE_TRACE
-                // Diagnostikbygget får inte ersätta sig självt med senaste release.
+#if defined(LIVE_TRACE) || defined(NO_AUTO_OTA)
+                // Diagnostikbygget får inte ersätta sig självt med senaste release,
+                // och inte heller ett lokalt bygge med -DNO_AUTO_OTA som provas
+                // på en lampa över seriekabeln.
                 const bool due    = false;
 #else
                 const bool due    = Updater::checkDue();

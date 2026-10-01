@@ -32,7 +32,7 @@ betyder att något står i vägen.
 | Läge | Ljus |
 |---|---|
 | **Glöd** | Vardag. Ett långsamt gult andetag på sju sekunder, med organisk variation längs listen. |
-| **Vann senast** | Vita gnistor ovanpå glöden, från vinsten fram till nästa match. |
+| **Vann senast** | Gröna kometer över guldglöden, från vinsten fram till nästa match. |
 | **Match pågår** | Glöden drar åt bärnsten och andas dubbelt så fort. |
 | **Slutspurt** | Tajt i slutet av tredje: hjärtslag vid lika, guldregn när Löven leder, anfallsvågor i underläge. |
 | **Paus** | Ett timglas som rinner ut mot mitten av listen. |

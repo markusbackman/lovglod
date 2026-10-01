@@ -14,7 +14,7 @@ avslutas med hur du skruvar på beteendet och ställer in tv-fördröjningen.
 | [Ansluter](#led_connecting--jagande-gult) | Gul punkt som jagar runt | Kopplar upp mot WiFi |
 | [Arbetar](#led_working--förloppsstapel-vid-uppstart) | Gul stapel som står still | Nätverkstest och första hämtningen |
 | [Standby](#led_standby--den-långsamma-glöden) | Långsamt gult andetag, ~7 s | Vardag — här står lampan nästan jämt |
-| [Vann senast](#gnistor--vi-vann-senast-ovanpå-glöden) | Vita gnistor ovanpå glöden | Björklöven vann sin senaste match — lyser till nästa nedsläpp |
+| [Vann senast](#vann-senast--gröna-kometer) | Gröna kometer över guldglöd, gröna och gula gnistor | Björklöven vann sin senaste match — lyser till nästa nedsläpp |
 | [Match pågår](#led_live--match-pågår) | Bärnsten, dubbelt så snabbt andetag | Matchfönstret är öppet |
 | [Slutspurt](#slutspurten--ovanpå-matchglöden) | Hjärtslag, guldregn eller anfallsvågor ovanpå glöden | Tajt match mot slutet av tredje |
 | [Paus](#led_intermission--timglaset) | Bärnstensstapel som krymper mot mitten | Paus mellan perioderna |
@@ -30,8 +30,7 @@ avslutas med hur du skruvar på beteendet och ställer in tv-fördröjningen.
 ## Lägena
 
 Lägena ligger i `LedMode` (`src/leds.h`) och ritas i `src/leds.cpp`. Exakt ett
-läge är aktivt åt gången; gnistorna är det enda som ligger *ovanpå* ett annat
-läge. Alla tider nedan gäller standardvärdena i `include/config.h`
+läge är aktivt åt gången. Alla tider nedan gäller standardvärdena i `include/config.h`
 (`YELLOW_R`/`YELLOW_G`, 60 dioder).
 
 ### `LED_BOOT` — uppstartsflöde
@@ -142,18 +141,18 @@ tillbringar mest tid mappas många bildrutor i rad till samma utnivå. Utan
 dithern står listen still på samma nivå och byter sedan ett helt steg — det är
 precis det man ser som ryck.
 
-### Gnistor — "vi vann senast" (ovanpå glöden)
+### Vann senast — gröna kometer
 
-Inget eget läge utan ett lager som läggs ovanpå standby och live. Ungefär var
-0,7:e sekund tänds en slumpad LED i kall vit (`SPARKLE_R`/`_G`/`_B`) och tonar
-ut på ett par tiondelar. Intervallet slumpas runt medelvärdet så glittret
-aldrig hittar en takt.
+Inget eget läge: standby ritar det här i stället för den gula glöden så länge
+laget vann sin senaste match. Samma gest som segerläget, men i lagets grönt —
+tre kometer med vitgröna kärnor glider ut från mitten åt båda håll, en resa
+på 1,5 s (`WIN_TRAVEL_MS`), och tonar ut på vägen. Under ligger segerlägets
+guldglöd, och ovanpå tänds gröna och gula gnistor, i snitt tre i sekunden
+(`WIN_SPARKS_PER_S`).
 
-Gnistan **adderas** till glöden i stället för att blandas in i den. Blandad blev
-den lika ljus som glöden råkade vara just då — i andetagets topp knappt dubbelt
-så ljus som ytan under den, alltså nästan osynlig, medan samma gnista i
-vändningen var tiofalt ljusare. Glittret tonade in och ut i takt med andetaget.
-Adderat mättar det mot vitt oavsett var i cykeln det landar.
+Läget står i dagar, så det har inga utrop: inget som blinkar i hela listen,
+inga salvor. Kometerna ritas som mjuka fläckar mellan dioderna, så de glider i
+stället för att hoppa diod för diod.
 
 Tänds när `played-games` säger `WIN` på den senast spelade matchen, och lyser
 **ända fram till nästa match** — inte bara dagen efter. Vinsten hör ihop med
@@ -161,15 +160,15 @@ matchen som kommer, inte med kalenderdygnet: spelar laget på lördag och nästa
 gång på onsdag glittrar listen hela veckan emellan. Släcks när matchfönstret
 för nästa match öppnar (nedsläpp minus `LIVE_WINDOW_PRE_MS`) — från den stunden
 är listen den matchens, och att glittra i uppvärmningen vore att fira fel match.
-Efter den matchen tänds gnistorna igen bara om den också blev en vinst.
+Efter den matchen tänds kometerna igen bara om den också blev en vinst.
 
 Finns ingen nästa match i schemat — sommaruppehåll, eller ett schema som inte
 gick att hämta — tar `SPARKLE_MAX_GAME_AGE_S` (14 dygn) vid, så att säsongens
 sista vinst inte ligger och glittrar i juli. Fjorton dygn täcker
 landslagsuppehållen, det längsta glappet mitt i en säsong.
 
-Skruva med `SPARKLE_MEAN_INTERVAL_MS` (högre = färre) och `SPARKLE_DECAY`
-(högre = kortare).
+Skruva med `WIN_TRAVEL_MS` (högre = lugnare), `WIN_SPARKS_PER_S` och
+`WIN_SPARK_DECAY` (lägre = längre gnista).
 
 ### `LED_LIVE` — match pågår
 

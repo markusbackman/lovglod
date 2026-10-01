@@ -210,6 +210,15 @@
 #define SPARKLE_G       250
 #define SPARKLE_B       225
 
+// Vann senast: gröna kometer från segerläget fram till nästa match (leds.cpp,
+// drawWinComets). Lugnare än ett fyrverkeri men tätare än segerläget — med 30
+// dioder blir 1,5 s per resa ett jämnt glid, inte en rusning.
+#define WIN_TRAVEL_MS     1500
+#define WIN_VOLLEYS       3
+#define WIN_GLOW_MAX      110     // guldbäddens topp, lite över segerlägets
+#define WIN_SPARKS_PER_S  3       // gröna och gula gnistor, i snitt
+#define WIN_SPARK_DECAY   5       // lägre = längre gnista
+
 // ─────────────────────────────────────────────────────────────
 //  Segerläge — tre timmar efter en vinst
 // ─────────────────────────────────────────────────────────────
