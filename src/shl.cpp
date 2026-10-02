@@ -524,7 +524,8 @@ bool fetchOngoingGame(NextGame &out) {
         }
     }
 
-    gLastError = "Ingen match i matchfönstret";
+    // Ingen pågående match är det normala utanför matchfönstret, inget fel.
+    // gLastError lämnas orört, så ett riktigt schemafel inte skrivs över.
     return false;
 }
 

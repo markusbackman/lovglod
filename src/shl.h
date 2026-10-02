@@ -52,7 +52,8 @@ bool fetchLastResult(LastResult &out);
 
 // Matchen som pågår just nu, från klubbsajten. En match som startat finns
 // varken i upcoming-games eller played-games, så det här är enda vägen för en
-// lampa som startar mitt i en match. Returnerar false när ingen match pågår.
+// lampa som startar mitt i en match. Returnerar false när ingen match pågår,
+// utan att sätta lastError() — det är inget fel.
 bool fetchOngoingGame(NextGame &out);
 
 // Reservväg under pågående match om SSE-strömmen inte ger något.

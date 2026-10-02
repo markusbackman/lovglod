@@ -702,7 +702,8 @@ void handleDebug() {
     p += htmlEscape(Shl::lastRawFrame().length() ? Shl::lastRawFrame()
                                                  : String("(ingen ram mottagen ännu)"));
     p += F("</pre></div><h2>Källor</h2><div class=card><table>");
-    p += "<tr><td>Senaste fel</td><td>" + htmlEscape(Shl::lastError()) + "</td></tr>";
+    p += "<tr><td>Senaste fel</td><td>" +
+         htmlEscape(Shl::lastError().length() ? Shl::lastError() : String("—")) + "</td></tr>";
     p += "<tr><td>Team-UUID</td><td>" SHL_TEAM_UUID "</td></tr>";
     p += "<tr><td>API-URL</td><td>" + htmlEscape(Shl::apiBaseUrl()) + "</td></tr>";
     p += "<tr><td>Live-URL</td><td>" + htmlEscape(Shl::liveBaseUrl()) + "</td></tr>";
