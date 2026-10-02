@@ -14,7 +14,7 @@ avslutas med hur du skruvar på beteendet och ställer in tv-fördröjningen.
 | [Ansluter](#led_connecting--jagande-gult) | Gul punkt som jagar runt | Kopplar upp mot WiFi |
 | [Arbetar](#led_working--förloppsstapel-vid-uppstart) | Gul stapel som står still | Nätverkstest och första hämtningen |
 | [Standby](#led_standby--den-långsamma-glöden) | Långsamt gult andetag, ~7 s | Vardag — här står lampan nästan jämt |
-| [Vann senast](#vann-senast--gröna-kometer) | Gröna kometer över guldglöd, gröna och gula gnistor | Björklöven vann sin senaste match — lyser till nästa nedsläpp |
+| [Vann senast](#vann-senast--gröna-kometer) | Gröna kometer över grön glöd | Björklöven vann sin senaste match — lyser till nästa nedsläpp |
 | [Match pågår](#led_live--match-pågår) | Bärnsten, dubbelt så snabbt andetag | Matchfönstret är öppet |
 | [Slutspurt](#slutspurten--ovanpå-matchglöden) | Hjärtslag, guldregn eller anfallsvågor ovanpå glöden | Tajt match mot slutet av tredje |
 | [Paus](#led_intermission--timglaset) | Bärnstensstapel som krymper mot mitten | Paus mellan perioderna |
@@ -144,15 +144,18 @@ precis det man ser som ryck.
 ### Vann senast — gröna kometer
 
 Inget eget läge: standby ritar det här i stället för den gula glöden så länge
-laget vann sin senaste match. Samma gest som segerläget, men i lagets grönt —
-tre kometer med vitgröna kärnor glider ut från mitten åt båda håll, en resa
-på 1,5 s (`WIN_TRAVEL_MS`), och tonar ut på vägen. Under ligger segerlägets
-guldglöd, och ovanpå tänds gröna och gula gnistor, i snitt tre i sekunden
-(`WIN_SPARKS_PER_S`).
+laget vann sin senaste match. Samma gest som segerläget, men helt i lagets
+grönt — tre kometer med ljusgröna kärnor glider ut från mitten åt båda håll, en
+lugn resa på 5 s (`WIN_TRAVEL_MS`), och tonar ut på vägen. Under ligger
+segerlägets andetag, omfärgat till grönt och lite långsammare
+(`WIN_GLOW_BPM`).
 
 Läget står i dagar, så det har inga utrop: inget som blinkar i hela listen,
-inga salvor. Kometerna ritas som mjuka fläckar mellan dioderna, så de glider i
-stället för att hoppa diod för diod.
+inga salvor och inga gnistor. Kometerna ritas som mjuka fläckar mellan
+dioderna, så de glider i stället för att hoppa diod för diod. Kometerna tonar
+in den första fjärdedelen av resan (`COMET_FADE_IN`): salvans två kometer föds
+i samma punkt, i lövets topp, och utan intoningen blev toppen vit en stund vid
+varje ny salva. Segerläget gör likadant.
 
 Tänds när `played-games` säger `WIN` på den senast spelade matchen, och lyser
 **ända fram till nästa match** — inte bara dagen efter. Vinsten hör ihop med
@@ -167,8 +170,7 @@ gick att hämta — tar `SPARKLE_MAX_GAME_AGE_S` (14 dygn) vid, så att säsonge
 sista vinst inte ligger och glittrar i juli. Fjorton dygn täcker
 landslagsuppehållen, det längsta glappet mitt i en säsong.
 
-Skruva med `WIN_TRAVEL_MS` (högre = lugnare), `WIN_SPARKS_PER_S` och
-`WIN_SPARK_DECAY` (lägre = längre gnista).
+Skruva med `WIN_TRAVEL_MS` (högre = lugnare) och `WIN_GLOW_BPM`.
 
 ### `LED_LIVE` — match pågår
 
@@ -342,6 +344,39 @@ vet lampan inte vem som vann: den dansar inte, och segerläget tänds som förut
 när played-games bekräftar vinsten.
 
 Förlust går direkt tillbaka till standby.
+
+### `LED_WALKON_BLOCKS` och `LED_WALKON_LINE` — intåget
+
+Det sargen och LED-skärmarna i arenan kör innan Löven kommer in på isen. Visas
+före varje match, borta som hemma, räknat från planerad start (T):
+
+| Tid | Listen |
+|---|---|
+| T − 2:30 → T − 0:30 | blocken |
+| T − 0:30 → nedsläppet syns | linjen |
+| nedsläppet syns, senast T + 3:00 | matchglöden |
+
+Ingen källa säger något före nedsläpp — strömmen, game-overview och
+play-by-play vaknar alla 9–20 s efter att pucken släppts — så intåget går på
+den planerade tiden. I de inspelade matcherna kom nedsläppet mellan 44 s före
+och 64 s efter T.
+
+Intåget slutar när matchläget ändrats sedan det började, inte bara när
+strömmen säger `ongoing`. Mot FBK 2026-09-26 startades matchklockan åtta
+minuter för tidigt: strömmen sa `ongoing` långt före intåget, och först när
+klockan började gå på riktigt ändrades något. Startar lampan mitt i en match
+som redan har en gående klocka blir det inget intåg. Uppspelningar och
+mockserverns push får inget intåg.
+
+Båda finns också i demoläget: tangent `a` och `m` i seriemonitorn, och under
+*Testa ljuset*.
+
+- **Blocken** (`a`): grönt och gult i block om `WALKON_BLOCK` dioder (3), som
+  alla byter färg samtidigt var `WALKON_SWAP_MS` (2 s). Hårda byten, som på
+  sargen.
+- **Linjen** (`m`): grönt växer ut från mitten mot båda ändar på
+  `WALKON_LINE_MS` (1,5 s) med en vitgrön front, står tänd, tonar ut och börjar
+  om.
 
 ### `LED_UPDATING` — OTA-förlopp
 

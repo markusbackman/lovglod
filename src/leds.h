@@ -16,7 +16,9 @@ enum LedMode : uint8_t {
     LED_ERROR,       // rött andetag — ingen data
     LED_INTERMISSION,// paus: timglas som rinner ut över pausens antagna längd
     LED_OVERTIME,    // övertid och straffar: dragkamp mellan lagen
-    LED_DANCE        // slutsignal, vi vann: segerdans, sedan segerläget
+    LED_DANCE,       // slutsignal, vi vann: segerdans, sedan segerläget
+    LED_WALKON_BLOCKS,// intåg: block i grönt och gult som byter färg, som sargen
+    LED_WALKON_LINE  // intåg: grön linje som växer ut från mitten
 };
 
 // Det listen behöver veta om matchen för att rita matchljuset. main.cpp räknar

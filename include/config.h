@@ -211,13 +211,15 @@
 #define SPARKLE_B       225
 
 // Vann senast: gröna kometer från segerläget fram till nästa match (leds.cpp,
-// drawWinComets). Lugnare än ett fyrverkeri men tätare än segerläget — med 30
-// dioder blir 1,5 s per resa ett jämnt glid, inte en rusning.
-#define WIN_TRAVEL_MS     1500
+// drawWinComets). Läget står i dagar och ska vara lugnt: 1,5 s per resa var
+// för snabbt att leva med. Helt grönt, utan gnistor.
+// Kometerna i segerläget och vann senast tonar in under den här andelen av
+// resan, så att toppen inte blir vit där salvans två kometer föds.
+#define COMET_FADE_IN     0.25f
+#define WIN_TRAVEL_MS     5000
 #define WIN_VOLLEYS       3
-#define WIN_GLOW_MAX      110     // guldbäddens topp, lite över segerlägets
-#define WIN_SPARKS_PER_S  3       // gröna och gula gnistor, i snitt
-#define WIN_SPARK_DECAY   5       // lägre = längre gnista
+#define WIN_GLOW_MAX      110     // bäddens topp, lite över segerlägets
+#define WIN_GLOW_BPM      5       // bäddens andetag, lugnare än segerlägets
 
 // ─────────────────────────────────────────────────────────────
 //  Segerläge — tre timmar efter en vinst
@@ -346,6 +348,27 @@
 #define DANCE_MS            (30UL * 60 * 1000)
 // Suck vid motståndarmål: listen faller ihop och hämtar sig.
 #define SIGH_MS             4000
+
+// Intåget, som sargen och LED-skärmarna i arenan innan Löven kommer in.
+// Visas före varje match, räknat från planerad start: blocken från
+// WALKON_START_S före, linjen de sista WALKON_LINE_S. Ingen källa säger något
+// före nedsläpp, så tiden är det enda att gå på. Nedsläppet syns 9–20 s efter
+// att pucken släppts och avslutar intåget; uteblir det slutar intåget
+// WALKON_MAX_AFTER_S efter planerad start. Nedsläppet låg 44 s före till 64 s
+// efter planerad start i de inspelade matcherna.
+#define WALKON_START_S      150
+#define WALKON_LINE_S       30
+#define WALKON_MAX_AFTER_S  180
+// Blocken: WALKON_BLOCK dioder i följd har samma färg, grönt och gult
+// omväxlande, och alla byter färg varje WALKON_SWAP_MS.
+#define WALKON_BLOCK        3
+#define WALKON_SWAP_MS      2000
+// Linjen: grönt växer ut från mitten mot båda ändar på WALKON_LINE_MS, står
+// tänd WALKON_LINE_HOLD_MS, tonar ut och börjar om efter en kort mörk paus.
+#define WALKON_LINE_MS      1500
+#define WALKON_LINE_HOLD_MS 600
+#define WALKON_LINE_FADE_MS 500
+#define WALKON_LINE_GAP_MS  400
 
 // Demoläget (seriemonitorn och /ljus) släpper av sig självt efter så här lång
 // tid utan ny tangent. Medan det står på hämtar lampan ingen matchdata.

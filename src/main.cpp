@@ -121,6 +121,8 @@ static const DemoItem kDemo[] = {
     {'p', "paus (timglas, en minut)",      LED_INTERMISSION, false, 0, 0},
     {'o', "övertid (dragkamp)",            LED_OVERTIME,     false, 0, 0},
     {'c', "slutsignal, vinst (segerdans)", LED_DANCE,        false, 0, 0},
+    {'a', "intåg, grönt och gult som byter", LED_WALKON_BLOCKS, false, 0, 0},
+    {'m', "intåg, grön linje från mitten", LED_WALKON_LINE,  false, 0, 0},
 };
 static const uint8_t kDemoCount = sizeof(kDemo) / sizeof(kDemo[0]);
 
@@ -737,6 +739,53 @@ static uint8_t goalImportance(int ours, int theirs) {
     return (uint8_t)(constrain(imp, 0.0f, 1.0f) * 255);
 }
 
+// ── Intåget ─────────────────────────────────────────────────────────────────
+// Blocken och linjen före nedsläpp, på planerad start. Se WALKON_START_S i
+// config.h. Intåget slutar när matchläget ändrats sedan det började — inte bara
+// när strömmen säger ongoing. Mot FBK 2026-09-26 startades matchklockan åtta
+// minuter för tidigt: strömmen sa ongoing långt före intåget, och först när
+// klockan gick på riktigt ändrades något.
+static time_t    gWalkonGame    = 0;      // matchen intåget gäller (nedsläppet)
+static bool      gWalkonArmed   = false;  // matchläget när intåget började är sparat
+static bool      gWalkonDone    = false;
+static GameState gWalkonState   = GameState::Unknown;
+static uint8_t   gWalkonPeriod  = 0;
+static uint16_t  gWalkonElapsed = 0;
+
+static bool walkonMode(const LiveInfo &li, LedMode &out) {
+    if (!gNext.valid || !gTimeSynced) return false;
+    if (gWalkonGame != gNext.startUtc) {
+        gWalkonGame  = gNext.startUtc;
+        gWalkonArmed = gWalkonDone = false;
+    }
+    if (gWalkonDone) return false;
+
+    const int32_t toStart = (int32_t)(gNext.startUtc - time(nullptr));
+    if (toStart > WALKON_START_S) return false;
+    if (toStart < -WALKON_MAX_AFTER_S) { gWalkonDone = true; return false; }
+
+    if (!gWalkonArmed) {
+        // Lampan startade mitt i en match som redan är igång: inget intåg.
+        if (li.state != GameState::Unknown && li.hasClock && li.elapsedS > 0) {
+            gWalkonDone = true;
+            return false;
+        }
+        gWalkonArmed   = true;
+        gWalkonState   = li.state;
+        gWalkonPeriod  = li.period;
+        gWalkonElapsed = li.elapsedS;
+        Serial.printf("[intåg] %ld s före nedsläpp\n", (long)toStart);
+    } else if (li.state != gWalkonState || li.period != gWalkonPeriod ||
+               li.elapsedS != gWalkonElapsed) {
+        gWalkonDone = true;
+        Serial.printf("[intåg] nedsläpp syns, %ld s efter planerad start\n", (long)-toStart);
+        return false;
+    }
+
+    out = toStart > WALKON_LINE_S ? LED_WALKON_BLOCKS : LED_WALKON_LINE;
+    return true;
+}
+
 // Vilket läge listen ska stå i under matchfönstret, och stämningen till det.
 static LedMode serviceMood() {
     drainShownScore();
@@ -836,6 +885,8 @@ static const char *moodStateText(LedMode m) {
         case LED_INTERMISSION: return "Paus";
         case LED_OVERTIME:     return "Övertid";
         case LED_STANDBY:      return "Matchen slut";
+        case LED_WALKON_BLOCKS:
+        case LED_WALKON_LINE:  return "Intåg";
         default:               return "Match pågår";
     }
 }
@@ -1464,7 +1515,10 @@ void loop() {
                 } else if (gInLiveWindow) {
                     // Vanlig push styr bara ställningen; en uppspelning bär
                     // matchläget också och får hela matchljuset.
-                    const LedMode m = pushActive() && !gPushReplay ? LED_LIVE : serviceMood();
+                    LedMode m = pushActive() && !gPushReplay ? LED_LIVE : serviceMood();
+                    // Intåget hör till riktiga matcher, inte till en uppspelning
+                    // eller mockserverns push.
+                    if (!pushActive()) walkonMode(Shl::liveInfo(), m);
                     Leds::setModeIfIdle(m);
                     status.state = moodStateText(m);
                     if (m == LED_LIVE && gMoodI >= MOOD_THRESHOLD)

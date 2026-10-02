@@ -42,9 +42,6 @@ uint32_t  gSighStart     = 0;        // 0 = ingen suck
 uint32_t  gSighAt        = 0;        // köad suck (tv-fördröjning)
 bool      gSighPending   = false;
 
-uint8_t   winSpark[LED_COUNT_MAX];   // vinstkometernas färgade gnistor
-CRGB      winSparkCol[LED_COUNT_MAX];
-
 bool      gLocked     = false;      // demoläge: app-logiken får inte byta läge
 LedMode   gLockedMode = LED_STANDBY;
 
@@ -227,6 +224,16 @@ void drawGoal() {
     }
 }
 
+// Kometens styrka längs resan, p = 0–1, som 0–255. Tonar in under första
+// COMET_FADE_IN av resan och ut resten av vägen. Båda kometerna i en salva föds
+// i samma punkt mitt på listen, i lövets topp, och adderas där. Utan
+// intoningen blev toppen vit en stund vid varje ny salva.
+inline uint8_t cometLife(float p) {
+    float in = p < COMET_FADE_IN ? p / COMET_FADE_IN : 1.0f;
+    in = in * in * (3 - 2 * in);
+    return (uint8_t)(255 * in * (1 - p));
+}
+
 // ── Segerläge ───────────────────────────────────────────────────────────────
 // Målfyrverkeriets gest, uttänjd så att den går att leva med. Skillnaden mot
 // drawGoal() är inte bara tempot: här ligger en glöd under kometerna, så listen
@@ -245,7 +252,7 @@ void drawVictory() {
         const uint16_t travel = (uint32_t)phase * center / VICTORY_TRAVEL_MS;
 
         // Kometen tonar ut längs resan i stället för att slockna vid kanten.
-        const uint8_t life = 255 - (uint8_t)((uint32_t)phase * 255 / VICTORY_TRAVEL_MS);
+        const uint8_t life = cometLife(phase / (float)VICTORY_TRAVEL_MS);
 
         for (int8_t dir = -1; dir <= 1; dir += 2) {
             const int16_t pos = center + dir * (int16_t)travel;
@@ -417,9 +424,9 @@ void drawOvertime() {
 
 // ── Vann senast ─────────────────────────────────────────────────────────────
 // Från segerläget fram till nästa match. Samma gest som segerläget, men i
-// lagets grönt: kometer med vitgröna kärnor glider ut från mitten över en
-// guldglöd, med gröna och gula gnistor. Inga utrop — läget står i dagar och
-// ska kännas, inte påkalla uppmärksamhet.
+// lagets grönt: kometer med ljusgröna kärnor glider ut från mitten över en
+// grön glöd. Inga utrop och inga gnistor — läget står i dagar och ska kännas,
+// inte påkalla uppmärksamhet.
 inline CRGB lovGreen(uint8_t v) { return CHSV(104, 255, v); }
 
 // Mjuk ljusfläck kring en position mellan dioderna, så kometerna glider i
@@ -431,32 +438,23 @@ void addSplat(float pos, CRGB col, float radius) {
     }
 }
 
-void drawWinComets(float dt) {
-    drawGlow(VICTORY_GLOW_MIN, WIN_GLOW_MAX, VICTORY_GLOW_BPM, LIVE_YELLOW_G);
+void drawWinComets() {
+    // Bädden är segerlägets andetag, omfärgat till grönt. Rödkanalen i gold()
+    // är ljusstyrkan rakt av, så den bär andetaget och bruset över.
+    drawGlow(VICTORY_GLOW_MIN, WIN_GLOW_MAX, WIN_GLOW_BPM, LIVE_YELLOW_G);
+    for (uint16_t i = 0; i < gCount; i++) leds[i] = lovGreen(leds[i].r);
 
     const float c = (gCount - 1) / 2.0f;
     for (uint8_t v = 0; v < WIN_VOLLEYS; v++) {
         const float   p    = ((millis() + (uint32_t)v * WIN_TRAVEL_MS / WIN_VOLLEYS) %
                               WIN_TRAVEL_MS) / (float)WIN_TRAVEL_MS;
-        const uint8_t life = 255 - (uint8_t)(p * 255);
+        const uint8_t life = cometLife(p);
         for (int8_t dir = -1; dir <= 1; dir += 2) {
             const float pos = c + dir * p * (c + 1);
-            addSplat(pos,              CRGB(190, 255, 160).nscale8(life), 0.7f);
+            addSplat(pos,              CRGB(110, 255, 90).nscale8(life), 0.7f);
             addSplat(pos - dir * 1.5f, lovGreen(scale8(230, life)), 1.0f);
             addSplat(pos - dir * 3.2f, lovGreen(scale8(90, life)), 1.2f);
         }
-    }
-
-    // Gnistorna i eget lager, för de har en färg var.
-    if (random16() < (uint16_t)clampf(WIN_SPARKS_PER_S * dt * 65535, 0, 65535)) {
-        const uint16_t i = random16(gCount);
-        winSpark[i]    = 255;
-        winSparkCol[i] = random8() & 1 ? lovGreen(255) : gold(255, 200);
-    }
-    for (uint16_t i = 0; i < gCount; i++) {
-        if (!winSpark[i]) continue;
-        leds[i] += CRGB(winSparkCol[i]).nscale8(winSpark[i]);
-        winSpark[i] = qsub8(winSpark[i], WIN_SPARK_DECAY);
     }
 }
 
@@ -481,6 +479,45 @@ void drawDance(float dt) {
     drawVictory();
     const uint8_t keep = 255 - (uint8_t)clampf((age - blendFrom) / 5000.0f * 255, 0, 255);
     for (uint16_t i = 0; i < gCount; i++) nblend(leds[i], fx[i], keep);
+}
+
+// ── Intåget ─────────────────────────────────────────────────────────────────
+// Det sargen och LED-skärmarna i arenan kör innan Löven kommer in på isen.
+// Blocken: grönt och gult i block om WALKON_BLOCK dioder, som alla byter färg
+// samtidigt. Hårda byten, som på sargen — ingen toning.
+void drawWalkonBlocks() {
+    const uint32_t age  = millis() - gModeSince;
+    const bool     flip = (age / WALKON_SWAP_MS) & 1;
+    for (uint16_t i = 0; i < gCount; i++) {
+        const bool green = ((i / WALKON_BLOCK) & 1) ^ flip;
+        leds[i] = green ? lovGreen(200) : gold(200, 190);
+    }
+}
+
+// Linjen: grönt växer ut från mitten mot båda ändar med en ljus front, står
+// tänd en stund och tonar ut. Fronten räknas mellan dioderna, så den glider.
+void drawWalkonLine() {
+    const uint32_t cycle = WALKON_LINE_MS + WALKON_LINE_HOLD_MS + WALKON_LINE_FADE_MS +
+                           WALKON_LINE_GAP_MS;
+    const uint32_t t     = (millis() - gModeSince) % cycle;
+    const float    c     = (gCount - 1) / 2.0f;
+
+    // Halva linjens längd, från mitten. Ett steg förbi änden så att de yttersta
+    // dioderna hinner upp i full styrka.
+    const float reach = t < WALKON_LINE_MS ? smoothf(t / (float)WALKON_LINE_MS) * (c + 1.5f)
+                                           : c + 1.5f;
+    float fade = 1;
+    if (t >= WALKON_LINE_MS + WALKON_LINE_HOLD_MS)
+        fade = 1 - clampf((t - WALKON_LINE_MS - WALKON_LINE_HOLD_MS) / (float)WALKON_LINE_FADE_MS);
+
+    for (uint16_t i = 0; i < gCount; i++) {
+        const float d = reach - fabsf(i - c);      // hur långt innanför fronten
+        const float v = clampf(d);                  // mjuk kant, en diod bred
+        leds[i] = lovGreen((uint8_t)(200 * v * fade));
+        // Fronten lyser vitgrönt medan linjen växer.
+        if (t < WALKON_LINE_MS && d > -1 && d < 1.5f)
+            leds[i] += CRGB(150, 255, 130).nscale8((uint8_t)(255 * (1 - fabsf(d - 0.25f) / 1.25f) * v));
+    }
 }
 
 // Suck vid motståndarmål: allt faller ihop mot mörker och hämtar sig.
@@ -649,11 +686,13 @@ void renderFrame() {
         case LED_INTERMISSION: drawIntermission(); break;
         case LED_OVERTIME:   drawOvertime();   break;
         case LED_DANCE:      drawDance(dt);    break;
+        case LED_WALKON_BLOCKS: drawWalkonBlocks(); break;
+        case LED_WALKON_LINE:   drawWalkonLine();   break;
 
         case LED_STANDBY:
         default:
             if (gSparkles) {
-                drawWinComets(dt);
+                drawWinComets();
             } else {
                 drawGlow(GLOW_MIN_VAL, GLOW_MAX_VAL, GLOW_BPM);
                 updateSparkles();
@@ -773,6 +812,8 @@ const char *modeName(LedMode m) {
         case LED_INTERMISSION: return "Paus — timglas";
         case LED_OVERTIME:     return "Övertid — dragkamp";
         case LED_DANCE:        return "Segerdans — slutsignal, vi vann";
+        case LED_WALKON_BLOCKS: return "Intåg — grönt och gult som byter";
+        case LED_WALKON_LINE:   return "Intåg — grön linje från mitten";
     }
     return "?";
 }

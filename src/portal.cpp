@@ -652,6 +652,8 @@ const DemoButton kLightButtons[] = {
     {'o', "Övertid — dragkamp"},
     {'c', "Slutsignal, vinst — segerdans"},
     {'v', "Segerläget"},
+    {'a', "Intåg — grönt och gult som byter"},
+    {'m', "Intåg — grön linje från mitten"},
 };
 const DemoButton kLightOverlays[] = {
     {'g', "Mål — vanligt (12 s)"},
