@@ -355,6 +355,19 @@ def keep_awake() -> None:
         subprocess.Popen(["caffeinate", "-dimsu", "-w", str(os.getpid())])
 
 
+def wait_until(when: datetime) -> None:
+    """Väntar till klockslaget i korta steg. En lång time.sleep räknar inte
+    tiden medan datorn sover, så med stängt lock kom starten timmar för sent.
+    Här börjar inspelningen så fort datorn vaknar, om starttiden har passerat."""
+    last = time.time()
+    while datetime.now() < when:
+        time.sleep(min(15, max(0.1, (when - datetime.now()).total_seconds())))
+        gap = time.time() - last
+        if gap > 60:
+            print(f"{stamp(False)} datorn har sovit i {gap / 60:.0f} min", flush=True)
+        last = time.time()
+
+
 def on_sigterm(*_: object) -> None:
     raise KeyboardInterrupt  # samma städning som Ctrl-C
 
@@ -415,11 +428,10 @@ def main() -> None:
 
     keep_awake()
     signal.signal(signal.SIGTERM, on_sigterm)
-    wait = (start - datetime.now()).total_seconds()
-    if wait > 0:
+    if datetime.now() < start:
         print(f"{stamp(False)} väntar till {start:%H:%M} …", flush=True)
         try:
-            time.sleep(wait)
+            wait_until(start)
         except KeyboardInterrupt:
             print("\navbruten innan inspelningen började")
             return
