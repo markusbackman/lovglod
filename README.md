@@ -63,7 +63,8 @@ Varje läge, och varför det ser ut som det gör, finns i
   märke, eller i vitt som det såg ut innan klubben bytte tillbaka 2022.
 - **Jämnt ljus runt om.** LED-listen står på högkant och lyser från sidan in i
   bandet, så det glöder jämnt utan synliga prickar.
-- **Lövet på väggen bakom.** Bakluckan har lövets kontur ingjuten i gul PETG.
+- **Lövet på väggen bakom.** Bakluckan har lövets kontur ingjuten i transparent
+  gult eller orange.
   Listen lyser igenom den och ritar lövet i full storlek på väggen.
 - **Inga synliga skruvar.** Elektroniken bor i sockeln. Framifrån syns bara
   lövet och *SM Guld 1987*.
@@ -71,7 +72,7 @@ Varje läge, och varför det ser ut som det gör, finns i
 | | |
 |---|---|
 | Mått (b × d × h) | 182,6 × 84 × 250,5 mm |
-| Material | PLA i grönt, vitt, gult och transparent gult, gul PETG i bakluckan, 309 g |
+| Material | PLA i grönt, vitt, gult och transparent gult eller orange, 309 g |
 | Ljus | WS2812B eller APA102, 5 V, 50 cm (30 dioder) |
 | Styrenhet | ESP32 med WiFi (2,4 GHz) |
 | Ström | USB-C i sockelns baksida, 5 V / 3 A |

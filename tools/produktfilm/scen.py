@@ -507,9 +507,9 @@ def bygg():
     vit, _ = principled("vit", VIT, 0.42, **{"Subsurface Weight": 0.15,
                                              "Subsurface Scale": 0.001})
     fonster = fonster_material(upp_img, ruta, ljus_img, n)
-    # Bakstyckets kontur är gul PETG. Den syns inte framifrån, men den finns
+    # Bakstyckets kontur är transparent gul. Den syns inte framifrån, men den finns
     # med så att lampan är hel från alla håll.
-    petg, _ = principled("kontur", GUL, 0.35, **{"Transmission Weight": 0.5})
+    kontur, _ = principled("kontur", GUL, 0.35, **{"Transmission Weight": 0.5})
 
     p1, p3 = HW / "plate-1", HW / "plate-3"
     importera(p1 / "bjorkloven_sign.stl", LOV, gron, "skal")
@@ -517,7 +517,7 @@ def bygg():
     importera(p1 / "bjorkloven_window.stl", LOV, fonster, "fonster")
     importera(p1 / "bjorkloven_letters.stl", LOV, vit, "bokstaver")
     importera(HW / "plate-2" / "bjorkloven_back.stl", BAK, gron, "bak")
-    importera(HW / "plate-2" / "bjorkloven_back_glow.stl", BAK, petg, "kontur")
+    importera(HW / "plate-2" / "bjorkloven_back_glow.stl", BAK, kontur, "kontur")
     importera(p3 / "bjorkloven_base.stl", SOCKEL, gron, "sockel")
     importera(p3 / "bjorkloven_base_letters.stl", SOCKEL, vit, "sockeltext")
     importera(p3 / "bjorkloven_plate.stl", PLATTA, gron, "platta")

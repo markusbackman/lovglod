@@ -29,10 +29,10 @@ hardware/v2/
 |---|---|---|
 | `bjorkloven_sign` | grön | Lövets skal: framsida, kant, öppen baksida |
 | `bjorkloven_core` | grön | Blocket inne i lövet som LED-listen sitter mot |
-| `bjorkloven_window` | gul, genomskinlig | Linsen listen lyser igenom |
+| `bjorkloven_window` | gul eller orange, genomskinlig | Linsen listen lyser igenom |
 | `bjorkloven_letters` | gul eller vit | BJÖRKLÖVEN / UMEÅ, i nivå med framsidan |
 | `bjorkloven_back` | grön | Löstagbart bakstycke, fyra skruvar |
-| `bjorkloven_back_glow` | gul PETG, genomskinlig | Lövets kontur, ingjuten i bakstycket. Listen lyser igenom den och ritar lövet på väggen bakom |
+| `bjorkloven_back_glow` | gul eller orange, genomskinlig | Lövets kontur, ingjuten i bakstycket. Listen lyser igenom den och ritar lövet på väggen bakom |
 | `bjorkloven_base` | grön | Sockeln, med ESP32-fack och hål för USB-C |
 | `bjorkloven_base_letters` | vit | "SM Guld 1987", i nivå med sockelns front |
 | `bjorkloven_plate` | grön | Sockelns botten, det lampan står på |
@@ -50,8 +50,8 @@ Bredvid lampan, men inte en del av den:
 ## 2. Skriva ut
 
 Tre plattor på en skrivare med AMS laddad med **grön**, **genomskinlig gul**
-och **vit** PLA, plus **genomskinlig gul PETG** till bakstyckets kontur. Vill
-du ha texten i gult behövs också **täckande gul** PLA på platta 1. Alla
+(eller orange — ljuset gör orange gulare) och **vit** PLA. Vill du ha texten
+i gult behövs också **täckande gul** PLA på platta 1. Alla
 tre plattorna är *ett objekt i flera färger*, inte lösa delar: filerna är
 exporterade i samma koordinatsystem och hamnar rätt av sig själva.
 
@@ -94,15 +94,14 @@ ett objekt med två delar, och skriv ut **med brim**.
 | Del | Filament |
 |---|---|
 | back | grön PLA |
-| back_glow | gul PETG, genomskinlig |
+| back_glow | genomskinlig gul eller orange PLA |
 
 Båda är exporterade med utsidan nedåt, så ytan som syns bakifrån blir lika
 plan som byggplattan. Därför ser lövet spegelvänt ut i slicern. **Rotera och
 spegla ingenting**: bakstycket passar bara i lövet åt det här hållet.
 
-Bambu Studio varnar för PLA och PETG i samma utskrift. Det är väntat. De två
-fäster knappt i varandra, så konturen hålls på plats av sin form: den är
-bredare på mitten än vid ytorna. Gul PLA går också, och fäster dessutom.
+Konturen fäster i bakstycket, och hålls dessutom på plats av sin form: den är
+bredare på mitten än vid ytorna.
 
 Brimmen behövs för att första lagret har nio vassa hörn som annars släpper. Det
 gula går genom alla lager, så räkna med ett tiotal färgbyten.
@@ -162,8 +161,7 @@ texten svävar utan pucken under sig.
 | plate | 42 min | 26 g |
 | **Totalt** | **8 h 12 min** | **309 g** + purge |
 
-Konturens gram gäller PLA-profilen. PETG är några procent tyngre. Pucken och
-limfixturen kommer utöver.
+Pucken och limfixturen kommer utöver.
 
 ---
 
