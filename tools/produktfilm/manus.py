@@ -18,10 +18,10 @@ det som behövs.
 """
 
 FPS = 30
-LANGD_S = 38.0
+LANGD_S = 46.0
 
 # Musiken styr klippen. Lone Skate Glide går i 120 bpm och dropet ligger på
-# 16,6 s i filmen, så takterna (fyra slag, 2 s) faller på 0,6, 2,6, 4,6 … och
+# 24,6 s i filmen, så takterna (fyra slag, 2 s) faller på 0,6, 2,6, 4,6 … och
 # slagen var 0,5 s däremellan. Klippen ligger på takter före dropet och på slag
 # i de korta inklippen efter.
 #
@@ -31,30 +31,34 @@ LANGD_S = 38.0
 # målet slår in ur svart.
 
 # (start i sekunder, läge, parametrar). Ett läge gäller tills nästa börjar.
-# Kortare än i verkligheten — målfyrverkeriet är 22 s och segerdansen 45 s i
-# firmwaren — men varje läge ritas precis som lampan ritar det.
+# Kortare än i verkligheten — intåget är 2,5 min, målfyrverkeriet 22 s,
+# segerdansen en halvtimme och segerläget tre timmar i firmwaren — men varje
+# läge ritas precis som lampan ritar det.
 LJUS = [
     (0.0,  "av",       {}),
     (0.6,  "uppstart", {"hall_s": 0.3}),        # listen flödar in, tonar till glöd
     (2.6,  "glod",     {}),                     # standby, ~6,7 s andetag
-    (8.6,  "live",     {}),                     # matchfönstret öppet
-    (12.6, "hjarta",   {"fran": 0.55, "till": 1.0}),  # slutspurt, jämnt läge
-    (16.2, "av",       {}),                     # andhämtningen före dropet
-    (16.6, "mal",      {"vikt": 255, "strobe_s": 2.5}),  # avgörande mål
-    (20.6, "dans",     {}),                     # slutsignal — segerdansen
-    (30.6, "seger",    {}),                     # segerläget, gnistor ovanpå
+    (8.6,  "intag_block", {}),                  # intåget: blocken byter på takterna
+    (13.6, "intag_linje", {}),                  # en hel linje, slutar i mörker
+    (16.6, "live",     {}),                     # nedsläpp, matchen pågår
+    (20.6, "hjarta",   {"fran": 0.55, "till": 1.0}),  # slutspurt, jämnt läge
+    (24.2, "av",       {}),                     # andhämtningen före dropet
+    (24.6, "mal",      {"vikt": 255, "strobe_s": 2.5}),  # avgörande mål
+    (28.6, "dans",     {}),                     # slutsignal — segerdansen
+    (38.6, "seger",    {}),                     # segerläget, gnistor ovanpå
+    (41.6, "vann",     {}),                     # gröna kometer till nästa match
 ]
 
 # Studioljuset, som faktor på full styrka: (sekund, faktor), linjärt emellan.
 # FYLL är nyckel- och takljuset som visar själva lampan, KANT de smala
 # motljusen som ritar upp konturen. Filmen börjar med bara konturen, fyllet
 # kommer upp när lampan visas hel, allt släcks i andhämtningen och efter målet
-# är det lampan som lyser upp rummet. Under matchen (klippet på 8,6 s) går
-# fyllet ner, annars bleker det ut bärnstenen och hjärtslagen i listen.
-FYLL = [(0.0, 0.0), (4.6, 0.0), (7.6, 1.0), (8.55, 1.0), (8.6, 0.35), (16.15, 0.35),
-        (16.2, 0.0), (16.6, 0.0), (16.7, 0.15), (30.6, 0.15), (32.8, 0.6)]
-KANT = [(0.0, 0.5), (4.6, 0.6), (7.6, 1.0), (8.55, 1.0), (8.6, 0.7), (16.15, 0.7),
-        (16.2, 0.0), (16.6, 0.0), (16.7, 0.35), (30.6, 0.35), (32.8, 1.0)]
+# är det lampan som lyser upp rummet. Från intåget (klippet på 8,6 s) och
+# genom matchen går fyllet ner, annars bleker det ut färgerna i listen.
+FYLL = [(0.0, 0.0), (4.6, 0.0), (7.6, 1.0), (8.55, 1.0), (8.6, 0.35), (24.15, 0.35),
+        (24.2, 0.0), (24.6, 0.0), (24.7, 0.15), (38.6, 0.15), (40.8, 0.6)]
+KANT = [(0.0, 0.5), (4.6, 0.6), (7.6, 1.0), (8.55, 1.0), (8.6, 0.7), (24.15, 0.7),
+        (24.2, 0.0), (24.6, 0.0), (24.7, 0.35), (38.6, 0.35), (40.8, 1.0)]
 
 # Kamerarörelser. `fran`/`till` = (kamerans position, punkten den tittar på).
 # `bland` är bländartal (lägre = grundare skärpedjup), `lins` i mm. Lampan är
@@ -77,41 +81,50 @@ TAGNINGAR = [
     dict(namn="avslojande", start=4.6, slut=8.6, lins=70, bland=8,
          fran=((-20, -420, 190), (0, 32, 178)),
          till=((-130, -1230, 165), (0, 42, 130))),
-    dict(namn="trekvart", start=8.6, slut=12.6, lins=85, bland=8, skift=-0.20,
+    # Intåget: blocken från vänster, sedan linjen rakt framifrån — den växer
+    # från lövets topp ut mot båda ändar, och syns bara symmetrisk.
+    dict(namn="intag_block", start=8.6, slut=13.6, lins=85, bland=8, skift=-0.26,
+         fran=((-800, -1150, 250), (0, 42, 132)),
+         till=((-440, -1380, 195), (0, 42, 132))),
+    dict(namn="intag_linje", start=13.6, slut=16.6, lins=60, bland=8,
+         fran=((0, -900, 70), (0, 42, 132)),
+         till=((0, -860, 72), (0, 42, 132))),
+    dict(namn="trekvart", start=16.6, slut=20.6, lins=85, bland=8, skift=-0.20,
          fran=((830, -950, 200), (0, 42, 132)),
          till=((420, -1190, 175), (0, 42, 132))),
-    dict(namn="uppbyggnad", start=12.6, slut=16.2, lins=70, bland=8, skift=-0.20,
+    dict(namn="uppbyggnad", start=20.6, slut=24.2, lins=70, bland=8, skift=-0.20,
          fran=((330, -1050, 70), (0, 42, 122)),
          till=((260, -860, 80), (0, 42, 126))),
     # Mörker, sedan målet. Stilla kamera: det är strobe-blixten som ska synas.
-    dict(namn="mal", start=16.2, slut=19.1, lins=70, bland=8,
+    dict(namn="mal", start=24.2, slut=27.1, lins=70, bland=8,
          fran=((0, -1120, 118), (0, 42, 135)),
          till=((0, -1090, 118), (0, 42, 135))),
     # Tre inklipp på slagen.
-    dict(namn="inklipp_kant", start=19.1, slut=19.6, lins=100, bland=13,
+    dict(namn="inklipp_kant", start=27.1, slut=27.6, lins=100, bland=13,
          fran=((180, -200, 235), (50, 32, 205)),
          till=((176, -205, 232), (48, 32, 204))),
-    dict(namn="inklipp_golv", start=19.6, slut=20.1, lins=50, bland=8,
+    dict(namn="inklipp_golv", start=27.6, slut=28.1, lins=50, bland=8,
          fran=((-220, -430, 10), (0, 32, 70)),
          till=((-205, -440, 10), (0, 32, 70))),
-    dict(namn="inklipp_sida", start=20.1, slut=20.6, lins=85, bland=8,
+    dict(namn="inklipp_sida", start=28.1, slut=28.6, lins=85, bland=8,
          fran=((560, -160, 160), (0, 42, 150)),
          till=((555, -175, 158), (0, 42, 150))),
     # Segerdansen: hela lampan, nästan stilla kamera.
-    dict(namn="dans_front", start=20.6, slut=24.6, lins=60, bland=8, skift=-0.20,
+    dict(namn="dans_front", start=28.6, slut=32.6, lins=60, bland=8, skift=-0.20,
          fran=((190, -860, 150), (0, 42, 135)),
          till=((180, -830, 150), (0, 42, 135))),
-    dict(namn="dans_hog", start=24.6, slut=28.6, lins=60, bland=8, skift=-0.20,
-         fran=((260, -640, 560), (0, 42, 120)),
-         till=((200, -670, 550), (0, 42, 120))),
-    dict(namn="spegling", start=28.6, slut=30.6, lins=50, bland=8,
+    dict(namn="dans_hog", start=32.6, slut=36.6, lins=60, bland=8, skift=-0.26,
+         fran=((290, -710, 620), (0, 42, 120)),
+         till=((225, -745, 605), (0, 42, 120))),
+    dict(namn="spegling", start=36.6, slut=38.6, lins=50, bland=8,
          fran=((-150, -560, 12), (0, 42, 110)),
          till=((-70, -575, 12), (0, 42, 112))),
-    # Nedvarvning och slutbild.
-    dict(namn="landning", start=30.6, slut=33.6, lins=85, bland=8,
+    # Nedvarvning och slutbild. Klippet till slutbilden är också bytet från
+    # segerläget till de gröna kometerna — så står lampan fram till nästa match.
+    dict(namn="landning", start=38.6, slut=41.6, lins=85, bland=8,
          fran=((-520, -1120, 90), (0, 42, 132)),
          till=((-320, -1190, 96), (0, 42, 132))),
-    dict(namn="slut", start=33.6, slut=LANGD_S, lins=85, bland=8, skift=-0.20,
+    dict(namn="slut", start=41.6, slut=LANGD_S, lins=85, bland=8, skift=-0.20,
          fran=((200, -1330, 112), (0, 42, 130)),
          till=((195, -1300, 112), (0, 42, 130))),
 ]
@@ -122,19 +135,20 @@ TAGNINGAR = [
 # Stilen "logga" lägger logotypen (logga.png) i stället för texten.
 TEXTER = [
     (6.0, 8.4, "LövGlöd", "logga"),
-    (9.2, 12.4, "Vet när det är match.", "rad"),
-    (13.0, 16.0, "Känner slutminuterna.", "rad"),
-    (16.7, 19.1, "Mååål!", "mal"),
-    (21.2, 24.4, "Och när Löven vinner —", "rad"),
-    (25.0, 28.4, "vet hela rummet om det.", "rad"),
-    (34.2, 37.4, "LövGlöd", "logga"),
-    (34.8, 37.4, "Glöden från läktaren, hemma hos dig.", "under"),
+    (9.2, 13.4, "Går in på isen med Löven.", "rad"),
+    (17.2, 20.4, "Lever med i matchen.", "rad"),
+    (21.0, 24.0, "Känner slutminuterna.", "rad"),
+    (24.7, 27.1, "Mååål!", "mal"),
+    (29.2, 32.4, "Och när Löven vinner —", "rad"),
+    (33.0, 36.4, "lyser hela rummet grönt.", "rad"),
+    (42.2, 45.4, "LövGlöd", "logga"),
+    (42.8, 45.4, "Glöden från läktaren, hemma hos dig.", "under"),
 ]
 
 # Musiken, och var i låten filmen börjar. Lone Skate Glide går i 120 bpm och
-# dropet slår in på 98,9 s — lagt på 16,6 s i filmen, samma bildruta som
+# dropet slår in på 98,9 s — lagt på 24,6 s i filmen, samma bildruta som
 # målets strobe. Flyttas målet i LJUS ska `start_s` flyttas lika mycket.
-MUSIK = dict(fil="musik/lone-skate-glide.mp3", start_s=98.9 - 16.6, tona_ut_s=3.0)
+MUSIK = dict(fil="musik/lone-skate-glide.mp3", start_s=98.9 - 24.6, tona_ut_s=3.0)
 
 # Fade från och till svart, sekunder.
 TONA_IN_S = 0.3

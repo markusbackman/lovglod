@@ -56,6 +56,10 @@ GOAL_TEAM_COLORS_AT = 204
 HEART_REST_BPM, HEART_MAX_BPM, MOOD_HEAT = 55, 140, 0.75
 MOOD_THRESHOLD, MOOD_FADE = 0.20, 0.25
 BOOT_FILL_MS, BOOT_EDGE_SOFTNESS = 700, 768
+COMET_FADE_IN = 0.25
+WIN_TRAVEL_MS, WIN_VOLLEYS, WIN_GLOW_MAX, WIN_GLOW_BPM = 5000, 3, 110, 5
+WALKON_BLOCK, WALKON_SWAP_MS = 3, 2000
+WALKON_LINE_MS, WALKON_LINE_HOLD_MS, WALKON_LINE_FADE_MS, WALKON_LINE_GAP_MS = 1500, 600, 500, 400
 
 
 # ── FastLED-hjälp ────────────────────────────────────────────────────────────
@@ -89,6 +93,19 @@ def add(a, b):
 def blend(a, b, amount):
     t = amount / 255
     return [lerp(a[0], b[0], t), lerp(a[1], b[1], t), lerp(a[2], b[2], t)]
+
+
+# lovGreen: CHSV(104, 255, v) genom FastLEDs rainbow-omvandling. Nyans 104
+# ligger i avsnittet grönt → aqua: (0, 255 − 21, 21) i full styrka.
+def lov_green(v):
+    s = clamp(v, 0, 255) / 255
+    return [0.0, 234.0 * s, 21.0 * s]
+
+
+# cometLife: tonar in under första COMET_FADE_IN av resan, ut resten av vägen.
+def comet_life(p):
+    i = smooth(p / COMET_FADE_IN) if p < COMET_FADE_IN else 1.0
+    return 255 * i * (1 - p)
 
 
 def heat_color(h):
@@ -268,7 +285,7 @@ class Lampa:
         for v in range(VICTORY_VOLLEYS):
             phase = (self.ms + v * VICTORY_TRAVEL_MS / VICTORY_VOLLEYS) % VICTORY_TRAVEL_MS
             travel = int(phase * center / VICTORY_TRAVEL_MS)
-            life = 255 - phase * 255 / VICTORY_TRAVEL_MS
+            life = comet_life(phase / VICTORY_TRAVEL_MS)
             for d in (-1, 1):
                 pos = center + d * travel
                 if not 0 <= pos < N:
@@ -281,6 +298,53 @@ class Lampa:
 
     def draw_seger(self, p, dt, t_in, t_len):
         self.victory()
+
+    # LED_STANDBY med vann-senast-flaggan: drawWinComets. Gröna kometer över en
+    # grön glöd, utan gnistor — läget står fram till nästa match.
+    def draw_vann(self, p, dt, t_in, t_len):
+        bad = self.glow(VICTORY_GLOW_MIN, WIN_GLOW_MAX, WIN_GLOW_BPM, LIVE_YELLOW_G)
+        self.leds = [lov_green(c[0]) for c in bad]
+        c = (N - 1) / 2
+        for v in range(WIN_VOLLEYS):
+            ph = ((self.ms + v * WIN_TRAVEL_MS // WIN_VOLLEYS) % WIN_TRAVEL_MS) / WIN_TRAVEL_MS
+            life = comet_life(ph)
+            for d in (-1, 1):
+                pos = c + d * ph * (c + 1)
+                self.splat(pos, level([110, 255, 90], life), 0.7)
+                self.splat(pos - d * 1.5, lov_green(230 * life / 255), 1.0)
+                self.splat(pos - d * 3.2, lov_green(90 * life / 255), 1.2)
+
+    # addSplat: mjuk ljusfläck kring en position mellan dioderna, adderad.
+    def splat(self, pos, col, radius):
+        for i in range(N):
+            g = math.exp(-((i - pos) / radius) ** 2)
+            if g > 0.01:
+                self.leds[i] = add(self.leds[i], level(col, g * 255))
+
+    # LED_WALKON_BLOCKS: grönt och gult i block om tre dioder, som alla byter
+    # färg samtidigt. Hårda byten, som sargen i arenan.
+    def draw_intag_block(self, p, dt, t_in, t_len):
+        flip = int(t_in * 1000 / WALKON_SWAP_MS) & 1
+        self.leds = [lov_green(200) if ((i // WALKON_BLOCK) & 1) ^ flip else gold(200, 190)
+                     for i in range(N)]
+
+    # LED_WALKON_LINE: grönt växer ut från mitten med en ljus front, står,
+    # tonar ut och börjar om efter en kort mörk paus.
+    def draw_intag_linje(self, p, dt, t_in, t_len):
+        cykel = WALKON_LINE_MS + WALKON_LINE_HOLD_MS + WALKON_LINE_FADE_MS + WALKON_LINE_GAP_MS
+        t = (t_in * 1000) % cykel
+        c = (N - 1) / 2
+        reach = smooth(t / WALKON_LINE_MS) * (c + 1.5) if t < WALKON_LINE_MS else c + 1.5
+        fade = 1.0
+        if t >= WALKON_LINE_MS + WALKON_LINE_HOLD_MS:
+            fade = 1 - clamp((t - WALKON_LINE_MS - WALKON_LINE_HOLD_MS) / WALKON_LINE_FADE_MS)
+        for i in range(N):
+            d = reach - abs(i - c)
+            v = clamp(d)
+            self.leds[i] = lov_green(200 * v * fade)
+            if t < WALKON_LINE_MS and -1 < d < 1.5:
+                self.leds[i] = add(self.leds[i], level(
+                    [150, 255, 130], 255 * (1 - abs(d - 0.25) / 1.25) * v))
 
     # LED_DANCE — i filmen tonar den över i segerläget under sista 2 s i
     # stället för firmwarens 5, eftersom dansen är kortad.
@@ -304,9 +368,8 @@ class Lampa:
 
 
 def hsv_green():
-    # CHSV(104, 255, 170) genom FastLEDs rainbow-omvandling ≈ rent grönt med
-    # en gnutta blått.
-    return [0.0, 170.0 * 0.92, 170.0 * 0.20]
+    # CHSV(104, 255, 170), segerdansens grönt.
+    return lov_green(170)
 
 
 def rakna_ut():

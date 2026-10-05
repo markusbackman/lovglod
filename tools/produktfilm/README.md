@@ -13,7 +13,7 @@ python3 tools/produktfilm/ljusspar.py               # ljusspåret som bild, på 
 ```
 
 Filmen hamnar i `tools/produktfilm/ut/lovglod-produktfilm-<kvalitet>.mp4`.
-Tiderna gäller en M2 Max. Hela filmen är 1 140 rutor.
+Tiderna gäller en M2 Max. Hela filmen är 1 380 rutor.
 
 Kräver Blender 4.2 eller senare (utvecklat mot 5.2) och ffmpeg med
 libfreetype: `brew install --cask blender && brew install ffmpeg`.
@@ -48,12 +48,14 @@ har (`N` i `ljusspar.py`); firmwarens standard är 60.
 Simuleringen går i firmwarens 120 bilder/s och samplas ner till filmens 30,
 eftersom gnistornas och kometernas uttoning räknas per bildruta. Det som inte
 är exakt är bruset (FastLEDs `inoise8` är ersatt med ett eget Perlin-brus) och
-tempot i manuset: målet och segerdansen är kortade för att rymmas i en film.
+tempot i manuset: intåget, målet, segerdansen och segerläget är kortade för att rymmas i en film.
 
 ## Ändra filmen
 
 - **Ljuset**: `LJUS` i `manus.py`. Lägena heter som i firmwaren (`uppstart`,
-  `glod`, `live`, `hjarta`, `mal`, `dans`, `seger`), plus `av` för mörker. Kör `ljusspar.py` och titta i
+  `glod`, `intag_block`, `intag_linje`, `live`, `hjarta`, `mal`, `dans`,
+  `seger`, `vann`), plus `av` för mörker. `vann` är standby efter en vinst,
+  de gröna kometerna. Kör `ljusspar.py` och titta i
   `ut/ljusspar.png` innan du renderar.
 - **Kamerorna**: `TAGNINGAR`. Varje tagning glider från `fran` till `till`, i mm
   i lampans koordinater, och bromsar in mot slutet. `skift` lägger lampan åt
@@ -63,7 +65,7 @@ tempot i manuset: målet och segerdansen är kortade för att rymmas i en film.
   motljuset lyser genom filmen. Rendera en `--stillbild` i början och slutet av
   tagningen först; ett utkast av en ruta tar några sekunder.
 - **Musiken**: `MUSIK`. `start_s` är var i låten filmen börjar; nu ligger
-  låtens drop (98,9 s) på målets första strobe-blixt (16,6 s). Flyttar du
+  låtens drop (98,9 s) på målets första strobe-blixt (24,6 s). Flyttar du
   målet ska `start_s` flyttas lika mycket. `--bara-klipp` räcker.
 - **Texterna**: `TEXTER`, stilarna i `bygg.py`. `--bara-klipp` lägger på dem
   igen utan att rendera något.
