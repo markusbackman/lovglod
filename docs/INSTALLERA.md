@@ -116,12 +116,15 @@ Setup sker i två steg, av två olika personer.
 **Administratören — innan lampan lämnas ut:**
 
 1. Starta lampan utan WiFi → **grön puls** och den startar eget nät
-   `LövGlöd-Setup-XXXX` (öppet). Innan en list är vald drivs båda
-   utgångarna, så pulsen syns vilken list som än sitter i.
+   `LövGlöd-Setup-XXXX` (öppet). Innan en list är vald provar lampan de tre
+   listtyperna i tur och ordning, tre sekunder var och i var sin färg: **grönt**
+   för WS2812B, **vitt** för SK6812 RGBW, **blått** för APA102. Den färg som
+   lyser jämnt över hela listen visar vilken list som sitter i; fel typ ger
+   brokiga färger, mörka dioder eller ingenting.
 2. Anslut med mobilen. Inloggningsrutan poppar upp av sig själv (iOS, Android
    och Windows kontroll-URL:er är hanterade). Gör den inte det: gå till
    `http://192.168.4.1`.
-3. Portalen visar bara listvalet: välj **WS2812B** eller **APA102** och antal
+3. Portalen visar bara listvalet: välj **WS2812B**, **SK6812 RGBW** eller **APA102** och antal
    dioder, tryck *Spara list*. Inget WiFi behövs. Pulsen flyttar direkt till
    den valda listen — syns den inte är valet fel.
 4. Dra ur strömmen och lämna ut lampan.

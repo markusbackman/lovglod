@@ -31,7 +31,7 @@ avslutas med hur du skruvar på beteendet och ställer in tv-fördröjningen.
 
 Lägena ligger i `LedMode` (`src/leds.h`) och ritas i `src/leds.cpp`. Exakt ett
 läge är aktivt åt gången. Alla tider nedan gäller standardvärdena i `include/config.h`
-(`YELLOW_R`/`YELLOW_G`, 60 dioder).
+(`YELLOW_R`/`YELLOW_G`, 30 dioder).
 
 ### `LED_BOOT` — uppstartsflöde
 

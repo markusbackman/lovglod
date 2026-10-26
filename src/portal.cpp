@@ -270,6 +270,7 @@ String stripFields() {
     if (settings.ledStrip == LED_STRIP_UNSET)
         f += F("<option value='' selected>— välj list —</option>");
     f += opt(LED_STRIP_WS2812, "WS2812B / NeoPixel — 3 trådar: 5V, GND, DIN");
+    f += opt(LED_STRIP_SK6812, "SK6812 RGBW — 3 trådar: 5V, GND, DIN, med vit diod");
     f += opt(LED_STRIP_APA102, "APA102 / DotStar — 4 trådar: 5V, GND, DI, CI");
     f += F("</select><label>Antal dioder</label><input name=count type=number required "
            "min=" LED_COUNT_MIN_STR " max=" LED_COUNT_MAX_STR " value='");
@@ -282,7 +283,8 @@ String stripFields() {
 // ändrats. Anroparen sparar. false = ingen giltig list vald.
 bool takeStripArgs() {
     const long strip = server.arg("strip").toInt();
-    if (strip != LED_STRIP_WS2812 && strip != LED_STRIP_APA102) return false;
+    if (strip != LED_STRIP_WS2812 && strip != LED_STRIP_APA102 && strip != LED_STRIP_SK6812)
+        return false;
 
     const uint16_t count =
         server.hasArg("count")
@@ -308,8 +310,15 @@ void handleStripPage() {
                       "kvar när den sedan kopplas till ett WiFi."));
     p += F("<div class=card><form method=POST action=/strip>");
     p += stripFields();
-    p += F("<button type=submit>Spara list</button></form>"
-           "<p class=note>Listen byter direkt — den gröna pulsen flyttar till den "
+    p += F("<button type=submit>Spara list</button></form>");
+    if (settings.ledStrip == LED_STRIP_UNSET)
+        p += F("<p class=note>Vet du inte vilken list det är? Titta på den en stund: "
+               "lampan provar typerna i tur och ordning, tre sekunder var. Den som "
+               "lyser jämnt över hela listen är din.<br>"
+               "<b>Grönt</b> — WS2812B · <b>Vitt</b> — SK6812 RGBW · "
+               "<b>Blått</b> — APA102<br>"
+               "Brokiga färger eller mörka dioder betyder fel typ.</p>");
+    p += F("<p class=note>Listen byter direkt — den gröna pulsen flyttar till den "
            "valda listen. Syns den inte är valet fel.</p></div>");
     if (settings.ledStrip != LED_STRIP_UNSET)
         p += F("<a class=back href=/>← Tillbaka</a>");

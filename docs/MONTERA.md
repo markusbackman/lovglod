@@ -183,7 +183,7 @@ Alla skruvhål är blinda på 8 mm, så **M3 × 8 är längden som drar åt öve
 M3 × 10 passar lite bättre till de två skruvarna i lövets spets om du har sådana,
 men **inget längre än M3 × 9,5 får plats i bottenplattan**.
 
-Listen måste vara *adresserbar* — firmwaren driver WS2812B eller APA102. En
+Listen måste vara *adresserbar* — firmwaren driver WS2812B, SK6812 RGBW eller APA102. En
 vanlig enfärgad COB-list går inte att styra. Ta en 8 mm bred list: spåret är
 dimensionerat efter det, och bredden är ännu inte uppmätt med skjutmått, så prova
 listen i spåret innan du limmar.
@@ -323,18 +323,18 @@ med annan list eller längd.
 | Del | Anmärkning |
 |---|---|
 | ESP32 DevKit v1 (ESP32-WROOM-32) | Vilken klon som helst duger |
-| LED-list, 5 V | **WS2812B** (NeoPixel) eller **APA102** (DotStar), 8–150 LEDs |
+| LED-list, 5 V | **WS2812B** (NeoPixel), **SK6812 RGBW** eller **APA102** (DotStar), 8–150 LEDs |
 | 5 V-matning, minst 3 A | Lövlampan matas via USB-C. Startar ESP32:n om vid målfyrverkeriet räcker matningen inte — sänk `LED_MAX_MILLIAMPS` |
-| Motstånd 330–470 Ω | I serie på datalinjen — bara WS2812B |
+| Motstånd 330–470 Ω | I serie på datalinjen — WS2812B och SK6812 |
 | Kondensator 1000 µF / 6,3 V+ | Över 5 V och GND vid listens början |
 
-Samma firmware driver båda listorna. Vilken som sitter på, och hur många
+Samma firmware driver alla tre listorna. Vilken som sitter på, och hur många
 dioder den har, väljs i setup-portalen (se [Installera firmwaren](INSTALLERA.md#första-start--setup-portalen)) och sparas i NVS — det
 överlever omstart och OTA, och går att ändra i efterhand på statussidan.
 
 ### Koppling
 
-Matningen är densamma för båda listorna:
+Matningen är densamma för alla listorna:
 
 ```
    5V PSU ──┬──────────────► LED 5V
@@ -351,6 +351,12 @@ Matningen är densamma för båda listorna:
 ```
    ESP32 GPIO13 ──[390Ω]────► LED DIN
 ```
+
+**SK6812 RGBW** kopplas exakt som WS2812B — samma tre trådar, samma pinne —
+men har en vit diod i varje LED och tar fyra byte per diod i stället för tre.
+Ser den likadan ut som en WS2812B: titta på dioden släckt. En gul fosforyta på
+en del av chipet är den vita dioden. Fel val i portalen syns direkt: färgerna
+går i rött–grönt–blått var tredje diod och de sista dioderna förblir mörka.
 
 **APA102 / DotStar** — data och klocka:
 

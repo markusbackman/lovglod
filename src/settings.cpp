@@ -43,7 +43,7 @@ void Settings::load() {
     prefs.end();
 
     if (goalDelayS > GOAL_DELAY_MAX_S) goalDelayS = GOAL_DELAY_MAX_S;
-    if (ledStrip > LED_STRIP_APA102)   ledStrip = LED_STRIP_UNSET;
+    if (ledStrip > LED_STRIP_SK6812)   ledStrip = LED_STRIP_UNSET;
     if (lampMode > LAMP_OFF)           lampMode = LAMP_ALWAYS;
     if (!matchLeadMin)                 matchLeadMin = MATCH_LEAD_DEFAULT_MIN;
     ledCount = constrain(ledCount, LED_COUNT_MIN, LED_COUNT_MAX);

@@ -38,6 +38,7 @@ enum LedStrip : uint8_t {
     LED_STRIP_UNSET  = 0,   // inte vald än: båda utgångarna drivs samtidigt
     LED_STRIP_WS2812 = 1,   // WS2812B/NeoPixel, en datatråd
     LED_STRIP_APA102 = 2,   // APA102/DotStar, data + klocka
+    LED_STRIP_SK6812 = 3,   // SK6812 RGBW, en datatråd som WS2812B men fyra byte per diod
 };
 
 // Listen ritas av en egen FreeRTOS-task, så att ett blockerande nätanrop i

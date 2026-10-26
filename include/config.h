@@ -23,7 +23,7 @@
 // Pinnarna ligger fast i binären och krockar inte, så båda utgångarna går att
 // driva samtidigt. Det görs så länge ingen list är vald: portalens gröna puls
 // ska synas oavsett vad som är inkopplat.
-#define LED_WS2812_PIN   13          // DIN på WS2812B (via 330–470 Ω)
+#define LED_WS2812_PIN   13          // DIN på WS2812B och SK6812 (via 330–470 Ω)
 #define LED_WS2812_ORDER GRB
 #define LED_APA102_DATA  23          // DI på APA102 — VSPI MOSI
 #define LED_APA102_CLOCK 18          // CI på APA102 — VSPI SCK
@@ -35,7 +35,11 @@
 // Antal dioder. Standardvärdet gäller lampor som uppgraderas från en firmware
 // som inte sparade det. Taket bestämmer buffertarnas storlek, golvet finns för
 // att förloppsstaplarna (BAR_MIN_LIT) ska ha något att fylla.
-#define LED_COUNT_DEFAULT 60
+#define LED_COUNT_DEFAULT 30          // 50 cm vid 60/m, som i MONTERA.md
+
+// Så länge ingen list är vald turas listtyperna om så här länge var, i sin egen
+// färg: WS2812B grönt, SK6812 RGBW vitt, APA102 blått. Se showProbe() i leds.cpp.
+#define STRIP_PROBE_MS    3000
 #define LED_COUNT_MIN     8
 #define LED_COUNT_MAX     150
 

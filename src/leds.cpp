@@ -17,6 +17,76 @@ uint16_t  gCount = LED_COUNT_DEFAULT;    // dioder på den inkopplade listen
 CLEDController *gWs2812 = nullptr;
 CLEDController *gApa102 = nullptr;
 
+// ── SK6812 RGBW ─────────────────────────────────────────────────────────────
+// Samma datatråd och takt som WS2812B, men fyra byte per diod: G R B W.
+// FastLED 3.10.3:s setRgbw() verkar inte på RMT-drivrutinen — uppmätt med en
+// sond som tände en byte i taget — så byten packas här i rgbwRaw, och
+// WS2812-drivrutinen pekas om dit och skickar dem som om de vore RGB.
+// Vitt tas ur den gemensamma botten av R, G och B; Lövens gula har inget blått
+// och lyser därför helt med de färgade dioderna, precis som på en WS2812B.
+CRGB rgbwRaw[(LED_COUNT_MAX * 4 + 2) / 3];
+bool gRgbw = false;
+inline uint16_t rgbwRawLen(uint16_t n) { return (n * 4 + 2) / 3; }
+
+// Drivrutinen skriver ut varje CRGB i LED_WS2812_ORDER, så byte nummer j i
+// strömmen måste läggas i den kanal som ordningen skickar på plats j % 3.
+static_assert(LED_WS2812_ORDER == GRB, "packRgbw() förutsätter GRB");
+void packRgbw(const CRGB *src) {
+    uint16_t j = 0;
+    const auto put = [&j](uint8_t v) {
+        CRGB &c = rgbwRaw[j / 3];
+        switch (j++ % 3) {
+            case 0: c.g = v; break;
+            case 1: c.r = v; break;
+            default: c.b = v; break;
+        }
+    };
+    for (uint16_t i = 0; i < gCount; i++) {
+        const CRGB    c = src[i];
+        const uint8_t w = min(c.r, min(c.g, c.b));
+        put(c.g - w); put(c.r - w); put(c.b - w); put(w);
+    }
+    while (j % 3) put(0);
+}
+
+// ── Listprovet ──────────────────────────────────────────────────────────────
+// Så länge ingen list är vald turas de tre listtyperna om, STRIP_PROBE_MS var,
+// med var sin färg: WS2812B grönt, SK6812 RGBW rent vitt från den vita dioden,
+// APA102 blått. Bara rätt tolkning blir en jämn färg längs hela listen — fel
+// typ ger ett brokigt mönster eller ingenting — så montören ser vilken list
+// det är innan den väljs. Ljusstyrkan tas från det läget ritar, så pulsen
+// finns kvar. De andra utgångarna får svart, så ingen fryser på sin bildruta.
+LedStrip gStrip = LED_STRIP_UNSET;
+CRGB     probeWs[LED_COUNT_MAX];
+CRGB     probeApa[LED_COUNT_MAX];
+
+uint8_t probePhase() { return millis() / STRIP_PROBE_MS % 3; }
+
+void showProbe(uint8_t brightness) {
+    const uint8_t phase = probePhase();
+    for (uint16_t i = 0; i < gCount; i++) {
+        const uint8_t v = max(leds[i].r, max(leds[i].g, leds[i].b));
+        probeWs[i]  = phase == 0 ? CRGB(0, v, 0) : phase == 1 ? CRGB(v, v, v) : CRGB::Black;
+        probeApa[i] = phase == 2 ? CRGB(0, 0, v) : CRGB::Black;
+    }
+    if (phase == 1) {
+        packRgbw(probeWs);
+        gWs2812->setLeds(rgbwRaw, rgbwRawLen(gCount));
+    } else {
+        gWs2812->setLeds(probeWs, gCount);
+    }
+    gApa102->setLeds(probeApa, gCount);
+    FastLED.show(brightness);
+}
+
+// Alla utskrifter går här, så att RGBW-packningen inte kan glömmas.
+void show(uint8_t brightness) {
+    if (gStrip == LED_STRIP_UNSET) { showProbe(brightness); return; }
+    if (gRgbw) packRgbw(leds);
+    FastLED.show(brightness);
+}
+void show() { show(FastLED.getBrightness()); }
+
 LedMode   gMode          = LED_BOOT;
 bool      gSparkles      = false;
 uint32_t  gGoalUntil     = 0;        // millis() då fyrverkeriet ska sluta
@@ -714,7 +784,7 @@ void renderFrame() {
     const float step   = dt * 1000.0f / LAMP_FADE_MS;
     gFade = target > gFade ? std::min(target, gFade + step) : std::max(target, gFade - step);
 
-    FastLED.show(scale8(FastLED.getBrightness(), (uint8_t)(gFade * 255)));
+    show(scale8(FastLED.getBrightness(), (uint8_t)(gFade * 255)));
 }
 
 // Rendertasken. Takten hålls av vTaskDelayUntil, inte av millis()-jämförelser,
@@ -748,8 +818,16 @@ namespace Leds {
 // ingen list är vald, och det är ett rimligt pris för att portalen syns.
 void applyStrip(LedStrip strip, uint16_t count) {
     const bool ws  = strip != LED_STRIP_APA102;
-    const bool apa = strip != LED_STRIP_WS2812;
-    gWs2812->setLeds(leds, ws ? count : 0);
+    const bool apa = strip == LED_STRIP_APA102 || strip == LED_STRIP_UNSET;
+    // Samma utgång för WS2812B och SK6812; RGBW skickar den packade bufferten.
+    gRgbw  = strip == LED_STRIP_SK6812;
+    gStrip = strip;
+    if (gRgbw) {
+        memset(rgbwRaw, 0, sizeof(rgbwRaw));
+        gWs2812->setLeds(rgbwRaw, rgbwRawLen(count));
+    } else {
+        gWs2812->setLeds(leds, ws ? count : 0);
+    }
     gWs2812->setEnabled(ws);
     gApa102->setLeds(leds, apa ? count : 0);
     gApa102->setEnabled(apa);
@@ -827,7 +905,7 @@ void configure(LedStrip strip, uint16_t count) {
         // fryser annars på sista bildrutan, och en list som kortas behåller svansen
         // tänd bortom det nya slutet.
         fill_solid(leds, LED_COUNT_MAX, CRGB::Black);
-        FastLED.show();
+        show();
 
         applyStrip(strip, count);
         memset(sparkleLevel, 0, sizeof(sparkleLevel));
@@ -839,6 +917,7 @@ const char *stripName(LedStrip strip) {
     switch (strip) {
         case LED_STRIP_WS2812: return "WS2812B";
         case LED_STRIP_APA102: return "APA102/DotStar";
+        case LED_STRIP_SK6812: return "SK6812 RGBW";
         default:               return "inte vald";
     }
 }
@@ -953,7 +1032,7 @@ void setWorkProgress(uint8_t done, uint8_t total) {
 void blank() {
     Guard g;
     fill_solid(leds, gCount, CRGB::Black);
-    FastLED.show();
+    show();
 }
 
 }  // namespace Leds
