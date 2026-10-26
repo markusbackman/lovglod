@@ -93,6 +93,8 @@ label.check{display:flex;gap:12px;align-items:flex-start;margin-top:22px;font-si
  font-weight:400;letter-spacing:0;text-transform:none;color:#000}
 input[type=checkbox]{flex:none;width:22px;min-height:22px;height:22px;margin:0;padding:0;
  -webkit-appearance:auto;appearance:auto;accent-color:var(--g7)}
+input[type=range]{padding:0;border:0;-webkit-appearance:auto;appearance:auto;accent-color:var(--g7)}
+label output{color:#000}
 input:focus,select:focus{outline:2px solid var(--g7);outline-offset:0;border-color:var(--g7)}
 button{width:100%;min-height:48px;margin-top:22px;padding:12px 20px;border:2px solid var(--g7);
  border-radius:0;background:var(--g7);color:#fff;font:700 15px var(--body);
@@ -454,8 +456,10 @@ void handleStatus() {
     p += F("</select><div id=lead><label>Bara match: tänd före nedsläpp</label><select name=leadmin>");
     opt("15", settings.matchLeadMin != 30, "15 minuter");
     opt("30", settings.matchLeadMin == 30, "30 minuter");
-    p += F("</select></div><label>Ljusstyrka (5–255)</label>"
-           "<input name=bright type=number min=5 max=255 value='");
+    p += F("</select></div><label for=bright>Ljusstyrka <output id=bv>");
+    p += String(settings.brightness);
+    p += F("</output> av 255</label>"
+           "<input id=bright name=bright type=range min=0 max=255 oninput='bv.value=value' value='");
     p += String(settings.brightness);
     p += F("'><label>Fördröjning på mål (sekunder — tv-sändningen ligger efter)</label>"
            "<input name=goaldly type=number min=0 max=" GOAL_DELAY_MAX_STR " value='");
@@ -560,7 +564,7 @@ void handleStatus() {
 void handleSettings() {
     if (stationOnly()) return;
     if (server.hasArg("bright"))
-        settings.brightness = (uint8_t)constrain(server.arg("bright").toInt(), 5, 255);
+        settings.brightness = (uint8_t)constrain(server.arg("bright").toInt(), 0, 255);
     if (server.hasArg("otasrc")) {
         const String next = server.arg("otasrc");
         // Ny källa → nollställ backoff-räknaren.
