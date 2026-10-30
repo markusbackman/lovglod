@@ -261,9 +261,15 @@ class Recorder:
                 port = ports[0]
                 flag = "-f" if sys.platform == "darwin" else "-F"
                 try:
-                    subprocess.run(["stty", flag, port, "115200", "raw", "-echo", "clocal", "-hupcl"],
-                                   check=True)
+                    # Öppna först: macOS återställer porten till 9600 när sista
+                    # filen stängs, så stty måste köras medan vi håller den öppen.
                     fd = os.open(port, os.O_RDONLY | os.O_NONBLOCK)
+                    try:
+                        subprocess.run(["stty", flag, port, "115200", "raw", "-echo", "clocal", "-hupcl"],
+                                       check=True)
+                    except Exception:
+                        os.close(fd)
+                        raise
                     log.write(f"{stamp()} === öppnade {port}\n")
                     buf = b""
                     try:
