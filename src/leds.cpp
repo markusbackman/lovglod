@@ -555,8 +555,10 @@ void drawDance(float dt) {
 // Det sargen och LED-skärmarna i arenan kör innan Löven kommer in på isen.
 // Blocken: grönt och gult i block om WALKON_BLOCK dioder, som alla byter färg
 // samtidigt. Hårda byten, som på sargen — ingen toning.
-void drawWalkonBlocks() {
-    const uint32_t age  = millis() - gModeSince;
+// `since` är effektens nolltid: lägesbytet i intåget, effektbytet när samma
+// mönster står som ljus mellan matcher.
+void drawWalkonBlocks(uint32_t since) {
+    const uint32_t age  = millis() - since;
     const bool     flip = (age / WALKON_SWAP_MS) & 1;
     for (uint16_t i = 0; i < gCount; i++) {
         const bool green = ((i / WALKON_BLOCK) & 1) ^ flip;
@@ -566,10 +568,10 @@ void drawWalkonBlocks() {
 
 // Linjen: grönt växer ut från mitten mot båda ändar med en ljus front, står
 // tänd en stund och tonar ut. Fronten räknas mellan dioderna, så den glider.
-void drawWalkonLine() {
+void drawWalkonLine(uint32_t since) {
     const uint32_t cycle = WALKON_LINE_MS + WALKON_LINE_HOLD_MS + WALKON_LINE_FADE_MS +
                            WALKON_LINE_GAP_MS;
-    const uint32_t t     = (millis() - gModeSince) % cycle;
+    const uint32_t t     = (millis() - since) % cycle;
     const float    c     = (gCount - 1) / 2.0f;
 
     // Halva linjens längd, från mitten. Ett steg förbi änden så att de yttersta
@@ -588,6 +590,78 @@ void drawWalkonLine() {
         if (t < WALKON_LINE_MS && d > -1 && d < 1.5f)
             leds[i] += CRGB(150, 255, 130).nscale8((uint8_t)(255 * (1 - fabsf(d - 0.25f) / 1.25f) * v));
     }
+}
+
+// ── Ljuset mellan matcher ───────────────────────────────────────────────────
+// Det standby ritar. Antingen en vald effekt, eller en växling mellan flera där
+// den gamla tonas över i den nya i stället för att klippas. Övertoningen ritar
+// båda en bildruta i taget: den gamla i idleFrom, den nya i leds, och blandar.
+// Det går för att ingen av effekterna här bygger på förra bildrutan.
+IdleFx   gIdleFx        = IDLE_GLOW;
+bool     gIdleCycle     = false;
+uint8_t  gIdleSet       = IDLE_SET_ALL;
+uint32_t gIdleDwellMs   = IDLE_DWELL_DEFAULT_MIN * 60000UL;
+IdleFx   gIdleShown     = IDLE_GLOW;
+IdleFx   gIdlePrev      = IDLE_GLOW;
+uint32_t gIdleSince     = 0;         // när gIdleShown tändes — effektens nolltid
+uint32_t gIdlePrevSince = 0;
+uint32_t gIdleSwitchAt  = 0;         // 0 = ingen övertoning pågår
+CRGB     idleFrom[LED_COUNT_MAX];
+
+// Effekten som ska synas nu. Växlingen räknar på millis() rakt av och inte på
+// tiden i standby, så att en match eller ett mål emellan inte nollar
+// turordningen — annars skulle första effekten i urvalet visas om och om igen.
+IdleFx idleWanted(uint32_t now) {
+    if (!gIdleCycle) return gIdleFx;
+    uint8_t n = 0;
+    for (uint8_t b = 0; b < IDLE_FX_COUNT; b++) n += (gIdleSet >> b) & 1;
+    if (!n) return IDLE_GLOW;
+    uint8_t slot = (now / gIdleDwellMs) % n;
+    for (uint8_t b = 0; b < IDLE_FX_COUNT; b++)
+        if (((gIdleSet >> b) & 1) && slot-- == 0) return (IdleFx)b;
+    return IDLE_GLOW;
+}
+
+void drawIdleFx(IdleFx fx, uint32_t since) {
+    switch (fx) {
+        case IDLE_COMETS: drawWinComets();         break;
+        case IDLE_BLOCKS: drawWalkonBlocks(since); break;
+        case IDLE_LINE:   drawWalkonLine(since);   break;
+        case IDLE_GLOW:
+        default:
+            // Vann laget senast blir glöden kometer, som den alltid blivit.
+            if (gSparkles) {
+                drawWinComets();
+            } else {
+                drawGlow(GLOW_MIN_VAL, GLOW_MAX_VAL, GLOW_BPM);
+                updateSparkles();
+            }
+            break;
+    }
+}
+
+void drawIdle() {
+    const uint32_t now  = millis();
+    const IdleFx   want = idleWanted(now);
+    if (want != gIdleShown) {
+        gIdlePrev      = gIdleShown;
+        gIdlePrevSince = gIdleSince;
+        gIdleShown     = want;
+        gIdleSince     = now;
+        gIdleSwitchAt  = now | 1;
+    }
+
+    const uint32_t into = now - gIdleSwitchAt;
+    if (gIdleSwitchAt && into < IDLE_XFADE_MS) {
+        drawIdleFx(gIdlePrev, gIdlePrevSince);
+        memcpy(idleFrom, leds, gCount * sizeof(CRGB));
+        drawIdleFx(gIdleShown, gIdleSince);
+        const uint8_t keep = 255 - (uint8_t)(smoothf(into / (float)IDLE_XFADE_MS) * 255);
+        for (uint16_t i = 0; i < gCount; i++) nblend(leds[i], idleFrom[i], keep);
+        return;
+    }
+    gIdleSwitchAt = 0;
+    drawIdleFx(gIdleShown, gIdleSince);
 }
 
 // Suck vid motståndarmål: allt faller ihop mot mörker och hämtar sig.
@@ -756,17 +830,12 @@ void renderFrame() {
         case LED_INTERMISSION: drawIntermission(); break;
         case LED_OVERTIME:   drawOvertime();   break;
         case LED_DANCE:      drawDance(dt);    break;
-        case LED_WALKON_BLOCKS: drawWalkonBlocks(); break;
-        case LED_WALKON_LINE:   drawWalkonLine();   break;
+        case LED_WALKON_BLOCKS: drawWalkonBlocks(gModeSince); break;
+        case LED_WALKON_LINE:   drawWalkonLine(gModeSince);   break;
 
         case LED_STANDBY:
         default:
-            if (gSparkles) {
-                drawWinComets();
-            } else {
-                drawGlow(GLOW_MIN_VAL, GLOW_MAX_VAL, GLOW_BPM);
-                updateSparkles();
-            }
+            drawIdle();
             break;
     }
 
@@ -945,6 +1014,26 @@ bool locked()     { Guard g; return gLocked; }
 LedMode mode() { Guard g; return gMode; }
 
 void setSparkles(bool on) { Guard g; gSparkles = on; }
+
+void setIdle(IdleFx fx, bool cycle, uint8_t set, uint8_t dwellMin) {
+    Guard g;
+    gIdleFx      = fx < IDLE_FX_COUNT ? fx : IDLE_GLOW;
+    gIdleCycle   = cycle;
+    gIdleSet     = set & IDLE_SET_ALL;
+    gIdleDwellMs = (dwellMin ? dwellMin : IDLE_DWELL_DEFAULT_MIN) * 60000UL;
+}
+
+IdleFx idleNow() { Guard g; return gIdleShown; }
+
+const char *idleName(IdleFx fx) {
+    switch (fx) {
+        case IDLE_GLOW:   return "Standby-glöd";
+        case IDLE_COMETS: return "Gröna kometer";
+        case IDLE_BLOCKS: return "Grönt och gult som byter";
+        case IDLE_LINE:   return "Grön linje från mitten";
+        default:          return "?";
+    }
+}
 bool sparkles() { Guard g; return gSparkles; }
 
 void triggerGoal(uint32_t delayMs, uint8_t importance) {

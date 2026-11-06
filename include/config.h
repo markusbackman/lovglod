@@ -378,6 +378,12 @@
 // tid utan ny tangent. Medan det står på hämtar lampan ingen matchdata.
 #define DEMO_TIMEOUT_MS     (10UL * 60 * 1000)
 
+// Ljuset mellan matcher (setIdle() i leds.h). Växlingen byter effekt var
+// IDLE_DWELL_DEFAULT_MIN:e minut om inget annat valts, och tonar över från den
+// gamla till den nya på IDLE_XFADE_MS.
+#define IDLE_DWELL_DEFAULT_MIN 15
+#define IDLE_XFADE_MS          2500
+
 // TV-fördröjning. Live-datan från SHL kommer före tv-bilden — utan fördröjning
 // skulle lampan avslöja målet för alla i rummet innan det syns på skärmen.
 // Sekunder, 0 = av. Ställs om på statussidan; det här är startvärdet.

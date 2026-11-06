@@ -30,6 +30,12 @@ struct Settings {
     LampMode lampMode;
     uint8_t matchLeadMin;     // LAMP_MATCH: minuter före nedsläpp som listen tänds
 
+    // Ljuset mellan matcher — se setIdle() i leds.h.
+    IdleFx  idleFx;           // effekten när växlingen är av
+    bool    idleCycle;        // växla mellan effekterna i idleSet
+    uint8_t idleSet;          // bitar ur IdleFx
+    uint8_t idleDwellMin;     // minuter per effekt i växlingen
+
     // Backoff: räknare för en version som inte går att installera.
     String  otaBadVersion;
     uint8_t otaBadCount;

@@ -14,6 +14,7 @@ avslutas med hur du skruvar på beteendet och ställer in tv-fördröjningen.
 | [Ansluter](#led_connecting--jagande-gult) | Gul punkt som jagar runt | Kopplar upp mot WiFi |
 | [Arbetar](#led_working--förloppsstapel-vid-uppstart) | Gul stapel som står still | Nätverkstest och första hämtningen |
 | [Standby](#led_standby--den-långsamma-glöden) | Långsamt gult andetag, ~7 s | Vardag — här står lampan nästan jämt |
+| [Ljus mellan matcher](#ljus-mellan-matcher--välj-vardagsljuset) | Glöden, kometer, intågets block eller linje — eller växlande | Vardag, om du valt något annat än glöden |
 | [Vann senast](#vann-senast--gröna-kometer) | Gröna kometer över grön glöd | Björklöven vann sin senaste match — lyser till nästa nedsläpp |
 | [Match pågår](#led_live--match-pågår) | Bärnsten, dubbelt så snabbt andetag | Matchfönstret är öppet |
 | [Slutspurt](#slutspurten--ovanpå-matchglöden) | Hjärtslag, guldregn eller anfallsvågor ovanpå glöden | Tajt match mot slutet av tredje |
@@ -439,6 +440,40 @@ segrar — så att den är i fas i samma stund läget ändras.
 - Uppstartsflödet syns när lampan kopplas in eller startat om efter ett fel,
   fram till första hämtningen. Startar den om av sig själv — efter en
   OTA-uppdatering — eller tappar WiFi, förblir den mörk.
+
+### Ljus mellan matcher — välj vardagsljuset
+
+Standby behöver inte vara den gula glöden. Under **Inställningar** på
+statussidan väljer du vad lampan visar mellan matcherna:
+
+| Val | Ljus |
+|---|---|
+| Standby-glöd | Som förut, och förvalet |
+| Gröna kometer | Samma som [Vann senast](#vann-senast--gröna-kometer), oavsett resultat |
+| Grönt och gult som byter | Intågets block, som sargen |
+| Grön linje från mitten | Intågets linje |
+| Växla mellan flera | De effekter du kryssat i, en i taget, 5 min till 4 h var |
+
+Valet ändrar bara vad standby ritar (`setIdle()` i `src/leds.h`,
+`IdleFx`). Allt annat går före som vanligt: matchfönstret, målen, sucken,
+segerdansen och segerläget, uppdateringen — och det röda andetaget när SHL inte
+svarar. Det sista är med flit: en lampa som visade sitt vardagsljus även utan
+data skulle se frisk ut när den inte är det. Av samma skäl finns varken
+felläget, portalen eller fyrverkeriet bland valen — de betyder något.
+
+Har laget vunnit senast blir **glöden** kometer, som den alltid blivit. Har du
+valt en annan effekt står den kvar; segerläget de första timmarna efter vinsten
+syns ändå.
+
+Växlingen tonar över från den gamla effekten till den nya på 2,5 s
+(`IDLE_XFADE_MS`). Turordningen räknas på lampans klocka sedan start och inte
+på tiden i standby, så en match emellan börjar inte om från första effekten.
+Valet syns bara när lampläget är **Alltid på** — med Bara match är listen
+släckt mellan matcherna — och skickas med i driftstatistiken (`idleFx`,
+`idleCycle`).
+
+Hur effekterna ser ut går att prova på **Testa ljuset**, som har en knapp för
+var och en.
 
 ---
 

@@ -20,6 +20,10 @@ void Settings::load() {
     goalDelayS      = prefs.getUChar("goaldly", GOAL_DELAY_DEFAULT_S);
     lampMode        = (LampMode)prefs.getUChar("lampmode", LAMP_ALWAYS);
     matchLeadMin    = prefs.getUChar("leadmin", MATCH_LEAD_DEFAULT_MIN);
+    idleFx          = (IdleFx)prefs.getUChar("idlefx", IDLE_GLOW);
+    idleCycle       = prefs.getBool("idlecyc", false);
+    idleSet         = prefs.getUChar("idleset", IDLE_SET_ALL);
+    idleDwellMin    = prefs.getUChar("idledwell", IDLE_DWELL_DEFAULT_MIN);
     victoryUntil    = prefs.getULong("victuntil", 0);
     victoryGame     = prefs.getULong("victgame", 0);
     ledStrip        = (LedStrip)prefs.getUChar("ledstrip", LED_STRIP_UNSET);
@@ -46,6 +50,10 @@ void Settings::load() {
     if (ledStrip > LED_STRIP_SK6812)   ledStrip = LED_STRIP_UNSET;
     if (lampMode > LAMP_OFF)           lampMode = LAMP_ALWAYS;
     if (!matchLeadMin)                 matchLeadMin = MATCH_LEAD_DEFAULT_MIN;
+    if (idleFx >= IDLE_FX_COUNT)       idleFx = IDLE_GLOW;
+    idleSet &= IDLE_SET_ALL;
+    if (!idleSet)                      idleSet = IDLE_SET_ALL;
+    if (!idleDwellMin)                 idleDwellMin = IDLE_DWELL_DEFAULT_MIN;
     ledCount = constrain(ledCount, LED_COUNT_MIN, LED_COUNT_MAX);
 
     // Slumpas en gång och sparas direkt. esp_random() är en riktig
@@ -77,6 +85,10 @@ void Settings::save() {
     prefs.putUChar("goaldly", goalDelayS);
     prefs.putUChar("lampmode", lampMode);
     prefs.putUChar("leadmin", matchLeadMin);
+    prefs.putUChar("idlefx", idleFx);
+    prefs.putBool("idlecyc", idleCycle);
+    prefs.putUChar("idleset", idleSet);
+    prefs.putUChar("idledwell", idleDwellMin);
     prefs.putULong("victuntil", victoryUntil);
     prefs.putULong("victgame", victoryGame);
     prefs.putUChar("ledstrip", ledStrip);

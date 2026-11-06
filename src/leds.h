@@ -32,6 +32,20 @@ struct MatchMood {
     uint32_t pauseEstMs  = 0;     // pausens antagna längd
 };
 
+// Ljuset mellan matcher: vad standby ritar. Bara lugna effekter som kan stå i
+// timmar utan att betyda något — felets röda andetag, portalen och
+// fyrverkeriet hör inte hit, de säger något. Värdet sparas i NVS och används
+// som bit i växlingens urval — numrera aldrig om, lägg bara till (högst 8).
+enum IdleFx : uint8_t {
+    IDLE_GLOW   = 0,   // standby-glöden, som förut
+    IDLE_COMETS = 1,   // gröna kometer
+    IDLE_BLOCKS = 2,   // intåget: grönt och gult som byter
+    IDLE_LINE   = 3,   // intåget: grön linje från mitten
+    IDLE_FX_COUNT
+};
+// Alla effekter i växlingen — förvalet när urvalet är tomt.
+#define IDLE_SET_ALL ((uint8_t)((1u << IDLE_FX_COUNT) - 1))
+
 // Vilken list som sitter på. Värdet sparas i NVS — numrera aldrig om, lägg
 // bara till.
 enum LedStrip : uint8_t {
@@ -90,6 +104,17 @@ bool setModeIfIdle(LedMode m);
 // laget vann.
 void setSparkles(bool on);
 bool sparkles();
+
+// Ljuset mellan matcher — det standby ritar. fx är effekten när cycle är av.
+// Med cycle på turas effekterna i set (bitar ur IdleFx) om, dwellMin minuter
+// var, i tur och ordning med en mjuk övertoning. Bytet räknas på en löpande
+// klocka, så en match emellan startar inte om turordningen.
+// Gnistflaggan ovan går före glöden: har laget vunnit senast blir glöden
+// kometer, precis som förut. De andra effekterna står kvar som valda.
+void setIdle(IdleFx fx, bool cycle, uint8_t set, uint8_t dwellMin);
+const char *idleName(IdleFx fx);
+// Effekten standby visar just nu (den som växlingen står på).
+IdleFx idleNow();
 
 // Startar/förlänger målfyrverkeriet. Flera mål i rad staplar på varandra.
 // delayMs > 0 köar målet istället för att tända direkt — tv-sändningen ligger

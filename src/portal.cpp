@@ -423,6 +423,16 @@ void handleStatus() {
         if (status.dark) lamp += "  · släckt nu";
         row("Lampa", lamp, !status.dark);
     }
+    if (settings.lampMode == LAMP_ALWAYS) {
+        String idle;
+        if (settings.idleCycle) {
+            idle = "Växlar var " + String(settings.idleDwellMin) + " min — visar nu " +
+                   Leds::idleName(Leds::idleNow());
+        } else {
+            idle = Leds::idleName(settings.idleFx);
+        }
+        row("Mellan matcher", idle);
+    }
     // Påslaget felsökningsläge betyder att lampan inte följer SHL. Det ska
     // synas även för den som aldrig fäller ut Avancerat.
     if (settings.debugPush)
@@ -456,7 +466,36 @@ void handleStatus() {
     p += F("</select><div id=lead><label>Bara match: tänd före nedsläpp</label><select name=leadmin>");
     opt("15", settings.matchLeadMin != 30, "15 minuter");
     opt("30", settings.matchLeadMin == 30, "30 minuter");
-    p += F("</select></div><label for=bright>Ljusstyrka <output id=bv>");
+    // Ljuset mellan matcher. Bara meningsfullt när lampan lyser mellan
+    // matcherna, så det göms för de andra lamplägena — som nedsläppsvalet.
+    p += F("</select></div><div id=idlebox><label>Ljus mellan matcher</label>"
+           "<input type=hidden name=idleform value=1><select name=idle>");
+    for (uint8_t f = 0; f < IDLE_FX_COUNT; f++) {
+        const String v(f);
+        opt(v.c_str(), !settings.idleCycle && settings.idleFx == f, Leds::idleName((IdleFx)f));
+    }
+    opt("c", settings.idleCycle, "Växla mellan flera");
+    p += F("</select><div id=idlecyc><label>Växla mellan</label>");
+    for (uint8_t f = 0; f < IDLE_FX_COUNT; f++) {
+        p += "<label class=check><input type=checkbox name=idleset value=" + String(f) +
+             ((settings.idleSet >> f) & 1 ? " checked> " : "> ") + Leds::idleName((IdleFx)f) +
+             "</label>";
+    }
+    p += F("<label>Byt effekt efter</label><select name=idledwell>");
+    {
+        const uint8_t dwell[] = {5, 15, 60, 240};
+        bool any = false;
+        for (uint8_t d : dwell) any |= settings.idleDwellMin == d;
+        for (uint8_t d : dwell) {
+            const String v(d);
+            const String text = d < 60 ? v + " minuter" : String(d / 60) + (d == 60 ? " timme" : " timmar");
+            opt(v.c_str(), settings.idleDwellMin == d || (!any && d == IDLE_DWELL_DEFAULT_MIN),
+                text.c_str());
+        }
+    }
+    p += F("</select></div><p class=note>Matchen, målen och segerläget går alltid före. "
+           "Se hur effekterna ser ut under <a href=/ljus>Testa ljuset</a>.</p></div>"
+           "<label for=bright>Ljusstyrka <output id=bv>");
     p += String(settings.brightness);
     p += F("</output> av 255</label>"
            "<input id=bright name=bright type=range min=0 max=255 oninput='bv.value=value' value='");
@@ -471,6 +510,11 @@ void handleStatus() {
            "<script>(function(){var m=document.querySelector('[name=lampmode]'),"
            "l=document.getElementById('lead'),f=function(){l.hidden=m.value!='1'};"
            "m.addEventListener('change',f);f()})()</script>"
+           "<script>(function(){var m=document.querySelector('[name=lampmode]'),"
+           "i=document.querySelector('[name=idle]'),b=document.getElementById('idlebox'),"
+           "c=document.getElementById('idlecyc'),"
+           "f=function(){b.hidden=m.value!='0';c.hidden=i.value!='c'};"
+           "m.addEventListener('change',f);i.addEventListener('change',f);f()})()</script>"
            "<h2>Åtgärder</h2><div class=card>"
            "<a class='btn ghost' href=/ljus>Testa ljuset — alla lägen</a>"
            "<form method=POST action=/forget onsubmit=\"return confirm('Glöm WiFi och starta setup-portalen?')\">"
@@ -590,6 +634,30 @@ void handleSettings() {
         const long m = server.arg("lampmode").toInt();
         if (m >= LAMP_ALWAYS && m <= LAMP_OFF) settings.lampMode = (LampMode)m;
     }
+    if (server.hasArg("idle")) {
+        const String v = server.arg("idle");
+        settings.idleCycle = v == "c";
+        if (!settings.idleCycle) {
+            const long f = v.toInt();
+            if (f >= 0 && f < IDLE_FX_COUNT) settings.idleFx = (IdleFx)f;
+        }
+    }
+    // Kryssrutor som inte är ikryssade skickas inte alls, så urvalet byggs om
+    // från noll varje gång formuläret med dem skickas. Tomt urval blir alla —
+    // en växling mellan ingenting vore bara standby-glöden under ett annat namn.
+    if (server.hasArg("idleform")) {
+        uint8_t set = 0;
+        for (int i = 0; i < server.args(); i++) {
+            if (server.argName(i) != "idleset") continue;
+            const long f = server.arg(i).toInt();
+            if (f >= 0 && f < IDLE_FX_COUNT) set |= 1 << f;
+        }
+        settings.idleSet = set ? set : IDLE_SET_ALL;
+    }
+    if (server.hasArg("idledwell")) {
+        const long d = server.arg("idledwell").toInt();
+        settings.idleDwellMin = (uint8_t)constrain(d, 1, 240);
+    }
     if (server.hasArg("leadmin"))
         settings.matchLeadMin = server.arg("leadmin").toInt() == 30 ? 30 : 15;
     if (server.hasArg("goaldly"))
@@ -603,6 +671,7 @@ void handleSettings() {
     }
     settings.save();
     Leds::setBrightness(settings.brightness);
+    Leds::setIdle(settings.idleFx, settings.idleCycle, settings.idleSet, settings.idleDwellMin);
     server.sendHeader("Location", backTo());
     server.send(303);
 }
@@ -657,6 +726,8 @@ void handleForget() {
 // skruvar — seriemonitorn är ingen väg. Samma tangenter som där, som knappar.
 struct DemoButton { char key; const char *label; };
 const DemoButton kLightButtons[] = {
+    {'6', "Standby — långsam gul glöd"},
+    {'7', "Vann senast — gröna kometer"},
     {'8', "Matchglöd — som vanligt"},
     {'h', "Slutspurt, lika — hjärtslag"},
     {'l', "Slutspurt, Löven leder — guldregn"},

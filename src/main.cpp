@@ -157,6 +157,9 @@ static void demoSelect(int8_t idx) {
     gDemoPct  = 0;
     gDemoTick = millis();
     Leds::setSparkles(kDemo[idx].sparkles);
+    // Standbyknapparna ska visa glöden och kometerna som de är, inte det
+    // ljus mellan matcher som råkar vara valt.
+    Leds::setIdle(IDLE_GLOW, false, IDLE_SET_ALL, IDLE_DWELL_DEFAULT_MIN);
     demoMood(kDemo[idx]);
     Leds::lockMode(kDemo[idx].mode);
     status.demo  = kDemo[idx].name;
@@ -169,6 +172,7 @@ static void demoOff() {
     gDemoIdx = -1;
     status.demo = "";
     Leds::setSparkles(false);
+    Leds::setIdle(settings.idleFx, settings.idleCycle, settings.idleSet, settings.idleDwellMin);
     Leds::unlockMode();
     Serial.println("[demo] av — normal drift igen");
 }
@@ -1329,6 +1333,7 @@ void setup() {
     status.otaOnTrial = gOtaOnTrial;
     Leds::begin(settings.ledStrip, settings.ledCount);
     Leds::setBrightness(settings.brightness);
+    Leds::setIdle(settings.idleFx, settings.idleCycle, settings.idleSet, settings.idleDwellMin);
     // En släckt lampa startar släckt. Uppstartsflödet syns ändå när någon
     // kopplat in den — men inte när den startar om av sig själv (OTA mitt i
     // natten), då ska den förbli mörk.

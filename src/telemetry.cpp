@@ -113,6 +113,8 @@ void build(JsonDocument &doc) {
     doc["bright"]   = settings.brightness;
     doc["mode"]     = (uint8_t)settings.lampMode;
     doc["goalDelay"]= settings.goalDelayS;
+    doc["idleFx"]   = (uint8_t)settings.idleFx;
+    doc["idleCycle"]= settings.idleCycle;
     // Räknare sedan start, inte sedan förra rapporten: då tål de att en
     // rapport tappas, och servern räknar ut skillnaden själv.
     doc["shlErr"]   = Shl::httpErrors();
