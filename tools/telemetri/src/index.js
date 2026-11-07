@@ -6,6 +6,8 @@
 //   GET  /v1/lampor                senaste läget per lampa        (ADMIN_TOKEN)
 //   GET  /v1/lampor/:id            rapporter och händelser        (ADMIN_TOKEN)
 //   GET  /v1/handelser             senaste händelserna, alla lampor (ADMIN_TOKEN)
+//   GET  /v1/veckobrev             förhandsvisa veckobrevet         (ADMIN_TOKEN)
+//   POST /v1/veckobrev             skicka veckobrevet nu            (ADMIN_TOKEN)
 //
 // Avsändarens IP-adress läses aldrig och sparas inte. Det enda som
 // identifierar en lampa är det slumpade ID:t och smeknamnet ägaren satt.
@@ -13,11 +15,13 @@
 import page from "./dashboard.html";
 import logo from "./logo.svg";
 import icon from "./icon.svg";
+import { mail, newLamp, weekly } from "./brev.js";
 
 const MAX_BODY = 8 * 1024;
 const MIN_GAP_S = 5 * 60;          // en lampa rapporterar var 6:e timme; tätare än så är fel
 const MAX_EVENTS = 32;
 const ID_RE = /^[0-9a-f]{16}$/;
+const WEEKLY_CRON = "41 5 * * 1";  // måndag 06:41/07:41 svensk tid, se wrangler.toml
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -28,7 +32,7 @@ const json = (data, status = 200) =>
 const str = (v, max) => (typeof v === "string" ? v.slice(0, max) : null);
 const int = (v) => (Number.isFinite(v) ? Math.trunc(v) : null);
 
-async function report(request, env) {
+async function report(request, env, ctx) {
   if (request.headers.get("x-lovglod-key") !== env.LAMP_KEY) return json({ error: "nyckel" }, 401);
 
   const raw = await request.text();
@@ -73,6 +77,15 @@ async function report(request, env) {
     ).bind(r.id, str(r.name, 32), str(r.fw, 32), now, reportId)
   );
   await env.DB.batch(stmts);
+
+  // Första rapporten från ett okänt ID: säg till. Skickas efter svaret, så
+  // lampan väntar aldrig på ntfy eller mejlen.
+  if (!lamp) {
+    ctx.waitUntil(
+      env.DB.prepare("SELECT COUNT(*) AS n FROM lamps").first()
+        .then((c) => newLamp(env, r, c?.n ?? 1))
+    );
+  }
 
   const reply = { enabled: true };
   const interval = parseInt(env.INTERVAL_S, 10);
@@ -170,7 +183,7 @@ async function lampDetail(env, id) {
 }
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const { pathname } = new URL(request.url);
 
     if (pathname === "/" && request.method === "GET") return new Response(page, { headers: PAGE_HEADERS });
@@ -186,7 +199,14 @@ export default {
 
     if (pathname === "/v1/rapport") {
       if (request.method !== "POST") return json({ error: "POST" }, 405);
-      return report(request, env);
+      return report(request, env, ctx);
+    }
+
+    if (pathname === "/v1/veckobrev") {
+      if (!authorized(request, env)) return json({ error: "behörighet" }, 401);
+      const brev = await weekly(env);
+      if (request.method === "POST") return json({ skickat: await mail(env, brev), amne: brev.subject });
+      return new Response(brev.html, { headers: { ...PAGE_HEADERS, "content-security-policy": "default-src 'none'; style-src 'unsafe-inline'" } });
     }
 
     if (pathname.startsWith("/v1/lampor")) {
@@ -198,7 +218,11 @@ export default {
     return json({ error: "finns inte" }, 404);
   },
 
-  async scheduled(_event, env) {
+  async scheduled(event, env) {
+    if (event.cron === WEEKLY_CRON) {
+      await mail(env, await weekly(env));
+      return;
+    }
     const days = parseInt(env.RETENTION_DAYS, 10) || 365;
     const cutoff = Math.floor(Date.now() / 1000) - days * 86400;
     await env.DB.batch([

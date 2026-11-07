@@ -10,9 +10,10 @@ type = "Text"
 globs = ["**/*.html", "**/*.svg"]
 fallthrough = false
 
-# Rensar rapporter äldre än RETENTION_DAYS en gång per natt.
+# Rensar rapporter äldre än RETENTION_DAYS en gång per natt, och skickar
+# veckobrevet på måndagsmorgonen (UTC; samma sträng som WEEKLY_CRON i index.js).
 [triggers]
-crons = ["17 3 * * *"]
+crons = ["17 3 * * *", "41 5 * * 1"]
 
 [vars]
 # Samma sträng som TELEMETRY_KEY i include/config.h. Den är inte hemlig — den
@@ -23,8 +24,19 @@ RETENTION_DAYS = "365"
 # 3600–172800). Tomt = lampans eget, var sjätte timme.
 INTERVAL_S = ""
 
-# ADMIN_TOKEN sätts som hemlighet, inte här:
+# Länken i pushnotiser och veckobrev.
+DASHBOARD_URL = "https://lovglod-telemetri.lovglod.workers.dev/"
+# Pushservern för signalen om nya lampor. Ämnet (NTFY_TOPIC) är hemligt.
+NTFY_URL = "https://ntfy.sh"
+# Avsändare för veckobrevet. onboarding@resend.dev fungerar utan egen domän,
+# men bara till adressen som Resend-kontot är registrerat på.
+MAIL_FROM = "LövGlöd <onboarding@resend.dev>"
+
+# Hemligheter, inte här:
 #   npx wrangler secret put ADMIN_TOKEN
+#   npx wrangler secret put NTFY_TOPIC       # signal om nya lampor (valfri)
+#   npx wrangler secret put RESEND_API_KEY   # veckobrevet (valfri)
+#   npx wrangler secret put MAIL_TO          # mottagare, kommaseparerat
 
 [[d1_databases]]
 binding = "DB"

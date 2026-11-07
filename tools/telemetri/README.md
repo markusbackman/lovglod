@@ -44,6 +44,57 @@ echo ADMIN_TOKEN=test > .dev.vars
 npx wrangler dev
 ```
 
+## Signal om nya lampor
+
+När ett okänt lamp-ID rapporterar för första gången skickar Worker:n en
+pushnotis via [ntfy](https://ntfy.sh): namn, firmware, antal lysdioder, WiFi och
+hur stor flottan nu är. Hitta på ett långt, svårgissat ämne — den som känner
+till ämnet kan läsa notiserna — och prenumerera på det i ntfy-appen:
+
+```sh
+npx wrangler secret put NTFY_TOPIC    # t.ex. lovglod-7f3c9a1e5b2d
+```
+
+Egen ntfy-server: sätt `NTFY_URL` i `wrangler.toml`, och `NTFY_TOKEN` som
+hemlighet om servern kräver inloggning. Saknas `NTFY_TOPIC` går signalen som
+mejl i stället, om veckobrevet är inställt. En lampa som fabriksåterställts får
+nytt ID och räknas alltså som ny.
+
+## Veckobrevet
+
+Varje måndag morgon (05:41 UTC) kommer ett mejl om veckan som gått: hur många
+lampor som är i drift jämfört med veckan innan, nya lampor, versionerna,
+uppdateringar som lyckats och misslyckats — och en lista över lampor att
+möjligen agera på:
+
+- tysta sedan mer än 12 timmar (men mindre än 30 dagar — sedan räknas lampan
+  som nedplockad och nämns inte längre),
+- onormala omstarter, brownout, krasch eller watchdog,
+- WiFi under −80 dBm eller under 30 kB minne någon gång under veckan,
+- misslyckade eller tillbakarullade uppdateringar,
+- stabila lampor som ligger efter den nyaste stabila versionen i flottan.
+
+Mejlet skickas med [Resend](https://resend.com). Skapa ett konto och en
+API-nyckel. Utan egen domän går det bara att skicka till adressen kontot är
+registrerat på, vilket räcker här; med en verifierad domän sätter du
+`MAIL_FROM` i `wrangler.toml`.
+
+```sh
+npx wrangler secret put RESEND_API_KEY
+npx wrangler secret put MAIL_TO       # flera mottagare: kommaseparerat
+npx wrangler deploy
+```
+
+Förhandsvisa brevet, eller skicka det direkt för att prova:
+
+```sh
+curl -H "Authorization: Bearer $ADMIN_TOKEN" https://…/v1/veckobrev            # HTML
+curl -X POST -H "Authorization: Bearer $ADMIN_TOKEN" https://…/v1/veckobrev    # skicka
+```
+
+Lokalt: `npx wrangler dev --test-scheduled` och sedan
+`curl "localhost:8787/__scheduled?cron=41+5+*+*+1"`.
+
 ## Läsa ut
 
 ```sh
