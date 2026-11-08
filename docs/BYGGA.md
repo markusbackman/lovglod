@@ -428,7 +428,7 @@ paus, övertid, uppdatering och nättest kan `LED_TASK_STACK` sänkas till 4096.
 
 Tasken prenumererar på task-watchdogen. Ett känt FastLED-fel gör att RMT-avbrottet
 ibland uteblir och `show()` väntar för evigt. Med låset skulle då loopen hänga på
-nästa `Leds::`-anrop och lampan tystna utan spår. `FASTLED_RMT_MAX_TICKS_FOR_GTX_SEM=100`
+nästa `Leds::`-anrop och lampan tystna utan spår. `FASTLED_RMT4_TRANSMISSION_TIMEOUT_MS=100`
 i `platformio.ini` begränsar hur länge `show()` väntar, och fastnar tasken ändå
 startar watchdogen om lampan. Står `task_wdt` som orsak till senaste omstart på
 statussidan eller i telemetrin är det alltså i första hand rendertasken som
