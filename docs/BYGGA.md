@@ -296,7 +296,7 @@ flasha manuellt, inte för enheterna.
 | `lovglod-full.bin` | USB-flashning av ett nytt kort. Bootloader + partitionstabell + app, skrivs till 0x0 |
 | `lovglod-full.bin.sha256` | Kontrollsumma för bilden ovan |
 
-Den kompletta bilden byggs med `esptool merge_bin` i samma steg som signeringen
+Den kompletta bilden byggs med `esptool merge-bin` i samma steg som signeringen
 och är till för [USB-vägen](INSTALLERA.md#flasha-över-usb). Enheterna hämtar
 den aldrig — de tar `firmware.bin` via manifestet, och det är den vägen som är
 signerad.

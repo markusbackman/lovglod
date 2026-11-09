@@ -37,6 +37,10 @@ flashverktyg. Det behöver Python:
 pip install esptool
 ```
 
+Kommandona nedan är för esptool 5 eller senare (`esptool version`). Med en
+äldre esptool heter programmet `esptool.py` och kommandona `write_flash` och
+`erase_flash` — uppgradera hellre med `pip install --upgrade esptool`.
+
 Koppla in kortet med en USB-kabel som för **data**, inte bara ström. Många
 laddkablar gör bara det senare, och då dyker ingen seriell port upp.
 
@@ -61,7 +65,7 @@ shasum -a 256 -c lovglod-full.bin.sha256      # macOS/Linux
 ### 3. Skriv till kortet
 
 ```bash
-esptool.py --chip esp32 --baud 460800 write_flash -z 0x0 lovglod-full.bin
+esptool --chip esp32 --baud 460800 write-flash -z 0x0 lovglod-full.bin
 ```
 
 Bilden skrivs från flashens början och **nollställer inställningarna** — WiFi,
@@ -86,7 +90,7 @@ Har kortet redan kört LövGlöd sitter bootloadern och partitionstabellen redan
 där. Då räcker `firmware.bin`, som skrivs till appens offset:
 
 ```bash
-esptool.py --chip esp32 --baud 460800 write_flash -z 0x10000 firmware.bin
+esptool --chip esp32 --baud 460800 write-flash -z 0x10000 firmware.bin
 ```
 
 Det är samma binär som enheterna hämtar över OTA, och den går att kontrollera
@@ -101,7 +105,7 @@ Samma kommandon med en äldre release. `lovglod-full.bin` fungerar alltid;
 uppdateringskanal ligger i NVS och står kvar. `lovglod-full.bin` skriver över
 NVS och lampan vaknar i setup-portalen, som ett nytt kort.
 
-Vill du tömma allt oavsett väg: kör `esptool.py erase_flash` först.
+Vill du tömma allt oavsett väg: kör `esptool erase-flash` först.
 
 Observera att en lampa på stabila kanalen installerar senaste stabila release
 vid nästa kontroll, även om du nyss flashat en äldre. Ska den stå kvar på en

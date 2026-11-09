@@ -55,9 +55,9 @@ jobs:
           restore-keys: pio-${{ runner.os }}-
 
       - name: Installera PlatformIO
-        # esptool pinnas: v5 döpte om merge_bin till merge-bin och bytte
-        # standardvärden, så en oväntad major skulle knäcka bygget tyst.
-        run: pip install --upgrade platformio "esptool~=4.8"
+        # esptool pinnas till en major: v5 döpte om merge_bin till merge-bin och
+        # flaggorna till bindestreck, så en oväntad major kan knäcka bygget.
+        run: pip install --upgrade platformio "esptool~=5.6"
 
       - name: Bygg firmware
         env:
@@ -148,8 +148,8 @@ jobs:
             echo "::error::boot_app0.bin hittades inte i framework-paketet"
             exit 1
           fi
-          esptool.py --chip esp32 merge_bin -o dist/lovglod-full.bin \
-            --flash_mode dio --flash_freq 40m --flash_size 4MB \
+          esptool --chip esp32 merge-bin -o dist/lovglod-full.bin \
+            --flash-mode dio --flash-freq 40m --flash-size 4MB \
             0x1000  .pio/build/esp32dev/bootloader.bin \
             0x8000  .pio/build/esp32dev/partitions.bin \
             0xe000  "$BOOT_APP0" \
