@@ -70,7 +70,7 @@ body{margin:0;background:var(--bg);color:#000;font:16px/1.5 var(--body)}
  text-transform:uppercase;color:var(--gold)}
 h1{margin:0;font:700 44px/.95 var(--disp);text-transform:uppercase;overflow-wrap:anywhere}
 h1 .mark{display:block;height:72px;width:auto;margin-left:-3px}
-.gl{color:#F8D12B}
+h1 .mark:not(:first-child){margin-top:10px}
 .lead{margin:12px 0 0;font-size:17px;color:rgba(255,255,255,.88)}
 .lead b{color:#fff}
 main.in{padding-top:24px;padding-bottom:48px}
@@ -338,7 +338,7 @@ void handleStripSave() {
 void handleSetup() {
     if (settings.ledStrip == LED_STRIP_UNSET) { handleStripPage(); return; }
 
-    String p = head("LövGlöd — WiFi", "Välkommen hem", F("Anslut din Löv<span class=gl>Glöd</span>"),
+    String p = head("LövGlöd — WiFi", "Välkommen hem", F("Anslut din<img class=mark src=/logo.svg alt='LövGlöd'>"),
                     F("Välj ditt WiFi så börjar lampan följa Björklöven."));
     p += F("<div class=card><form method=POST action=/save>"
            "<label>Nätverk</label><select name=ssid_pick "

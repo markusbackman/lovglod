@@ -47,7 +47,7 @@ const head = (title, mode, eyebrow, heading, lead = '') =>
 const END = '</main></body></html>';
 
 const setup =
-  head('LövGlöd — WiFi', 'Setup', 'Välkommen hem', 'Anslut din Löv<span class=gl>Glöd</span>',
+  head('LövGlöd — WiFi', 'Setup', 'Välkommen hem', `Anslut din<img class=mark src=/logo.svg alt='LövGlöd'>`,
        'Välj ditt WiFi så börjar lampan följa Björklöven.') +
   `<div class=card><form method=POST action=/save><label>Nätverk</label><select name=ssid_pick>` +
   `<option value=''>— välj nätverk —</option>` +
