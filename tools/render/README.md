@@ -97,3 +97,22 @@ behöver skalas upp. Vill du ha skarpare bilder till en retinaskärm är
 | Tom eller svart bild | Chromium saknar GPU. Verktyget kör redan med SwiftShader; på en burk utan skärm kan `--scale 1` behövas för att hålla nere minnet |
 | `sharp saknas` | Verktyget sparar png i full dukstorlek i stället. `npm install` igen |
 | Vill peka ut en egen Chromium | `LOVGLOD_CHROMIUM=/sökväg/till/chrome node render.mjs` |
+
+## Mobilbilderna av portalen
+
+`portal-setup.webp` och `portal-status.webp` på Kom igång-sidan renderas av
+`portal.mjs`:
+
+```bash
+cd tools/render
+npx playwright install webkit   # första gången
+node portal.mjs                 # → site/assets/portal-*.webp
+```
+
+CSS:en och logotypen läses direkt ur `src/portal.cpp` och
+`include/logo_svg.h`. Sidornas markup är däremot en kopia av `head()`,
+`handleSetup()` och `handleStatus()` med påhittade värden — ändras de sidorna
+får mallarna i skriptet ändras med. Bilderna tas i WebKit som en iPhone och
+utan Antonio och Barlow, eftersom lampan inte skickar några typsnitt: det
+som syns är reservtypsnitten, som i mobilen. Ändras bildhöjden skriver
+skriptet ut de nya måtten för `width`/`height` i `site/anvand.html`.
