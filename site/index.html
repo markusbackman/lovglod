@@ -113,9 +113,16 @@ dl[style*="width: 1280px"], ul[style*="width: 1280px"], ol[style*="width: 1280px
   section[style*="padding: 120px 0"] { padding-top: 56px !important; padding-bottom: 56px !important; }
   section[style*="padding: 104px 0"] { padding-top: 56px !important; padding-bottom: 56px !important; }
 
-  /* Menyn: logotyp och knapp, länkarna ryms inte */
-  header nav { display: none !important; }
-  header div[style*="gap: 40px"] { gap: 16px !important; }
+  /* Menyn: logotyp och knapp överst, länkarna på egen rad under */
+  header[style*="height: 64px"] { height: auto !important; }
+  header div[style*="gap: 40px"] { gap: 16px !important; flex-wrap: wrap !important; row-gap: 0 !important; padding-top: 12px !important; }
+  header div[style*="gap: 40px"] > .btn { margin-left: auto !important; }
+  header nav {
+    order: 3; flex: 1 1 100% !important; flex-wrap: wrap !important;
+    gap: 6px 20px !important; padding: 12px 0 !important; font-size: 14px !important;
+  }
+  header nav .navlink { padding: 4px 0; }
+  section[id], [id] { scroll-margin-top: 144px; }
 
   /* Allt rutnät blir en spalt */
   [style*="grid-template-columns: repeat("],
