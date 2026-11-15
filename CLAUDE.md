@@ -14,3 +14,10 @@ Svaret avgör versionstaggen, och taggen avgör vilka lampor som får firmwaren
   med Uppdateringskanal: Beta.
 
 Tagga och pusha bara när användaren ber om det. Se docs/BYGGA.md, "Betaprogrammet".
+
+## Pågående arbete
+
+- **Textljus**: en andra LED-list bakom "BJÖRKLÖVEN / UMEÅ". Vi har valt
+  varianten med genomlysta bokstäver. Beslut, mått, planerade ändringar i
+  3D-modellen och öppna frågor finns i docs/TEXTLJUS.md. Läs den innan du
+  arbetar med texten, lövet eller en andra list.
